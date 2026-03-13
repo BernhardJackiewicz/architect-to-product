@@ -372,6 +372,115 @@ describe("StateManager", () => {
     });
   });
 
+  describe("updateConfig", () => {
+    it("merges partial config without overwriting existing fields", () => {
+      sm.init("test", tmpDir);
+      sm.updateConfig({ testCommand: "pytest" });
+      sm.updateConfig({ lintCommand: "ruff check ." });
+
+      const state = sm.read();
+      expect(state.config.testCommand).toBe("pytest");
+      expect(state.config.lintCommand).toBe("ruff check .");
+    });
+
+    it("overwrites a specific field", () => {
+      sm.init("test", tmpDir);
+      sm.updateConfig({ testCommand: "old" });
+      sm.updateConfig({ testCommand: "new" });
+
+      const state = sm.read();
+      expect(state.config.testCommand).toBe("new");
+    });
+  });
+
+  describe("addSASTFinding with null sliceId", () => {
+    it("records event in buildHistory but NOT in any slice", () => {
+      sm.init("test", tmpDir);
+      sm.setSlices([makeSlice("s1")]);
+
+      const finding: SASTFinding = {
+        id: "F001",
+        tool: "semgrep",
+        severity: "medium",
+        status: "open",
+        title: "Hardcoded secret",
+        file: "src/config.py",
+        line: 10,
+        description: "Found hardcoded API key",
+        fix: "Use environment variable",
+      };
+
+      const state = sm.addSASTFinding(null, finding);
+      // Should NOT be in slice findings
+      expect(state.slices[0].sastFindings.length).toBe(0);
+      // Should be in build history
+      const lastEvent = state.buildHistory[state.buildHistory.length - 1];
+      expect(lastEvent.action).toBe("sast_finding");
+    });
+  });
+
+  describe("read with corrupt state", () => {
+    it("throws on invalid JSON", () => {
+      sm.init("test", tmpDir);
+      // Corrupt the state file
+      const { writeFileSync } = require("node:fs");
+      writeFileSync(join(tmpDir, ".a2p", "state.json"), "{{invalid json", "utf-8");
+
+      expect(() => sm.read()).toThrow();
+    });
+
+    it("throws on valid JSON but invalid schema", () => {
+      sm.init("test", tmpDir);
+      const { writeFileSync } = require("node:fs");
+      writeFileSync(
+        join(tmpDir, ".a2p", "state.json"),
+        JSON.stringify({ version: "not-a-number", projectName: "" }),
+        "utf-8"
+      );
+
+      expect(() => sm.read()).toThrow();
+    });
+  });
+
+  describe("getProgress without slices", () => {
+    it("returns zeroes and null currentSlice", () => {
+      sm.init("test", tmpDir);
+      const progress = sm.getProgress();
+      expect(progress.totalSlices).toBe(0);
+      expect(progress.doneSlices).toBe(0);
+      expect(progress.currentSlice).toBeNull();
+      expect(progress.testsPassed).toBe(0);
+      expect(progress.testsFailed).toBe(0);
+    });
+  });
+
+  describe("setSliceStatus records event", () => {
+    it("records slice_status event with correct action", () => {
+      sm.init("test", tmpDir);
+      sm.setSlices([makeSlice("s1")]);
+      sm.setSliceStatus("s1", "red");
+
+      const state = sm.read();
+      const lastEvent = state.buildHistory[state.buildHistory.length - 1];
+      expect(lastEvent.action).toBe("slice_status");
+      expect(lastEvent.details).toContain("s1");
+      expect(lastEvent.details).toContain("red");
+    });
+  });
+
+  describe("advanceSlice records event with slice name", () => {
+    it("event details contain the name of the new current slice", () => {
+      sm.init("test", tmpDir);
+      sm.setSlices([makeSlice("s1"), makeSlice("s2", { name: "My Second Slice" })]);
+      sm.advanceSlice();
+
+      const state = sm.read();
+      const lastEvent = state.buildHistory[state.buildHistory.length - 1];
+      expect(lastEvent.action).toBe("slice_advance");
+      expect(lastEvent.details).toContain("My Second Slice");
+    });
+  });
+
   describe("backup", () => {
     it("creates backup on write", () => {
       sm.init("test", tmpDir);
