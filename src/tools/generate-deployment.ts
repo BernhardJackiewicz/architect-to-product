@@ -68,26 +68,82 @@ function buildRecommendations(tech: {
   const recs: string[] = [];
 
   // Language-specific
-  if (tech.language.toLowerCase().includes("python")) {
+  const lang = tech.language.toLowerCase();
+  if (lang.includes("python")) {
     recs.push("Use python:3.12-slim (not Alpine — wheel compatibility)");
     recs.push("Single Uvicorn worker with SQLite to avoid write contention");
     recs.push("Use uv for fast dependency installation");
-  } else if (tech.language.toLowerCase().includes("typescript") || tech.language.toLowerCase().includes("node")) {
+  } else if (lang.includes("typescript") || lang.includes("node")) {
     recs.push("Multi-stage build: builder (npm ci) → production (copy node_modules)");
     recs.push("Use node:22-slim as base image");
+  } else if (lang.includes("go")) {
+    recs.push("Multi-stage: golang:1.23 → scratch/distroless, CGO_ENABLED=0 for static binary");
+    recs.push("Single static binary — no runtime dependencies needed");
+  } else if (lang.includes("rust")) {
+    recs.push("Multi-stage: rust:1.82 → debian:bookworm-slim, cargo build --release");
+    recs.push("Strip binary with strip --strip-all to reduce image size");
+  } else if (lang.includes("java") || lang.includes("kotlin")) {
+    recs.push("Multi-stage: eclipse-temurin:21 → temurin:21-jre (JRE only for production)");
+    recs.push("Use Gradle/Maven layer caching for faster rebuilds");
+  } else if (lang.includes("ruby")) {
+    recs.push("Use ruby:3.3-slim as base image");
+    recs.push("bundle install --without development test, use Puma as app server");
+  } else if (lang.includes("php")) {
+    recs.push("Use php:8.3-fpm + Caddy (simpler than nginx + php-fpm)");
+    recs.push("composer install --no-dev, enable opcache for production performance");
+  } else if (lang.includes("c#") || lang.includes(".net") || lang.includes("csharp")) {
+    recs.push("Multi-stage: mcr.microsoft.com/dotnet/sdk → aspnet runtime");
+    recs.push("Use PublishTrimmed for smaller image size");
   }
 
   // Database-specific
-  if (tech.database?.toLowerCase().includes("sqlite")) {
+  const db = tech.database?.toLowerCase() ?? "";
+  if (db.includes("sqlite")) {
     recs.push("Mount database DIRECTORY as named volume (not individual .db file)");
     recs.push("Set PRAGMA journal_mode=WAL, busy_timeout=5000, foreign_keys=ON");
     recs.push("Consider Litestream for continuous S3 replication");
+  } else if (db.includes("postgres")) {
+    recs.push("Use dedicated PostgreSQL container or managed DB (not embedded)");
+    recs.push("Set up pg_dump cron backup with retention policy");
+    recs.push("Use PgBouncer for connection pooling, tune max_connections");
+  } else if (db.includes("mysql") || db.includes("mariadb")) {
+    recs.push("Use dedicated MySQL/MariaDB container with named volume");
+    recs.push("Set up mysqldump cron backup with retention policy");
+    recs.push("Tune innodb_buffer_pool_size (50-70% of available RAM)");
+  } else if (db.includes("mongo")) {
+    recs.push("Use Replica Set (even single-node for oplog support)");
+    recs.push("Set up mongodump cron backup with retention policy");
+    recs.push("Enable --auth and create dedicated app user");
+  } else if (db.includes("redis")) {
+    recs.push("Set maxmemory + eviction policy (allkeys-lru for cache, noeviction for queue)");
+    recs.push("Enable appendonly yes for persistence (AOF)");
+    recs.push("Run Redis in separate container with named volume");
   }
 
   // Hosting-specific
-  if (tech.hosting?.toLowerCase().includes("hetzner")) {
+  const hosting = tech.hosting?.toLowerCase() ?? "";
+  if (hosting.includes("hetzner")) {
     recs.push("Hetzner CX23: 2 vCPU, 4GB RAM, €3.49/month, Nuremberg datacenter");
     recs.push("Enable Hetzner automated backups (+20% = €0.70/month)");
+  } else if (hosting.includes("digitalocean")) {
+    recs.push("DigitalOcean Droplet 2GB from $12/mo, consider Managed DB option");
+    recs.push("Use Spaces (S3-compatible) for backups and static assets");
+  } else if (hosting.includes("aws")) {
+    recs.push("EC2 t3.micro (Free Tier) or ECS Fargate for container orchestration");
+    recs.push("Use RDS for managed database, S3 for backups");
+  } else if (hosting.includes("fly")) {
+    recs.push("Configure fly.toml, deploy with fly deploy, use Volumes for persistent data");
+    recs.push("Fly.io handles TLS automatically — no Caddy needed");
+  } else if (hosting.includes("railway")) {
+    recs.push("Simplest setup: railway up with auto-detection, managed DB add-ons available");
+    recs.push("Railway handles HTTPS and scaling — focus on app code");
+  } else if (hosting.includes("vercel")) {
+    recs.push("Vercel: frontend/serverless only — no Docker needed, use Edge Functions");
+    recs.push("Backend API needs separate hosting (Railway, Fly.io, or VPS)");
+  } else if (hosting.includes("debian") || hosting.includes("ubuntu") || hosting.includes("vps")) {
+    recs.push("Enable unattended-upgrades for automatic security patches");
+    recs.push("Configure swap (2x RAM, max 4GB), set up logrotate for app logs");
+    recs.push("Use systemd hardening (ProtectSystem, NoNewPrivileges, PrivateTmp)");
   }
 
   // Frontend-specific

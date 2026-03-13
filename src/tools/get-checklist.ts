@@ -50,14 +50,57 @@ export function handleGetChecklist(input: GetChecklistInput): string {
   };
 
   // Add tech-specific items
-  if (tech?.database?.toLowerCase().includes("sqlite")) {
+  const db = tech?.database?.toLowerCase() ?? "";
+  const hosting = tech?.hosting?.toLowerCase() ?? "";
+  const other = tech?.other?.map((t) => t.toLowerCase()) ?? [];
+
+  if (db.includes("sqlite")) {
     checklist.postDeployment.push(
       { item: "SQLite WAL mode enabled", done: false },
       { item: "Database volume is named volume (not bind mount)", done: false }
     );
   }
 
-  if (tech?.other?.some((t) => t.toLowerCase().includes("stripe"))) {
+  if (db.includes("postgres")) {
+    checklist.postDeployment.push(
+      { item: "PostgreSQL connection pooling active (PgBouncer)", done: false },
+      { item: "pg_dump backup cron configured with retention", done: false },
+      { item: "max_connections tuned for expected load", done: false }
+    );
+  }
+
+  if (db.includes("mysql") || db.includes("mariadb")) {
+    checklist.postDeployment.push(
+      { item: "mysqldump backup cron configured with retention", done: false },
+      { item: "innodb_buffer_pool_size tuned (50-70% RAM)", done: false },
+      { item: "Default charset set to utf8mb4", done: false }
+    );
+  }
+
+  if (db.includes("mongo")) {
+    checklist.postDeployment.push(
+      { item: "MongoDB auth enabled with dedicated app user", done: false },
+      { item: "Replica Set initialized (required for oplog)", done: false },
+      { item: "mongodump backup cron configured with retention", done: false }
+    );
+  }
+
+  if (db.includes("redis") || other.some((t) => t.includes("redis"))) {
+    checklist.postDeployment.push(
+      { item: "Redis maxmemory policy configured", done: false },
+      { item: "Redis persistence configured (AOF or RDB)", done: false }
+    );
+  }
+
+  if (hosting.includes("debian") || hosting.includes("ubuntu") || hosting.includes("vps") || hosting.includes("linux")) {
+    checklist.infrastructure.push(
+      { item: "unattended-upgrades active for security patches", done: false },
+      { item: "Swap configured (2x RAM, max 4GB)", done: false },
+      { item: "logrotate configured for application logs", done: false }
+    );
+  }
+
+  if (other.some((t) => t.includes("stripe"))) {
     checklist.preDeployment.push(
       { item: "Stripe live keys (not test keys!)", done: false },
       { item: "Stripe webhook URL updated to production domain", done: false },
@@ -65,11 +108,25 @@ export function handleGetChecklist(input: GetChecklistInput): string {
     );
   }
 
-  if (tech?.other?.some((t) => t.toLowerCase().includes("firebase"))) {
+  if (other.some((t) => t.includes("firebase"))) {
     checklist.preDeployment.push(
       { item: "Firebase service account key as Docker secret", done: false },
       { item: "Production domain in Firebase authorized domains", done: false },
       { item: "NTP enabled on server (Firebase token verification)", done: false }
+    );
+  }
+
+  if (other.some((t) => t.includes("auth0") || t.includes("keycloak"))) {
+    checklist.preDeployment.push(
+      { item: "Auth callback URLs set to production domain", done: false },
+      { item: "Token expiry configured for production", done: false }
+    );
+  }
+
+  if (other.some((t) => t.includes("sendgrid") || t.includes("mailgun"))) {
+    checklist.preDeployment.push(
+      { item: "SPF/DKIM/DMARC DNS records configured", done: false },
+      { item: "Production API key (not sandbox)", done: false }
     );
   }
 
