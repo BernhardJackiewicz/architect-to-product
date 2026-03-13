@@ -237,6 +237,130 @@ describe("handleSetArchitecture", () => {
     expect(state.architecture?.reviewMode).toBeUndefined();
   });
 
+  it("stores uiDesign with text description", () => {
+    const result = parse(
+      handleSetArchitecture({
+        projectPath: tmpDir,
+        ...baseInput,
+        frontend: "React",
+        uiDesign: {
+          description: "Dashboard mit Sidebar-Navigation und KPI-Cards",
+          style: "minimal",
+          references: [
+            { type: "description", description: "Login-Page mit OAuth-Buttons und E-Mail-Feld" },
+          ],
+        },
+      })
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.architecture.hasUIDesign).toBe(true);
+    expect(result.architecture.uiStyle).toBe("minimal");
+    expect(result.architecture.uiReferenceCount).toBe(1);
+
+    const sm = new StateManager(tmpDir);
+    const state = sm.read();
+    expect(state.architecture?.uiDesign?.description).toBe("Dashboard mit Sidebar-Navigation und KPI-Cards");
+    expect(state.architecture?.uiDesign?.style).toBe("minimal");
+    expect(state.architecture?.uiDesign?.references).toHaveLength(1);
+    expect(state.architecture?.uiDesign?.references[0].type).toBe("description");
+  });
+
+  it("stores uiDesign with image references", () => {
+    const result = parse(
+      handleSetArchitecture({
+        projectPath: tmpDir,
+        ...baseInput,
+        frontend: "React",
+        uiDesign: {
+          description: "E-Commerce mit Produktkarten und Warenkorb",
+          references: [
+            { type: "wireframe", path: "/designs/homepage.png", description: "Homepage mit Hero und Produktgrid" },
+            { type: "mockup", path: "/designs/checkout.png", description: "Checkout-Flow 3 Schritte" },
+            { type: "screenshot", path: "/designs/competitor.jpg", description: "Referenz: Competitor-Shop" },
+          ],
+        },
+      })
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.architecture.hasUIDesign).toBe(true);
+    expect(result.architecture.uiReferenceCount).toBe(3);
+
+    const sm = new StateManager(tmpDir);
+    const state = sm.read();
+    const refs = state.architecture?.uiDesign?.references;
+    expect(refs).toHaveLength(3);
+    expect(refs?.[0].type).toBe("wireframe");
+    expect(refs?.[0].path).toBe("/designs/homepage.png");
+    expect(refs?.[1].type).toBe("mockup");
+    expect(refs?.[2].type).toBe("screenshot");
+  });
+
+  it("stores uiDesign with mixed references (text + images)", () => {
+    const result = parse(
+      handleSetArchitecture({
+        projectPath: tmpDir,
+        ...baseInput,
+        frontend: "Vue",
+        uiDesign: {
+          description: "Admin-Panel",
+          style: "corporate",
+          references: [
+            { type: "description", description: "Tabellen-Ansicht mit Filter und Sortierung" },
+            { type: "wireframe", path: "/admin-wireframe.pdf", description: "Wireframe des Admin-Dashboards" },
+          ],
+        },
+      })
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.architecture.uiReferenceCount).toBe(2);
+
+    const sm = new StateManager(tmpDir);
+    const state = sm.read();
+    expect(state.architecture?.uiDesign?.references[0].type).toBe("description");
+    expect(state.architecture?.uiDesign?.references[1].type).toBe("wireframe");
+    expect(state.architecture?.uiDesign?.references[1].path).toBe("/admin-wireframe.pdf");
+  });
+
+  it("stores uiDesign with empty references (AI-generated design)", () => {
+    const result = parse(
+      handleSetArchitecture({
+        projectPath: tmpDir,
+        ...baseInput,
+        frontend: "React",
+        uiDesign: {
+          description: "AI-generiertes Design: Modernes SaaS-Dashboard mit Dark-Mode, Sidebar-Nav, responsive",
+          style: "dashboard",
+          references: [],
+        },
+      })
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.architecture.hasUIDesign).toBe(true);
+    expect(result.architecture.uiReferenceCount).toBe(0);
+
+    const sm = new StateManager(tmpDir);
+    const state = sm.read();
+    expect(state.architecture?.uiDesign?.description).toContain("AI-generiertes Design");
+    expect(state.architecture?.uiDesign?.style).toBe("dashboard");
+  });
+
+  it("works without uiDesign (backward compat)", () => {
+    const result = parse(
+      handleSetArchitecture({ projectPath: tmpDir, ...baseInput })
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.architecture.hasUIDesign).toBeUndefined();
+
+    const sm = new StateManager(tmpDir);
+    const state = sm.read();
+    expect(state.architecture?.uiDesign).toBeUndefined();
+  });
+
   it("works without phases (backward compat)", () => {
     const result = parse(
       handleSetArchitecture({ projectPath: tmpDir, ...baseInput })

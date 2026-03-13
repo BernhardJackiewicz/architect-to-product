@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { StateManager } from "../state/state-manager.js";
-import type { Architecture, TechStack, ProductPhase, ReviewMode } from "../state/types.js";
+import type { Architecture, TechStack, ProductPhase, ReviewMode, UIDesign } from "../state/types.js";
 
 export const setArchitectureSchema = z.object({
   projectPath: z.string().describe("Absolute path to the project directory"),
@@ -20,6 +20,24 @@ export const setArchitectureSchema = z.object({
     .enum(["off", "all", "ui-only"])
     .optional()
     .describe("Review mode: 'off' (default), 'all' (pause after every slice), 'ui-only' (pause only after UI slices)"),
+  uiDesign: z
+    .object({
+      description: z.string().describe("Overall UI vision: layout, navigation, key screens, look & feel"),
+      style: z.string().optional().describe("Design style (e.g. 'minimal', 'corporate', 'playful', 'dashboard')"),
+      references: z
+        .array(
+          z.object({
+            type: z
+              .enum(["description", "wireframe", "mockup", "screenshot", "file"])
+              .describe("Type of reference"),
+            path: z.string().optional().describe("Absolute file path to image or design file"),
+            description: z.string().describe("What this reference shows or describes"),
+          })
+        )
+        .describe("Wireframes, mockups, screenshots, or text descriptions of UI elements"),
+    })
+    .optional()
+    .describe("UI design spec: text description, style, and references to wireframes/mockups/images"),
   phases: z
     .array(
       z.object({
@@ -72,6 +90,7 @@ export function handleSetArchitecture(input: SetArchitectureInput): string {
     raw: input.rawArchitecture ?? "",
     ...(phases ? { phases } : {}),
     ...(input.reviewMode ? { reviewMode: input.reviewMode } : {}),
+    ...(input.uiDesign ? { uiDesign: input.uiDesign } : {}),
   };
 
   sm.setArchitecture(architecture);
@@ -101,6 +120,7 @@ export function handleSetArchitecture(input: SetArchitectureInput): string {
       techStack,
       featureCount: architecture.features.length,
       ...(architecture.reviewMode ? { reviewMode: architecture.reviewMode } : {}),
+      ...(architecture.uiDesign ? { hasUIDesign: true, uiStyle: architecture.uiDesign.style, uiReferenceCount: architecture.uiDesign.references.length } : {}),
     },
     ...(phases
       ? {

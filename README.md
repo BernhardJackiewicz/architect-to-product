@@ -4,7 +4,7 @@ Turn any software architecture into a tested, secure, production-ready codebase 
 
 [![npm version](https://img.shields.io/npm/v/architect-to-product)](https://www.npmjs.com/package/architect-to-product)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Tests: 193 passing](https://img.shields.io/badge/tests-193%20passing-brightgreen)]()
+[![Tests: 198 passing](https://img.shields.io/badge/tests-198%20passing-brightgreen)]()
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue)]()
 
 ---
@@ -50,7 +50,7 @@ Phase 1: Plan → Build → Security → Deploy → complete_phase
 ...
 ```
 
-1. **Onboarding**: Capture or co-develop the architecture. Detect database and frontend tech. Set up companion MCP servers. If the architecture defines phases, they get extracted automatically.
+1. **Onboarding**: Capture or co-develop the architecture. Detect database and frontend tech. Describe UI via text, upload wireframes/mockups/screenshots, or let AI generate a design concept. Set up companion MCP servers. If the architecture defines phases, they get extracted automatically.
 2. **Planning**: Break the architecture into ordered vertical slices, each a deployable feature unit with acceptance criteria. Three slice types: `feature` (default), `integration` (library/API adapters with TDD), `infrastructure` (CI, auth, monitoring).
 3. **Build Loop**: TDD per slice: RED (write failing tests) → GREEN (minimal implementation) → REFACTOR (clean up) → SAST (lightweight security scan). Frontend slices with `hasUI: true` get visual verification via Playwright between GREEN and REFACTOR. Configurable review checkpoints (`reviewMode`: `off`, `all`, `ui-only`) pause after slices for human approval. Domain logic triggers a WebSearch step before tests to verify facts (tax rates, regulations, standards).
 4. **Security Gate**: Full SAST scan (Semgrep + Bandit), OWASP Top 10 manual review, dependency audit. Fix all critical/high findings.
@@ -126,7 +126,7 @@ Add to `.vscode/mcp.json`:
 | Tool | Phase | Description |
 |------|-------|-------------|
 | `a2p_init_project` | 0 | Scaffold project with CLAUDE.md, hooks, agents, state |
-| `a2p_set_architecture` | 0 | Parse architecture, detect DB/frontend, extract phases, set review mode |
+| `a2p_set_architecture` | 0 | Parse architecture, detect DB/frontend, extract phases, set review mode, capture UI design |
 | `a2p_setup_companions` | 0 | Register companion MCP servers |
 | `a2p_create_build_plan` | 1 | Architecture → ordered vertical slices (supports `append` for multi-phase) |
 | `a2p_add_slice` | 1,2 | Insert a single slice mid-project (e.g. integration discovered during build) |
@@ -174,7 +174,7 @@ git clone https://github.com/BernhardJackiewicz/architect-to-product.git
 cd architect-to-product
 npm install
 npm run typecheck   # Type checking
-npm test            # 193 tests
+npm test            # 198 tests
 npm run build       # Build
 npm run dev         # Dev mode
 ```

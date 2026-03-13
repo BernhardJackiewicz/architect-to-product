@@ -17,6 +17,18 @@ export const ProductPhaseSchema = z.object({
   timeline: z.string(),
 });
 
+export const UIReferenceSchema = z.object({
+  type: z.enum(["description", "wireframe", "mockup", "screenshot", "file"]),
+  path: z.string().optional(),
+  description: z.string(),
+});
+
+export const UIDesignSchema = z.object({
+  description: z.string().min(1),
+  style: z.string().optional(),
+  references: z.array(UIReferenceSchema),
+});
+
 export const ArchitectureSchema = z.object({
   name: z.string().min(1),
   description: z.string().min(1),
@@ -27,6 +39,7 @@ export const ArchitectureSchema = z.object({
   raw: z.string(),
   phases: z.array(ProductPhaseSchema).optional(),
   reviewMode: z.enum(["off", "all", "ui-only"]).optional(),
+  uiDesign: UIDesignSchema.optional(),
 });
 
 export const TestResultSchema = z.object({

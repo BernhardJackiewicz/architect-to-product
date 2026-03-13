@@ -23,6 +23,20 @@ export type SliceStatus =
 
 export type ReviewMode = "off" | "all" | "ui-only";
 
+export type UISourceType = "description" | "wireframe" | "mockup" | "screenshot" | "file";
+
+export interface UIReference {
+  type: UISourceType;
+  path?: string; // file path for images/files
+  description: string; // what this reference shows or describes
+}
+
+export interface UIDesign {
+  description: string; // overall UI vision
+  style?: string; // e.g. "minimal", "corporate", "playful", "dashboard"
+  references: UIReference[]; // wireframes, mockups, screenshots, design files
+}
+
 export type FindingSeverity = "critical" | "high" | "medium" | "low" | "info";
 
 export type FindingStatus = "open" | "fixed" | "accepted" | "false_positive";
@@ -47,6 +61,7 @@ export interface Architecture {
   raw: string; // Original architecture text from user
   phases?: ProductPhase[]; // Optional for backward compat
   reviewMode?: ReviewMode; // default: "off"
+  uiDesign?: UIDesign; // UI description, wireframes, mockups
 }
 
 export interface TechStack {

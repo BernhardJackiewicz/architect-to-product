@@ -90,6 +90,7 @@ export function createServer(): McpServer {
       apiDesign: setArchitectureSchema.shape.apiDesign,
       rawArchitecture: setArchitectureSchema.shape.rawArchitecture,
       reviewMode: setArchitectureSchema.shape.reviewMode,
+      uiDesign: setArchitectureSchema.shape.uiDesign,
       phases: setArchitectureSchema.shape.phases,
     },
     wrapTool(handleSetArchitecture as ToolHandler)

@@ -44,6 +44,16 @@ Nutze idealerweise den test-writer Subagent (.claude/agents/test-writer.md) für
 
 **WICHTIG**: Ändere NICHT die Tests in dieser Phase!
 
+### UI-Design als Referenz nutzen (bei Frontend-Slices)
+Wenn der aktuelle Slice \`hasUI: true\` hat UND \`architecture.uiDesign\` existiert:
+
+1. Lies die \`uiDesign.description\` und den \`style\` aus dem State
+2. Prüfe die \`references\`:
+   - Wenn \`type: "wireframe"\` oder \`"mockup"\` oder \`"screenshot"\` mit \`path\` → lies das Bild (Read tool) und verwende es als visuelle Referenz
+   - Wenn \`type: "description"\` → nutze den Text als Designvorgabe
+3. Implementiere das UI **gemäss diesen Vorgaben** — nicht nach eigenem Ermessen
+4. Beim Visual Verification: Vergleiche das Ergebnis mit den References
+
 ### Visual Verification (nur bei Frontend-Slices)
 Wenn der aktuelle Slice \`hasUI: true\` hat (Frontend-Komponenten, Seiten, Formulare):
 
@@ -52,6 +62,7 @@ Wenn der aktuelle Slice \`hasUI: true\` hat (Frontend-Komponenten, Seiten, Formu
 1. App starten (oder sicherstellen dass sie läuft)
 2. Zur relevanten Seite navigieren (\`browser_navigate\`)
 3. Screenshot machen (\`browser_take_screenshot\`) — visueller Check:
+   - Stimmt es mit den uiDesign-References überein? (falls vorhanden)
    - Sieht es professionell aus? Keine Layout-Brüche?
    - Text lesbar, keine Überlappungen?
    - Konsistente Abstände und Farben?
