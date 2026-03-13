@@ -1,4 +1,4 @@
-# architect-to-product — Model Context Protocol (MCP) Server for AI-Driven TDD, Security Scanning, and Deployment
+# architect-to-product — MCP Server for AI-Driven TDD, Security Scanning, and Deployment
 
 Turn any software architecture into a tested, secure, production-ready codebase — powered by Claude Code.
 
