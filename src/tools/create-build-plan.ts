@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { StateManager } from "../state/state-manager.js";
 import type { Slice } from "../state/types.js";
 
@@ -93,11 +95,15 @@ export function handleCreateBuildPlan(input: CreateBuildPlanInput): string {
 
   const totalSlices = input.append ? state.slices.length + slices.length : slices.length;
 
+  // Save build plan as readable Markdown for later analysis
+  const planPath = saveBuildPlanMarkdown(input.projectPath, slices, state, input.append ?? false);
+
   return JSON.stringify({
     success: true,
     sliceCount: slices.length,
     totalSlices,
     appended: input.append ?? false,
+    planSavedTo: planPath,
     slices: slices.map((s, i) => ({
       order: (input.append ? state.slices.length : 0) + i + 1,
       id: s.id,
@@ -109,6 +115,67 @@ export function handleCreateBuildPlan(input: CreateBuildPlanInput): string {
     nextStep:
       "Build plan created. Transition to building phase and start the TDD loop with a2p_build_slice prompt.",
   });
+}
+
+function saveBuildPlanMarkdown(
+  projectPath: string,
+  slices: Slice[],
+  state: { architecture: { name?: string; phases?: Array<{ id: string; name: string }> } | null; slices: Slice[] },
+  appended: boolean,
+): string {
+  const plansDir = join(projectPath, ".a2p", "plans");
+  mkdirSync(plansDir, { recursive: true });
+
+  const now = new Date();
+  const ts = now.toISOString().replace(/[:.]/g, "-").slice(0, 19);
+  const filename = `build-plan-${ts}.md`;
+  const filepath = join(plansDir, filename);
+
+  const lines: string[] = [];
+  lines.push(`# Build Plan — ${now.toISOString()}`);
+  lines.push("");
+  if (state.architecture?.name) {
+    lines.push(`**Project:** ${state.architecture.name}`);
+  }
+  lines.push(`**Mode:** ${appended ? "appended to existing plan" : "new plan"}`);
+  lines.push(`**Slices:** ${slices.length}${appended ? ` (+ ${state.slices.length} existing)` : ""}`);
+  lines.push("");
+
+  // Summary table
+  lines.push("| # | ID | Name | Type | UI | Dependencies |");
+  lines.push("|---|-----|------|------|----|-------------|");
+  for (let i = 0; i < slices.length; i++) {
+    const s = slices[i];
+    lines.push(
+      `| ${i + 1} | ${s.id} | ${s.name} | ${s.type ?? "feature"} | ${s.hasUI ? "yes" : "-"} | ${s.dependencies.length > 0 ? s.dependencies.join(", ") : "-"} |`
+    );
+  }
+  lines.push("");
+
+  // Detail per slice
+  for (const s of slices) {
+    lines.push(`## ${s.id}: ${s.name}`);
+    lines.push("");
+    if (s.type) lines.push(`**Type:** ${s.type}`);
+    if (s.productPhaseId) lines.push(`**Phase:** ${s.productPhaseId}`);
+    if (s.hasUI) lines.push(`**Has UI:** yes`);
+    if (s.dependencies.length > 0) lines.push(`**Depends on:** ${s.dependencies.join(", ")}`);
+    lines.push("");
+    lines.push(`**Description:** ${s.description}`);
+    lines.push("");
+    lines.push("**Acceptance Criteria:**");
+    for (const ac of s.acceptanceCriteria) {
+      lines.push(`- ${ac}`);
+    }
+    lines.push("");
+    lines.push(`**Test Strategy:** ${s.testStrategy}`);
+    lines.push("");
+    lines.push("---");
+    lines.push("");
+  }
+
+  writeFileSync(filepath, lines.join("\n"), "utf-8");
+  return filepath;
 }
 
 function detectCircularDeps(

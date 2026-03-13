@@ -6,3 +6,4 @@ dist/
 .secrets
 .DS_Store
 *.tsbuildinfo
+.a2p/
