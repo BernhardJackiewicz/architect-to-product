@@ -54,6 +54,17 @@ Wenn \`a2p_get_state\` Phasen anzeigt:
 - Nutze \`append: true\` bei create_build_plan ab Phase 1
 - Nach Phase-Abschluss: \`a2p_complete_phase\` → nächste Phase planen
 
+## Bevor du Slices planst: Bestehenden Code analysieren
+Wenn codebase-memory-mcp verfügbar UND es bereits Code im Projekt gibt:
+1. Rufe \`index_repository\` auf
+2. Nutze \`search_graph\` mit type="function" um bestehende Funktionen zu finden
+3. Berücksichtige bei der Slice-Planung was schon existiert
+   — Keine Slices für Funktionalität die bereits gebaut ist
+
+Wenn ein DB-MCP verfügbar ist:
+1. Prüfe das aktuelle DB-Schema
+2. Berücksichtige bei der Planung welche Tabellen/Modelle schon existieren
+
 ## Ausgabe
 Rufe \`a2p_create_build_plan\` mit der sortierten Slice-Liste auf.
 

@@ -110,8 +110,27 @@ Rufe \`a2p_setup_companions\` auf mit den passenden Companions für den Tech Sta
 
 Das Tool schreibt automatisch eine \`.mcp.json\` ins Projekt — der User muss KEINE manuellen \`claude mcp add\` Commands ausführen.
 
+### SAST-Tools installieren
+Nach den Companion-MCPs: Installiere die CLI-Tools für Security-Scans.
+Diese sind KEINE MCPs, sondern werden direkt von \`a2p_run_sast\` aufgerufen.
+
+1. **Semgrep** (IMMER — funktioniert für alle Sprachen):
+   \`\`\`
+   pip install semgrep
+   \`\`\`
+   Prüfe mit \`which semgrep\` ob es verfügbar ist.
+
+2. **Bandit** (NUR bei Python-Projekten):
+   \`\`\`
+   pip install bandit
+   \`\`\`
+   Prüfe mit \`which bandit\` ob es verfügbar ist.
+
+Wenn die Installation fehlschlägt (kein pip, keine Rechte), informiere den User:
+"Semgrep/Bandit konnte nicht installiert werden. Die Security-Scans (\`a2p_run_sast\`) werden ohne diese Tools eingeschränkt funktionieren. Installiere manuell: \`pip install semgrep bandit\`."
+
 Nach dem Aufruf, sage dem User:
-"Alle Companion-MCPs sind konfiguriert. **Starte Claude Code einmal neu** — danach sind alle Tools verfügbar und wir können mit der Planung beginnen. Nutze dann den \`a2p_planning\` Prompt."
+"Alle Companion-MCPs und SAST-Tools sind konfiguriert. **Starte Claude Code einmal neu** — danach sind alle Tools verfügbar und wir können mit der Planung beginnen. Nutze dann den \`a2p_planning\` Prompt."
 
 ### Phasen-Erkennung
 Wenn die Architektur Phasen, Meilensteine oder zeitliche Gruppierungen enthält:

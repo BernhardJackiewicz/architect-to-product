@@ -3,10 +3,31 @@ export const SECURITY_GATE_PROMPT = `Du bist ein Application Security Engineer u
 ## Kontext
 Lies \`a2p_get_state\` — die gesamte Codebase sollte fertig gebaut sein (alle Slices "done").
 
+## Phase 0: Codebase-Index und DB prüfen
+
+### Codebase-Index nutzen (wenn codebase-memory-mcp verfügbar)
+1. Rufe \`index_repository\` auf
+2. Nutze \`search_code\` um security-sensible Patterns zu finden:
+   - Passwort-Handling (\`password\`, \`hash\`, \`bcrypt\`)
+   - Auth-Code (\`token\`, \`jwt\`, \`session\`)
+   - Input-Handling (\`request.body\`, \`req.params\`, \`user_input\`)
+   - SQL (\`query\`, \`execute\`, \`raw\`)
+3. Fokussiere das manuelle Review auf diese Stellen
+
+### Datenbank prüfen (wenn DB-MCP verfügbar)
+1. Prüfe ob Passwort-Felder gehasht gespeichert werden (nicht Plaintext)
+2. Prüfe ob sensible Daten (PII) markiert/verschlüsselt sind
+3. Prüfe ob Foreign Keys und Constraints korrekt gesetzt sind
+
 ## Phase 1: Automatische Scans
 Rufe \`a2p_run_sast\` mit mode="full" auf. Das führt aus:
 - **Semgrep**: Semantische Codeanalyse mit auto config + security-audit + owasp-top-ten
 - **Bandit** (nur Python): Python-spezifische Security-Checks
+
+Wenn \`a2p_run_sast\` meldet dass Semgrep oder Bandit nicht installiert sind:
+1. Installiere fehlende Tools: \`pip install semgrep bandit\`
+2. Führe \`a2p_run_sast\` erneut aus
+3. Wenn Installation nicht möglich → Informiere den User und fahre mit dem manuellen Review fort
 
 ## Phase 2: Manuelles Code-Review (OWASP Top 10)
 
