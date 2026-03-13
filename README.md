@@ -4,7 +4,7 @@ Turn any software architecture into a tested, secure, production-ready codebase 
 
 [![npm version](https://img.shields.io/npm/v/architect-to-product)](https://www.npmjs.com/package/architect-to-product)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Tests: 208 passing](https://img.shields.io/badge/tests-208%20passing-brightgreen)]()
+[![Tests: 270 passing](https://img.shields.io/badge/tests-270%20passing-brightgreen)]()
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue)]()
 
 ---
@@ -69,7 +69,8 @@ claude mcp add architect-to-product -- npx architect-to-product
 Then restart Claude Code and use the `a2p` prompt. The onboarding will:
 1. Co-develop or capture your architecture
 2. Auto-generate a `.mcp.json` with all needed companion servers (database, Playwright, codebase-memory)
-3. Ask you to restart Claude Code **once** — after that, everything is ready
+3. Install SAST tools (Semgrep, Bandit for Python) for the security gate
+4. Ask you to restart Claude Code **once** — after that, everything is ready
 
 No manual `claude mcp add` commands needed for companions.
 
@@ -217,7 +218,7 @@ git clone https://github.com/BernhardJackiewicz/architect-to-product.git
 cd architect-to-product
 npm install
 npm run typecheck   # Type checking
-npm test            # 208 tests
+npm test            # 270 tests
 npm run build       # Build
 npm run dev         # Dev mode
 ```
