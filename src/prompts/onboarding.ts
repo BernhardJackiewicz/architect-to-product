@@ -90,13 +90,18 @@ Rufe \`a2p_init_project\` auf um das Projekt zu initialisieren.
 Dann rufe \`a2p_set_architecture\` mit allen Details auf (inkl. \`reviewMode\`).
 
 ### Schritt 4: Companions einrichten
-Basierend auf dem Tech Stack, rufe \`a2p_setup_companions\` auf:
+Rufe \`a2p_setup_companions\` auf mit den passenden Companions für den Tech Stack:
 - **codebase-memory-mcp**: IMMER (für Code-Qualität und Token-Effizienz)
 - **Datenbank-MCP**: Passend zur gewählten DB
-  - Supabase → \`https://mcp.supabase.com/mcp\` (remote, kein Install nötig)
-  - PostgreSQL → \`@modelcontextprotocol/server-postgres\`
-  - SQLite → \`@modelcontextprotocol/server-sqlite\`
-- **Playwright MCP**: NUR wenn ein Frontend geplant ist
+  - Supabase → command: \`https://mcp.supabase.com/mcp\` (remote, kein Install nötig)
+  - PostgreSQL → command: \`npx @modelcontextprotocol/server-postgres\`
+  - SQLite → command: \`npx @modelcontextprotocol/server-sqlite\`
+- **Playwright MCP**: NUR wenn ein Frontend geplant ist → command: \`npx @anthropic/mcp-playwright\`
+
+Das Tool schreibt automatisch eine \`.mcp.json\` ins Projekt — der User muss KEINE manuellen \`claude mcp add\` Commands ausführen.
+
+Nach dem Aufruf, sage dem User:
+"Alle Companion-MCPs sind konfiguriert. **Starte Claude Code einmal neu** — danach sind alle Tools verfügbar und wir können mit der Planung beginnen. Nutze dann den \`a2p_planning\` Prompt."
 
 ### Phasen-Erkennung
 Wenn die Architektur Phasen, Meilensteine oder zeitliche Gruppierungen enthält:
@@ -106,5 +111,5 @@ Wenn die Architektur Phasen, Meilensteine oder zeitliche Gruppierungen enthält:
 4. Sage: "Ich habe X Phasen erkannt. Wir starten mit Phase 0: {name}."
 
 ### Schritt 5: Weiter zur Planung
-Sage dem User: "Architektur steht! Jetzt zerlegen wir das Projekt in Slices. Nutze den a2p_planning Prompt."
+Sage dem User: "Architektur steht! Starte Claude Code einmal neu, dann weiter mit dem \`a2p_planning\` Prompt."
 `;

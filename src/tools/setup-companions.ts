@@ -1,5 +1,7 @@
 import { z } from "zod";
 import { execSync } from "node:child_process";
+import { readFileSync, writeFileSync, existsSync } from "node:fs";
+import { join } from "node:path";
 import { StateManager } from "../state/state-manager.js";
 import type { CompanionServer } from "../state/types.js";
 
@@ -38,7 +40,6 @@ export function handleSetupCompanions(input: SetupCompanionsInput): string {
     name: string;
     type: string;
     installed: boolean;
-    registrationCommand: string;
     notes: string;
   }> = [];
 
@@ -55,32 +56,82 @@ export function handleSetupCompanions(input: SetupCompanionsInput): string {
     const isAvailable = checkCommandAvailable(comp.command);
     companion.installed = isAvailable;
 
-    // Build registration command for Claude Code
-    const registrationCommand = buildRegistrationCommand(comp);
-
     results.push({
       name: comp.name,
       type: comp.type,
       installed: isAvailable,
-      registrationCommand,
       notes: isAvailable
-        ? "Available. Register with the command below."
+        ? "Available and configured in .mcp.json."
         : getInstallHint(comp.type, comp.name),
     });
 
     sm.addCompanion(companion);
   }
 
+  // Auto-generate .mcp.json
+  const mcpJsonPath = writeMcpJson(input.projectPath, input.companions);
+
   return JSON.stringify({
     success: true,
     companions: results,
+    mcpJsonWritten: true,
+    mcpJsonPath,
     nextStep:
-      "Register companions in Claude Code with the provided commands, then run a2p_create_build_plan.",
+      ".mcp.json wurde geschrieben. Starte Claude Code neu — danach sind alle Companion-MCPs automatisch verfügbar. Dann weiter mit a2p_create_build_plan.",
   });
 }
 
+function writeMcpJson(
+  projectPath: string,
+  companions: SetupCompanionsInput["companions"]
+): string {
+  const mcpJsonPath = join(projectPath, ".mcp.json");
+
+  // Read existing .mcp.json if present (merge, don't overwrite)
+  let existing: Record<string, unknown> = {};
+  if (existsSync(mcpJsonPath)) {
+    try {
+      existing = JSON.parse(readFileSync(mcpJsonPath, "utf-8"));
+    } catch {
+      // Corrupted file — overwrite
+    }
+  }
+
+  const existingServers = (existing.mcpServers as Record<string, unknown>) ?? {};
+  const newServers: Record<string, unknown> = {};
+
+  for (const comp of companions) {
+    if (comp.command.startsWith("http")) {
+      // Remote/HTTP-based MCP (e.g. Supabase)
+      newServers[comp.name] = {
+        type: "http",
+        url: comp.command,
+      };
+    } else {
+      // stdio-based MCP — split command into binary + args
+      const parts = comp.command.split(" ");
+      newServers[comp.name] = {
+        command: parts[0],
+        args: parts.slice(1),
+      };
+    }
+  }
+
+  const merged = {
+    mcpServers: {
+      ...existingServers,
+      ...newServers,
+    },
+  };
+
+  writeFileSync(mcpJsonPath, JSON.stringify(merged, null, 2) + "\n", "utf-8");
+  return mcpJsonPath;
+}
+
 function checkCommandAvailable(command: string): boolean {
-  // Extract the binary name from the command
+  // HTTP-based MCPs are always "available"
+  if (command.startsWith("http")) return true;
+
   const binary = command.split(" ")[0];
   try {
     execSync(`which ${binary} 2>/dev/null || where ${binary} 2>/dev/null`, {
@@ -93,31 +144,17 @@ function checkCommandAvailable(command: string): boolean {
   }
 }
 
-function buildRegistrationCommand(comp: {
-  type: string;
-  name: string;
-  command: string;
-  config?: Record<string, string>;
-}): string {
-  // For HTTP-based MCP servers (like Supabase)
-  if (comp.command.startsWith("http")) {
-    return `claude mcp add ${comp.name} --transport http ${comp.command}`;
-  }
-  // For stdio-based MCP servers
-  return `claude mcp add ${comp.name} -- ${comp.command}`;
-}
-
 function getInstallHint(type: string, name: string): string {
   switch (type) {
     case "codebase_memory":
-      return "Install: curl -L https://github.com/DeusData/codebase-memory-mcp/releases/latest/download/codebase-memory-mcp-darwin-arm64 -o /usr/local/bin/codebase-memory-mcp && chmod +x /usr/local/bin/codebase-memory-mcp";
+      return "Not installed locally. Install: curl -L https://github.com/DeusData/codebase-memory-mcp/releases/latest/download/codebase-memory-mcp-darwin-arm64 -o /usr/local/bin/codebase-memory-mcp && chmod +x /usr/local/bin/codebase-memory-mcp";
     case "database":
       if (name.includes("supabase"))
-        return "Supabase MCP is remote — no local install needed. Use URL: https://mcp.supabase.com/mcp";
-      return `Install: npm install -g ${name}`;
+        return "Supabase MCP is remote — no local install needed. Configured in .mcp.json.";
+      return `Not installed locally. Install: npm install -g ${name}. Configured in .mcp.json.`;
     case "playwright":
-      return "Install: npm install -g @anthropic/mcp-playwright";
+      return "Not installed locally. Install: npm install -g @anthropic/mcp-playwright. Configured in .mcp.json.";
     default:
-      return `Install ${name} manually.`;
+      return `Install ${name} manually. Configured in .mcp.json.`;
   }
 }
