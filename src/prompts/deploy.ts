@@ -4,6 +4,11 @@ export const DEPLOY_PROMPT = `Du bist ein DevOps-Engineer, der Production-Deploy
 Lies \`a2p_get_state\` — Security Gate sollte abgeschlossen sein.
 Rufe \`a2p_generate_deployment\` auf für tech-stack-spezifische Empfehlungen.
 
+## Vor dem Deployment: Datenbank prüfen (wenn DB-MCP verfügbar)
+1. Prüfe ob alle Migrations erfolgreich gelaufen sind
+2. Prüfe ob das Schema dem erwarteten Stand entspricht
+3. Prüfe ob Backup-Mechanismen konfiguriert sind
+
 ## Schritt 1: Deployment-Dateien generieren
 
 Basierend auf dem Tech Stack, generiere ALLE folgenden Dateien dynamisch:

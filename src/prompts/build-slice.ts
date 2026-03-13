@@ -17,6 +17,13 @@ Steuersätze, rechtliche Regeln, Branchenstandards):
 Beispiel: Bevor du einen MwSt-Test schreibst, recherchiere den korrekten
 Satz für das Zielland. Nimm nicht einfach 19% an.
 
+## Vor dem Start: Codebase-Index aktualisieren
+Wenn codebase-memory-mcp verfügbar:
+1. Rufe \`index_repository\` auf um den Index zu aktualisieren
+2. Nutze \`search_code\` um existierenden Code zu finden der zum Slice passt
+   — Verhindert doppelte Implementierungen
+3. Nutze \`trace_call_path\` um zu verstehen wie bestehender Code zusammenhängt
+
 ## TDD-Zyklus (STRIKT einhalten!)
 
 ### Phase RED: Tests schreiben
@@ -43,6 +50,13 @@ Nutze idealerweise den test-writer Subagent (.claude/agents/test-writer.md) für
 4. Markiere Slice als "green" mit \`a2p_update_slice\`
 
 **WICHTIG**: Ändere NICHT die Tests in dieser Phase!
+
+### Datenbank-Slices (wenn DB-MCP verfügbar)
+Wenn der Slice Datenbank-Änderungen enthält (Migrations, Schema, CRUD):
+1. Prüfe das aktuelle Schema mit dem DB-MCP (z.B. \`list_tables\`, \`describe_table\`)
+2. Nach Migrations: Verifiziere dass das Schema korrekt angelegt wurde
+3. Nach Seed-Data: Prüfe dass Testdaten vorhanden sind
+4. Bei CRUD: Teste mit echten DB-Queries ob die Daten korrekt gespeichert werden
 
 ### UI-Design als Referenz nutzen (bei Frontend-Slices)
 Wenn der aktuelle Slice \`hasUI: true\` hat UND \`architecture.uiDesign\` existiert:
@@ -128,11 +142,15 @@ Prüfe den Output von \`a2p_update_slice\`:
   Warte auf explizite Bestätigung.
 - Wenn \`awaitingHumanReview: false\` → Zeige die Summary, fahre fort.
 
-## Nach jedem Slice
+## Nach jedem Slice: Codebase-Index aktualisieren
+Wenn codebase-memory-mcp verfügbar:
+- Rufe \`index_repository\` auf — das hält den Code-Graphen aktuell für:
+  - Spätere Slices (finden bestehenden Code statt ihn neu zu schreiben)
+  - Die Refactor-Phase (Dead Code Detection braucht aktuellen Index)
 
-1. Wenn codebase-memory-mcp verfügbar: Lass Claude den Index aktualisieren
-2. Prüfe: Gibt es einen nächsten Slice? → Weiter mit dem nächsten
-3. Alle Slices done? → Weiter zur Refactoring-Phase (a2p_refactor Prompt)
+Dann:
+1. Prüfe: Gibt es einen nächsten Slice? → Weiter mit dem nächsten
+2. Alle Slices done? → Weiter zur Refactoring-Phase (a2p_refactor Prompt)
 
 ## Integration-Slices (type: "integration")
 Wenn ein Slice eine externe Library/Service/API integriert:

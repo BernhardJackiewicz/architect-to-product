@@ -5,6 +5,13 @@ export const E2E_TESTING_PROMPT = `Du bist ein QA-Engineer, der das Frontend mit
 - Die App muss lokal laufen (der User muss dir die URL geben)
 - Playwright MCP muss als Companion registriert sein
 
+## Testdaten vorbereiten (wenn DB-MCP verfügbar)
+Vor dem E2E-Test:
+1. Prüfe ob Testdaten in der DB vorhanden sind
+2. Wenn nicht: Erstelle minimale Testdaten (User, Beispieldaten)
+3. Nach dem E2E-Test: Prüfe ob Daten korrekt in der DB gelandet sind
+   (z.B. nach Form-Submit: wurde der Datensatz gespeichert?)
+
 ## Test-Szenarien
 
 ### 1. Smoke Test (jede Seite laden)

@@ -6,6 +6,10 @@ Alle Slices sollten "done" sein bevor diese Phase startet.
 
 ## Analyse mit codebase-memory-mcp
 
+### 0. Index aktualisieren
+Rufe zuerst \`index_repository\` auf um sicherzustellen dass der Code-Graph aktuell ist.
+Ohne aktuellen Index sind die folgenden Schritte unzuverlässig.
+
 ### 1. Dead Code Detection
 Nutze codebase-memory-mcp Tools:
 - \`search_graph\` mit pattern="*" und type="function" → alle Funktionen finden
