@@ -106,9 +106,21 @@ Rufe \`a2p_setup_companions\` auf mit den passenden Companions für den Tech Sta
   - Supabase → command: \`https://mcp.supabase.com/mcp\` (remote, kein Install nötig)
   - PostgreSQL → command: \`npx @modelcontextprotocol/server-postgres\`
   - SQLite → command: \`npx @modelcontextprotocol/server-sqlite\`
-- **Playwright MCP**: NUR wenn ein Frontend geplant ist → command: \`npx @anthropic/mcp-playwright\`
+- **Playwright MCP**: NUR wenn ein Frontend geplant ist → command: \`npx @playwright/mcp\`
 
 Das Tool schreibt automatisch eine \`.mcp.json\` ins Projekt — der User muss KEINE manuellen \`claude mcp add\` Commands ausführen.
+
+### Sicherheitshinweis zu Companion-MCPs
+Zeige dem User nach der Konfiguration diesen Hinweis:
+
+"**Sicherheitshinweis:** Companion-MCPs sind Drittanbieter-Software mit Zugriff auf dein Projekt.
+Bevor du Claude Code neu startest:
+1. Prüfe die generierte \`.mcp.json\` — stehen dort nur Server die du erwartest?
+2. Prüfe unbekannte Packages auf npm/GitHub (Autor, Stars, Issues, Quellcode)
+3. Offizielle MCPs: \`@modelcontextprotocol/*\`, \`@playwright/mcp\`, \`mcp.supabase.com\`
+4. Community-MCPs sind nicht von uns geprüft — Nutzung auf eigene Verantwortung
+
+Bestätige mit OK, dann starte Claude Code neu."
 
 ### SAST-Tools installieren
 Nach den Companion-MCPs: Installiere die CLI-Tools für Security-Scans.

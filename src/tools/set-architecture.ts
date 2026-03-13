@@ -103,8 +103,8 @@ export function handleSetArchitecture(input: SetArchitectureInput): string {
     if (db.includes("supabase")) suggestedCompanions.push("supabase-mcp");
     else if (db.includes("postgres")) suggestedCompanions.push("@modelcontextprotocol/server-postgres");
     else if (db.includes("sqlite")) suggestedCompanions.push("@modelcontextprotocol/server-sqlite");
-    else if (db.includes("mysql") || db.includes("mariadb")) suggestedCompanions.push("@modelcontextprotocol/server-mysql");
-    else if (db.includes("mongo")) suggestedCompanions.push("mongodb-mcp");
+    else if (db.includes("mysql") || db.includes("mariadb")) suggestedCompanions.push("@benborla29/mcp-server-mysql (community — bitte vor Nutzung prüfen)");
+    else if (db.includes("mongo")) suggestedCompanions.push("@mongodb-js/mongodb-mcp-server");
   } else {
     suggestedCompanions.push("supabase-mcp (recommended default)");
   }

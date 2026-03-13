@@ -153,7 +153,7 @@ function getInstallHint(type: string, name: string): string {
         return "Supabase MCP is remote — no local install needed. Configured in .mcp.json.";
       return `Not installed locally. Install: npm install -g ${name}. Configured in .mcp.json.`;
     case "playwright":
-      return "Not installed locally. Install: npm install -g @anthropic/mcp-playwright. Configured in .mcp.json.";
+      return "Not installed locally. Install: npm install -g @playwright/mcp. Configured in .mcp.json.";
     default:
       return `Install ${name} manually. Configured in .mcp.json.`;
   }
