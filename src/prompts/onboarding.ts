@@ -29,9 +29,19 @@ Analysiere sie und identifiziere:
 - API-Design
 - Fehlende Informationen (frage nach!)
 
+### Schritt 2c: Review-Modus festlegen
+Bevor du \`a2p_set_architecture\` aufrufst, frage den User:
+
+"Wie möchtest du zwischen den Slices reviewen?"
+- **off** (Standard): Kein Stopp, Slices laufen durch. Du siehst nach jedem Slice eine Zusammenfassung.
+- **ui-only**: Stopp nach Slices mit UI — du prüfst visuell ob es gut aussieht.
+- **all**: Stopp nach jedem Slice — du prüfst alles manuell.
+
+Default: off. Übergib den gewählten Wert als \`reviewMode\` an \`a2p_set_architecture\`.
+
 ### Schritt 3: Architektur festhalten
 Rufe \`a2p_init_project\` auf um das Projekt zu initialisieren.
-Dann rufe \`a2p_set_architecture\` mit allen Details auf.
+Dann rufe \`a2p_set_architecture\` mit allen Details auf (inkl. \`reviewMode\`).
 
 ### Schritt 4: Companions einrichten
 Basierend auf dem Tech Stack, rufe \`a2p_setup_companions\` auf:

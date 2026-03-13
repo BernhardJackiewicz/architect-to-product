@@ -173,6 +173,70 @@ describe("handleSetArchitecture", () => {
     expect(state.architecture?.phases?.[1].name).toBe("MVP");
   });
 
+  it("stores reviewMode 'ui-only' in state and returns it", () => {
+    const result = parse(
+      handleSetArchitecture({
+        projectPath: tmpDir,
+        ...baseInput,
+        reviewMode: "ui-only",
+      })
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.architecture.reviewMode).toBe("ui-only");
+
+    const sm = new StateManager(tmpDir);
+    const state = sm.read();
+    expect(state.architecture?.reviewMode).toBe("ui-only");
+  });
+
+  it("stores reviewMode 'all' in state and returns it", () => {
+    const result = parse(
+      handleSetArchitecture({
+        projectPath: tmpDir,
+        ...baseInput,
+        reviewMode: "all",
+      })
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.architecture.reviewMode).toBe("all");
+
+    const sm = new StateManager(tmpDir);
+    const state = sm.read();
+    expect(state.architecture?.reviewMode).toBe("all");
+  });
+
+  it("stores reviewMode 'off' in state and returns it", () => {
+    const result = parse(
+      handleSetArchitecture({
+        projectPath: tmpDir,
+        ...baseInput,
+        reviewMode: "off",
+      })
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.architecture.reviewMode).toBe("off");
+
+    const sm = new StateManager(tmpDir);
+    const state = sm.read();
+    expect(state.architecture?.reviewMode).toBe("off");
+  });
+
+  it("works without reviewMode (default behavior)", () => {
+    const result = parse(
+      handleSetArchitecture({ projectPath: tmpDir, ...baseInput })
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.architecture.reviewMode).toBeUndefined();
+
+    const sm = new StateManager(tmpDir);
+    const state = sm.read();
+    expect(state.architecture?.reviewMode).toBeUndefined();
+  });
+
   it("works without phases (backward compat)", () => {
     const result = parse(
       handleSetArchitecture({ projectPath: tmpDir, ...baseInput })

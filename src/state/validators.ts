@@ -26,6 +26,7 @@ export const ArchitectureSchema = z.object({
   apiDesign: z.string(),
   raw: z.string(),
   phases: z.array(ProductPhaseSchema).optional(),
+  reviewMode: z.enum(["off", "all", "ui-only"]).optional(),
 });
 
 export const TestResultSchema = z.object({
