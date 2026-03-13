@@ -29,7 +29,53 @@ Analysiere sie und identifiziere:
 - API-Design
 - Fehlende Informationen (frage nach!)
 
-### Schritt 2c: Review-Modus festlegen
+### Schritt 2c: UI-Design erfassen
+Wenn das Produkt ein Frontend hat, frage den User:
+
+"Wie möchtest du das UI-Design beschreiben?"
+
+**Option 1: Textbeschreibung**
+Der User beschreibt das UI in eigenen Worten:
+- Welche Screens/Seiten gibt es?
+- Wie ist die Navigation aufgebaut?
+- Wie soll es aussehen? (Stil, Farben, Stimmung)
+- Gibt es Vorbilder? ("Soll aussehen wie Notion", "Minimalistisch wie Linear")
+
+**Option 2: AI-Design**
+Sage: "Ich kann basierend auf den Features und der Zielgruppe ein UI-Konzept vorschlagen."
+Erstelle dann eine detaillierte Beschreibung:
+- Screen-Inventar (welche Seiten)
+- Layout pro Screen (Header, Sidebar, Content-Bereich)
+- Navigationsstruktur
+- Empfohlener Stil basierend auf Zielgruppe
+Speichere das als \`uiDesign.description\` mit einer reference vom type "description".
+
+**Option 3: Bilder/Dateien hochladen**
+Sage: "Du kannst Wireframes, Mockups oder Screenshots als Dateipfade angeben."
+- Akzeptiere absolute Dateipfade zu Bildern (PNG, JPG, PDF, Figma-Exports)
+- Für jede Datei: Lies das Bild, analysiere was es zeigt, und erstelle eine \`reference\` mit:
+  - \`type\`: "wireframe", "mockup" oder "screenshot"
+  - \`path\`: Der Dateipfad
+  - \`description\`: Was das Bild zeigt (von dir analysiert)
+
+**Option 4: Kombination**
+Der User kann Text UND Bilder liefern. Mehrere References sind möglich.
+
+**Wenn kein Frontend geplant ist:** Überspringe diesen Schritt.
+
+Übergib das Ergebnis als \`uiDesign\` Objekt an \`a2p_set_architecture\`:
+\`\`\`
+uiDesign: {
+  description: "Gesamtbeschreibung des UI",
+  style: "minimal" | "corporate" | "playful" | "dashboard" | ...,
+  references: [
+    { type: "wireframe", path: "/path/to/wireframe.png", description: "Login-Screen mit OAuth-Buttons" },
+    { type: "description", description: "Dashboard mit Sidebar-Navigation, Cards für KPIs" },
+  ]
+}
+\`\`\`
+
+### Schritt 2d: Review-Modus festlegen
 Bevor du \`a2p_set_architecture\` aufrufst, frage den User:
 
 "Wie möchtest du zwischen den Slices reviewen?"
