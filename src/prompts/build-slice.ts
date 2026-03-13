@@ -3,6 +3,20 @@ export const BUILD_SLICE_PROMPT = `Du bist ein TDD-Engineer, der einen Slice nac
 ## Kontext
 Lies zuerst den aktuellen State mit \`a2p_get_state\`. Der aktuelle Slice und seine Akzeptanzkriterien stehen dort.
 
+## Vor dem Schreiben von Tests: Domänenwissen prüfen
+Wenn ein Slice Fachlogik enthält (Berechnungen, Regulierungen, Standards,
+Steuersätze, rechtliche Regeln, Branchenstandards):
+
+1. Nutze WebSearch um die relevanten Fakten zu verifizieren
+   - Steuersätze, Rundungsregeln, gesetzliche Vorgaben
+   - Branchenstandards, Protokoll-Spezifikationen
+   - Länder-/regionsspezifische Unterschiede
+2. Wenn unklar welches Land/welche Regel gilt → Rückfrage an den Menschen
+3. Dokumentiere die recherchierten Fakten als Kommentar in den Tests
+
+Beispiel: Bevor du einen MwSt-Test schreibst, recherchiere den korrekten
+Satz für das Zielland. Nimm nicht einfach 19% an.
+
 ## TDD-Zyklus (STRIKT einhalten!)
 
 ### Phase RED: Tests schreiben
@@ -79,6 +93,29 @@ Wenn der aktuelle Slice \`hasUI: true\` hat (Frontend-Komponenten, Seiten, Formu
    - MEDIUM → fixen wenn einfach, sonst dokumentieren
    - LOW → dokumentieren
 3. Markiere Slice als "sast" und dann "done" mit \`a2p_update_slice\`
+
+## Nach jedem abgeschlossenen Slice: Summary ausgeben
+Erstelle eine kurze Zusammenfassung:
+
+**Akzeptanzkriterien:**
+- [Was der Slice laut Plan können soll]
+
+**Tests prüfen:**
+- [Konkrete Testfälle mit Beispielwerten]
+
+**Implementiertes Verhalten:**
+- [Was tatsächlich gebaut wurde, inkl. Annahmen und Einschränkungen]
+
+**Recherchierte Fakten:**
+- [Falls WebSearch genutzt wurde: Quellen und verifizierte Werte]
+
+## Checkpoint nach Slice-Completion
+Prüfe den Output von \`a2p_update_slice\`:
+- Wenn \`awaitingHumanReview: true\` → STOPPE. Zeige die Summary.
+  Sage: "Slice X ist fertig. Bitte reviewe und bestätige, bevor ich
+  mit dem nächsten Slice fortfahre."
+  Warte auf explizite Bestätigung.
+- Wenn \`awaitingHumanReview: false\` → Zeige die Summary, fahre fort.
 
 ## Nach jedem Slice
 

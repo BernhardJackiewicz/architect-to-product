@@ -21,6 +21,8 @@ export type SliceStatus =
   | "sast"
   | "done";
 
+export type ReviewMode = "off" | "all" | "ui-only";
+
 export type FindingSeverity = "critical" | "high" | "medium" | "low" | "info";
 
 export type FindingStatus = "open" | "fixed" | "accepted" | "false_positive";
@@ -44,6 +46,7 @@ export interface Architecture {
   apiDesign: string;
   raw: string; // Original architecture text from user
   phases?: ProductPhase[]; // Optional for backward compat
+  reviewMode?: ReviewMode; // default: "off"
 }
 
 export interface TechStack {

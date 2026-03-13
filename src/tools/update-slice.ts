@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { StateManager } from "../state/state-manager.js";
+import type { ProjectState } from "../state/types.js";
 
 export const updateSliceSchema = z.object({
   projectPath: z.string().describe("Absolute path to the project directory"),
@@ -39,31 +40,75 @@ export function handleUpdateSlice(input: UpdateSliceInput): string {
       sm.updateConfig(freshState.config);
     }
 
+    const { nextStep, awaitingHumanReview } = getNextStepHint(input.status, state, input.sliceId);
+
     return JSON.stringify({
       success: true,
       sliceId: input.sliceId,
       newStatus: input.status,
       files: slice.files,
-      nextStep: getNextStepHint(input.status),
+      nextStep,
+      awaitingHumanReview,
+      ...(input.status === "done"
+        ? {
+            sliceSummary: {
+              hint: "Erstelle eine Zusammenfassung: Akzeptanzkriterien, was die Tests prüfen, implementiertes Verhalten, getroffene Annahmen.",
+            },
+          }
+        : {}),
     });
   } catch (err) {
     return JSON.stringify({ error: err instanceof Error ? err.message : String(err) });
   }
 }
 
-function getNextStepHint(status: string): string {
+function getNextStepHint(
+  status: string,
+  state?: ProjectState,
+  sliceId?: string
+): { nextStep: string; awaitingHumanReview: boolean } {
   switch (status) {
     case "red":
-      return "Tests are written and failing. Now write the minimal implementation to make them pass (GREEN phase).";
+      return {
+        nextStep: "Tests are written and failing. Now write the minimal implementation to make them pass (GREEN phase).",
+        awaitingHumanReview: false,
+      };
     case "green":
-      return "Tests pass. Now refactor the code for quality while keeping tests green (REFACTOR phase).";
+      return {
+        nextStep: "Tests pass. Now refactor the code for quality while keeping tests green (REFACTOR phase).",
+        awaitingHumanReview: false,
+      };
     case "refactor":
-      return "Code is clean. Run lightweight SAST on changed files (a2p_run_sast mode=slice).";
+      return {
+        nextStep: "Code is clean. Run lightweight SAST on changed files (a2p_run_sast mode=slice).",
+        awaitingHumanReview: false,
+      };
     case "sast":
-      return "SAST complete. If no critical findings, mark as done. Otherwise, go back to RED to fix.";
-    case "done":
-      return "Slice complete! Advance to the next slice or proceed to the next phase.";
+      return {
+        nextStep: "SAST complete. If no critical findings, mark as done. Otherwise, go back to RED to fix.",
+        awaitingHumanReview: false,
+      };
+    case "done": {
+      const reviewMode = state?.architecture?.reviewMode ?? "off";
+      const slice = sliceId ? state?.slices.find((s) => s.id === sliceId) : undefined;
+      const needsReview =
+        reviewMode === "all" ||
+        (reviewMode === "ui-only" && slice?.hasUI === true);
+
+      if (needsReview) {
+        const sliceName = slice?.name ?? sliceId ?? "unknown";
+        return {
+          nextStep: `CHECKPOINT — Slice "${sliceName}" ist fertig. Bitte reviewe und bestätige, bevor der nächste Slice gestartet wird.`,
+          awaitingHumanReview: true,
+        };
+      }
+
+      return {
+        nextStep: "Slice complete! Advance to the next slice or proceed to the next phase.",
+        awaitingHumanReview: false,
+      };
+    }
     default:
-      return "";
+      return { nextStep: "", awaitingHumanReview: false };
   }
 }

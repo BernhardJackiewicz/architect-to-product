@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { StateManager } from "../state/state-manager.js";
-import type { Architecture, TechStack, ProductPhase } from "../state/types.js";
+import type { Architecture, TechStack, ProductPhase, ReviewMode } from "../state/types.js";
 
 export const setArchitectureSchema = z.object({
   projectPath: z.string().describe("Absolute path to the project directory"),
@@ -16,6 +16,10 @@ export const setArchitectureSchema = z.object({
   dataModel: z.string().describe("Data model description (tables, entities, relationships)"),
   apiDesign: z.string().describe("API design (REST, GraphQL, RPC, etc.)"),
   rawArchitecture: z.string().optional().describe("Full architecture document if available"),
+  reviewMode: z
+    .enum(["off", "all", "ui-only"])
+    .optional()
+    .describe("Review mode: 'off' (default), 'all' (pause after every slice), 'ui-only' (pause only after UI slices)"),
   phases: z
     .array(
       z.object({
@@ -67,6 +71,7 @@ export function handleSetArchitecture(input: SetArchitectureInput): string {
     apiDesign: input.apiDesign,
     raw: input.rawArchitecture ?? "",
     ...(phases ? { phases } : {}),
+    ...(input.reviewMode ? { reviewMode: input.reviewMode } : {}),
   };
 
   sm.setArchitecture(architecture);
@@ -95,6 +100,7 @@ export function handleSetArchitecture(input: SetArchitectureInput): string {
       name: architecture.name,
       techStack,
       featureCount: architecture.features.length,
+      ...(architecture.reviewMode ? { reviewMode: architecture.reviewMode } : {}),
     },
     ...(phases
       ? {
