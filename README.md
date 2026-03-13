@@ -160,6 +160,30 @@ Type these in Claude Code to trigger each workflow phase:
 | `a2p security` | Full SAST scan + OWASP Top 10 review |
 | `a2p deploy` | Generate deployment configs and launch checklist |
 
+### When to use which prompt
+
+You don't have to run the full pipeline. Each prompt works standalone — pick what you need:
+
+**Full project from scratch:**
+`a2p` → `a2p planning` → `a2p build` (repeat per slice) → `a2p security` → `a2p deploy`
+
+**MVP built with vibe coding, now make it production-ready:**
+- `a2p security` — find the vulnerabilities that vibe coding missed
+- `a2p refactor` — clean up the spaghetti, remove dead code
+- `a2p deploy` — generate Dockerfile, docker-compose, Caddyfile instead of guessing
+
+**Added features without tests, need confidence before shipping:**
+- `a2p refactor` — identify dead code and coupling from the feature sprawl
+- `a2p e2e` — visually verify nothing is broken
+- `a2p security` — catch injection, auth holes, hardcoded secrets
+
+**Existing project, just need deployment:**
+- `a2p deploy` — stack-specific configs, backup scripts, hardening guide
+
+**Built the MVP with slices, now entering Phase 2:**
+- `a2p planning` — create new slices for the next phase
+- `a2p build` — TDD per slice as usual
+
 ## Supported Stacks
 
 | Category | Technologies |
