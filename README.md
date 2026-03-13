@@ -18,9 +18,9 @@ Between phases 3 and 4, optional quality analysis (dead code, redundancy, coupli
 
 ## Key design decisions
 
-- **Stack-agnostic**: No hardcoded templates. Everything is generated dynamically based on the architecture. Works with any language/framework.
+- **Stack-agnostic**: No hardcoded templates. Everything is generated dynamically based on the architecture. Opinionated deployment recommendations for Python, TypeScript, Go, Rust, Java/Kotlin, Ruby, PHP, C#/.NET, PostgreSQL, MySQL, MongoDB, Redis, and hosting on Hetzner, DigitalOcean, AWS, Fly.io, Railway, Vercel, or bare VPS.
 - **State as JSON**: Each project stores state in `.a2p/state.json` -- inspectable, diffable, git-committable.
-- **Companion ecosystem**: Integrates codebase-memory-mcp (code graph queries), database-specific MCP servers (Supabase, Postgres, SQLite), and Playwright MCP (E2E testing).
+- **Companion ecosystem**: Integrates codebase-memory-mcp (code graph queries), database-specific MCP servers (Supabase, Postgres, SQLite, MySQL, MongoDB), and Playwright MCP (E2E testing).
 - **Strict state machine**: Phase transitions and TDD slice states are enforced (you can't skip RED or mark done without green tests).
 
 ## Installation
@@ -128,7 +128,7 @@ npm install
 # Typecheck
 npm run typecheck
 
-# Run tests (58 tests)
+# Run tests (142 tests)
 npm test
 
 # Build

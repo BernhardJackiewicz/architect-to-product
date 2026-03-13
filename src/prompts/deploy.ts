@@ -60,7 +60,7 @@ Rufe \`a2p_get_checklist\` auf und zeige dem User die vollständige Checklist.
 ## Schritt 4: Dem User helfen
 
 Frage den User:
-- "Hast du bereits einen Server? Wenn nicht, empfehle ich Hetzner CX23 (€3.49/Monat)."
+- "Hast du bereits einen Server? Wenn nicht, empfehle ich basierend auf deinem Stack einen passenden Hoster (Hetzner, DigitalOcean, Fly.io, Railway, etc.)."
 - "Hast du eine Domain? Wenn nicht, empfehle ich INWX oder Cloudflare."
 - Biete an, beim konkreten Deployment zu helfen (SSH-Befehle, DNS-Setup, etc.)
 

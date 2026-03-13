@@ -81,6 +81,104 @@ describe("handleGenerateDeployment", () => {
     expect(recs).toContain("static");
   });
 
+  it("Go stack -> Go-specific recommendations", () => {
+    initWithArch(tmpDir, { language: "Go", framework: "Gin" });
+    const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
+    const recs = result.deploymentGuide.recommendations.join(" ").toLowerCase();
+    expect(recs).toContain("static");
+  });
+
+  it("Rust stack -> Rust-specific recommendations", () => {
+    initWithArch(tmpDir, { language: "Rust", framework: "Actix" });
+    const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
+    const recs = result.deploymentGuide.recommendations.join(" ").toLowerCase();
+    expect(recs).toContain("release");
+  });
+
+  it("Java stack -> Java-specific recommendations", () => {
+    initWithArch(tmpDir, { language: "Java", framework: "Spring Boot" });
+    const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
+    const recs = result.deploymentGuide.recommendations.join(" ").toLowerCase();
+    expect(recs).toContain("temurin");
+  });
+
+  it("Ruby stack -> Ruby-specific recommendations", () => {
+    initWithArch(tmpDir, { language: "Ruby", framework: "Rails" });
+    const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
+    const recs = result.deploymentGuide.recommendations.join(" ").toLowerCase();
+    expect(recs).toContain("puma");
+  });
+
+  it("PHP stack -> PHP-specific recommendations", () => {
+    initWithArch(tmpDir, { language: "PHP", framework: "Laravel" });
+    const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
+    const recs = result.deploymentGuide.recommendations.join(" ").toLowerCase();
+    expect(recs).toContain("fpm");
+  });
+
+  it("PostgreSQL -> PostgreSQL recommendations", () => {
+    initWithArch(tmpDir, { database: "PostgreSQL" });
+    const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
+    const recs = result.deploymentGuide.recommendations.join(" ").toLowerCase();
+    expect(recs).toContain("pg_dump");
+  });
+
+  it("MySQL -> MySQL recommendations", () => {
+    initWithArch(tmpDir, { database: "MySQL" });
+    const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
+    const recs = result.deploymentGuide.recommendations.join(" ").toLowerCase();
+    expect(recs).toContain("mysqldump");
+  });
+
+  it("MongoDB -> MongoDB recommendations", () => {
+    initWithArch(tmpDir, { database: "MongoDB" });
+    const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
+    const recs = result.deploymentGuide.recommendations.join(" ").toLowerCase();
+    expect(recs).toContain("replica");
+  });
+
+  it("Redis -> Redis recommendations", () => {
+    initWithArch(tmpDir, { database: "Redis" });
+    const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
+    const recs = result.deploymentGuide.recommendations.join(" ").toLowerCase();
+    expect(recs).toContain("maxmemory");
+  });
+
+  it("DigitalOcean -> DO recommendations", () => {
+    initWithArch(tmpDir, { hosting: "DigitalOcean" });
+    const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
+    const recs = result.deploymentGuide.recommendations.join(" ");
+    expect(recs).toContain("Droplet");
+  });
+
+  it("AWS -> AWS recommendations", () => {
+    initWithArch(tmpDir, { hosting: "AWS" });
+    const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
+    const recs = result.deploymentGuide.recommendations.join(" ");
+    expect(recs).toMatch(/EC2|ECS/);
+  });
+
+  it("Fly.io -> Fly recommendations", () => {
+    initWithArch(tmpDir, { hosting: "Fly.io" });
+    const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
+    const recs = result.deploymentGuide.recommendations.join(" ").toLowerCase();
+    expect(recs).toContain("fly");
+  });
+
+  it("Railway -> Railway recommendations", () => {
+    initWithArch(tmpDir, { hosting: "Railway" });
+    const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
+    const recs = result.deploymentGuide.recommendations.join(" ").toLowerCase();
+    expect(recs).toContain("railway");
+  });
+
+  it("Debian VPS -> Linux recommendations", () => {
+    initWithArch(tmpDir, { hosting: "Debian VPS" });
+    const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
+    const recs = result.deploymentGuide.recommendations.join(" ").toLowerCase();
+    expect(recs).toContain("unattended");
+  });
+
   it("returns error without architecture", () => {
     handleInitProject({ projectPath: tmpDir, projectName: "test" });
     // No set-architecture
@@ -169,6 +267,27 @@ describe("handleGetChecklist", () => {
       (i: any) => i.item.includes("SAST")
     );
     expect(noFindings.done).toBe(true);
+  });
+
+  it("PostgreSQL -> PostgreSQL checklist items", () => {
+    initWithArch(tmpDir, { database: "PostgreSQL" });
+    const result = parse(handleGetChecklist({ projectPath: tmpDir }));
+    const allItems = result.checklist.postDeployment.map((i: any) => i.item).join(" ");
+    expect(allItems).toContain("pg_dump");
+  });
+
+  it("Redis in other -> Redis checklist items", () => {
+    initWithArch(tmpDir, { otherTech: ["Redis"] });
+    const result = parse(handleGetChecklist({ projectPath: tmpDir }));
+    const allItems = result.checklist.postDeployment.map((i: any) => i.item).join(" ");
+    expect(allItems).toContain("maxmemory");
+  });
+
+  it("Debian VPS -> Linux checklist items", () => {
+    initWithArch(tmpDir, { hosting: "Debian VPS" });
+    const result = parse(handleGetChecklist({ projectPath: tmpDir }));
+    const infraItems = result.checklist.infrastructure.map((i: any) => i.item).join(" ");
+    expect(infraItems).toContain("unattended-upgrades");
   });
 
   it("returns error without project", () => {
