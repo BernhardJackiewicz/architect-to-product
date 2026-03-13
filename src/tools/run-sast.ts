@@ -45,10 +45,26 @@ export function handleRunSast(input: RunSastInput): string {
     }
   }
 
-  // Record findings in state
+  // Record findings in state (deduplicate by tool+file+line+title fingerprint)
   const allFindings = results.flatMap((r) => r.findings);
+  const state = sm.read();
+  const existingFingerprints = new Set(
+    state.slices
+      .flatMap((s) => s.sastFindings)
+      .map((f) => `${f.tool}:${f.file}:${f.line}:${f.title}`)
+  );
+
+  let newCount = 0;
+  let duplicateCount = 0;
   for (const finding of allFindings) {
+    const fingerprint = `${finding.tool}:${finding.file}:${finding.line}:${finding.title}`;
+    if (existingFingerprints.has(fingerprint)) {
+      duplicateCount++;
+      continue;
+    }
+    existingFingerprints.add(fingerprint);
     sm.addSASTFinding(input.sliceId, finding);
+    newCount++;
   }
 
   const bySeverity = {
@@ -63,6 +79,8 @@ export function handleRunSast(input: RunSastInput): string {
     mode: input.mode,
     toolsRun: results.map((r) => ({ tool: r.tool, available: r.available, findings: r.findings.length })),
     totalFindings: allFindings.length,
+    newFindings: newCount,
+    duplicatesSkipped: duplicateCount,
     bySeverity,
     findings: allFindings.slice(0, 20), // first 20 for readability
     hint:

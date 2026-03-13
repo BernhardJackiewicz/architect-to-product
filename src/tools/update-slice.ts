@@ -27,17 +27,12 @@ export function handleUpdateSlice(input: UpdateSliceInput): string {
     const state = sm.setSliceStatus(input.sliceId, input.status);
     const slice = state.slices.find((s) => s.id === input.sliceId)!;
 
-    // Track files if provided
+    // Track files if provided (using proper StateManager API)
     if (input.files && input.files.length > 0) {
-      const existing = new Set(slice.files);
-      for (const f of input.files) existing.add(f);
-      slice.files = [...existing];
-      // Re-read and write since setSliceStatus already wrote
-      const freshState = sm.read();
-      const freshSlice = freshState.slices.find((s) => s.id === input.sliceId)!;
-      freshSlice.files = slice.files;
-      // Write via updateConfig to trigger a write (hacky but works)
-      sm.updateConfig(freshState.config);
+      sm.updateSliceFiles(input.sliceId, input.files);
+      // Re-read to get updated files for response
+      const freshSlice = sm.read().slices.find((s) => s.id === input.sliceId)!;
+      slice.files = freshSlice.files;
     }
 
     const { nextStep, awaitingHumanReview } = getNextStepHint(input.status, state, input.sliceId);

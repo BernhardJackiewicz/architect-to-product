@@ -2,11 +2,11 @@
 
 MCP server that turns AI-generated code into production-ready software with TDD, security scanning, and deployment automation.
 
-15 MCP tools that add test driven development, static code analysis, and deployment automation to your AI coding workflow. From architecture to `docker-compose up` in one pipeline. 500 tests.
+15 MCP tools that add test driven development, static code analysis, and deployment automation to your AI coding workflow. From architecture to `docker-compose up` in one pipeline. 527 tests.
 
 [![npm version](https://img.shields.io/npm/v/architect-to-product)](https://www.npmjs.com/package/architect-to-product)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Tests: 500 passing](https://img.shields.io/badge/tests-500%20passing-brightgreen)]()
+[![Tests: 527 passing](https://img.shields.io/badge/tests-527%20passing-brightgreen)]()
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue)]()
 
 ---

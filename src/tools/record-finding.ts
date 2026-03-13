@@ -13,7 +13,7 @@ export const recordFindingSchema = z.object({
   file: z.string().describe("File path"),
   line: z.number().describe("Line number"),
   description: z.string().describe("Full description of the issue"),
-  fix: z.string().describe("Suggested fix or applied fix"),
+  fix: z.string().optional().describe("Suggested fix or applied fix (optional for new findings)"),
 });
 
 export type RecordFindingInput = z.infer<typeof recordFindingSchema>;
@@ -25,6 +25,17 @@ export function handleRecordFinding(input: RecordFindingInput): string {
     return JSON.stringify({ error: "No project found." });
   }
 
+  // Check for ID collision
+  const state = sm.read();
+  const existingIds = new Set(
+    state.slices.flatMap((s) => s.sastFindings).map((f) => f.id)
+  );
+  if (existingIds.has(input.id)) {
+    return JSON.stringify({
+      error: `Finding ID "${input.id}" already exists. Use a unique ID.`,
+    });
+  }
+
   const finding: SASTFinding = {
     id: input.id,
     tool: input.tool,
@@ -34,7 +45,7 @@ export function handleRecordFinding(input: RecordFindingInput): string {
     file: input.file,
     line: input.line,
     description: input.description,
-    fix: input.fix,
+    fix: input.fix ?? "",
   };
 
   sm.addSASTFinding(input.sliceId, finding);

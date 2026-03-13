@@ -23,6 +23,25 @@ export function handleCompletePhase(input: CompletePhaseInput): string {
     });
   }
 
+  // Check for open high/critical findings in current phase
+  const currentPhaseObj = phases[stateBefore.currentProductPhase];
+  const phaseSlices = stateBefore.slices.filter((s) => s.productPhaseId === currentPhaseObj.id);
+  const openHighFindings = phaseSlices
+    .flatMap((s) => s.sastFindings)
+    .filter((f) => f.status === "open" && (f.severity === "critical" || f.severity === "high"));
+
+  if (openHighFindings.length > 0) {
+    return JSON.stringify({
+      error: `Cannot complete phase "${currentPhaseObj.name}": ${openHighFindings.length} open CRITICAL/HIGH finding(s).`,
+      blockers: openHighFindings.map((f) => ({
+        type: "open_finding",
+        severity: f.severity,
+        title: f.title,
+        file: f.file,
+      })),
+    });
+  }
+
   try {
     const stateAfter = sm.completeProductPhase();
     const completedPhase = phases[stateBefore.currentProductPhase];
