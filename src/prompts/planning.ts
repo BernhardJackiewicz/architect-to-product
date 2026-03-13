@@ -65,6 +65,25 @@ Wenn ein DB-MCP verfügbar ist:
 1. Prüfe das aktuelle DB-Schema
 2. Berücksichtige bei der Planung welche Tabellen/Modelle schon existieren
 
+## Sequential Thinking für komplexe Abhängigkeitsgraphen
+Wenn die Architektur viele Features mit komplexen Abhängigkeiten hat (>10 Slices),
+nutze Sequential Thinking MCP (\`sequentialthinking\`) um:
+- Den Abhängigkeitsgraphen Schritt für Schritt aufzubauen
+- Zyklen zu erkennen und aufzulösen
+- Die optimale Reihenfolge zu bestimmen
+
+## GitHub-Issues als Slice-Input (wenn GitHub MCP verfügbar)
+Wenn der GitHub MCP konfiguriert ist:
+1. Prüfe ob es offene GitHub Issues gibt die als Slices relevant sind
+2. Verlinke Issues mit Slices (Issue-Nummer in der Slice-Beschreibung)
+3. Nutze Labels/Milestones zur Priorisierung
+
+## Jira-Tickets als Slice-Input (wenn Atlassian MCP verfügbar)
+Wenn der Atlassian MCP konfiguriert ist:
+1. Prüfe ob es Jira-Tickets gibt die als Slices relevant sind
+2. Verlinke Tickets mit Slices (Ticket-Key in der Slice-Beschreibung)
+3. Nutze Sprint-Planung und Story Points zur Priorisierung
+
 ## Ausgabe
 Rufe \`a2p_create_build_plan\` mit der sortierten Slice-Liste auf.
 

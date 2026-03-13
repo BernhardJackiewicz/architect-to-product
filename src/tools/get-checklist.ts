@@ -130,6 +130,76 @@ export function handleGetChecklist(input: GetChecklistInput): string {
     );
   }
 
+  if (other.some((t) => t.includes("clerk"))) {
+    checklist.preDeployment.push(
+      { item: "Clerk auth callback URLs set to production domain", done: false },
+      { item: "Clerk production instance keys (not development keys)", done: false },
+      { item: "Clerk webhook endpoint configured for user sync", done: false }
+    );
+  }
+
+  if (other.some((t) => t.includes("resend"))) {
+    checklist.preDeployment.push(
+      { item: "Resend SPF/DKIM/DMARC DNS records configured", done: false },
+      { item: "Resend production API key (not sandbox)", done: false },
+      { item: "Resend sending domain verified", done: false }
+    );
+  }
+
+  if (other.some((t) => t.includes("upstash"))) {
+    checklist.preDeployment.push(
+      { item: "Upstash Redis URL configured for production", done: false },
+      { item: "Upstash rate-limit configuration tuned", done: false }
+    );
+  }
+
+  if (other.some((t) => t.includes("sentry"))) {
+    checklist.preDeployment.push(
+      { item: "Sentry DSN configured for production", done: false },
+      { item: "Sentry source maps uploaded for production build", done: false },
+      { item: "Sentry release tracking configured", done: false }
+    );
+  }
+
+  if (hosting.includes("render")) {
+    checklist.infrastructure.push(
+      { item: "Render Blueprint (render.yaml) deployed", done: false },
+      { item: "Render health check URL configured and passing", done: false },
+      { item: "Render auto-deploy from GitHub branch configured", done: false }
+    );
+  }
+
+  if (hosting.includes("vercel")) {
+    checklist.infrastructure.push(
+      { item: "Vercel project linked and environment variables set", done: false },
+      { item: "Vercel preview deployment tested successfully", done: false }
+    );
+  }
+
+  if (hosting.includes("cloudflare")) {
+    checklist.infrastructure.push(
+      { item: "Cloudflare NS records configured and active", done: false },
+      { item: "Cloudflare SSL mode set to Full (Strict)", done: false },
+      { item: "Cloudflare WAF rules configured", done: false }
+    );
+  }
+
+  if (hosting.includes("fly")) {
+    checklist.infrastructure.push(
+      { item: "Fly.io app created with fly launch", done: false },
+      { item: "Fly.io secrets set via fly secrets set", done: false },
+      { item: "Fly.io TLS certificate added via fly certs add", done: false }
+    );
+  }
+
+  if (hosting.includes("railway")) {
+    checklist.infrastructure.push(
+      { item: "Railway services configured (web + DB)", done: false },
+      { item: "Railway environment variables set", done: false },
+      { item: "Railway custom domain configured", done: false }
+    );
+  }
+
   return JSON.stringify({
     projectName: state.projectName,
     checklist,

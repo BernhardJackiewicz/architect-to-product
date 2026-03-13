@@ -140,6 +140,14 @@ function buildRecommendations(tech: {
   } else if (hosting.includes("vercel")) {
     recs.push("Vercel: frontend/serverless only — no Docker needed, use Edge Functions");
     recs.push("Backend API needs separate hosting (Railway, Fly.io, or VPS)");
+  } else if (hosting.includes("render")) {
+    recs.push("Render: render.yaml Blueprint for declarative infrastructure (web + DB + workers)");
+    recs.push("Render handles TLS, auto-deploy from GitHub — focus on render.yaml and health checks");
+    recs.push("Use Private Services for internal backends, Environment Groups for shared vars");
+  } else if (hosting.includes("cloudflare")) {
+    recs.push("Cloudflare Pages for static/SSR, Workers for API — no Docker needed");
+    recs.push("Use wrangler.toml for bindings (KV, D1, R2), wrangler secret for secrets");
+    recs.push("WAF, DDoS protection, and CDN included — configure Page Rules for caching");
   } else if (hosting.includes("debian") || hosting.includes("ubuntu") || hosting.includes("vps")) {
     recs.push("Enable unattended-upgrades for automatic security patches");
     recs.push("Configure swap (2x RAM, max 4GB), set up logrotate for app logs");

@@ -39,6 +39,18 @@ Melde gefundene Dead-Code-Kandidaten mit \`a2p_run_quality\`.
 - Funktionen die zu viele andere Funktionen aufrufen (Fan-Out >7)
 - Tief verschachtelte Conditionals (>3 Ebenen)
 
+## Git-History für Hotspot-Analyse (wenn Git MCP verfügbar)
+Wenn der Git MCP konfiguriert ist:
+- Nutze \`git_log\` um Dateien zu finden die häufig geändert werden (Change Hotspots)
+- Häufig geänderte Dateien sind oft Kandidaten für Refactoring
+- Korreliere Hotspots mit Komplexitäts-Daten aus codebase-memory-mcp
+
+## Sequential Thinking für komplexe Entkopplungen (wenn Sequential Thinking MCP verfügbar)
+Wenn der Sequential Thinking MCP konfiguriert ist und komplexe Entkopplungen nötig sind:
+- Nutze \`sequentialthinking\` um Schritt-für-Schritt Entkopplungs-Strategien zu entwickeln
+- Besonders nützlich bei zirkulären Abhängigkeiten und hohem Coupling
+- Dokumentiere die Strategie bevor du mit dem Refactoring beginnst
+
 ## Vorgehen
 
 1. **Analysiere** — Führe alle 5 Checks durch

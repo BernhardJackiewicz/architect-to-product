@@ -1,5 +1,8 @@
 node_modules/
 dist/
 .env
+.env.*
+.credentials
+.secrets
 .DS_Store
 *.tsbuildinfo

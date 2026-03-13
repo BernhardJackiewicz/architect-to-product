@@ -372,4 +372,163 @@ describe("handleSetArchitecture", () => {
     const state = sm.read();
     expect(state.architecture?.phases).toBeUndefined();
   });
+
+  // ─── New MCP detection ────────────────────────────────────────────────
+
+  it("always suggests git MCP", () => {
+    const result = parse(
+      handleSetArchitecture({ projectPath: tmpDir, ...baseInput })
+    );
+    expect(result.suggestedCompanions.some((c: string) => c.includes("mcp-server-git"))).toBe(true);
+  });
+
+  it("always suggests filesystem MCP", () => {
+    const result = parse(
+      handleSetArchitecture({ projectPath: tmpDir, ...baseInput })
+    );
+    expect(result.suggestedCompanions.some((c: string) => c.includes("server-filesystem"))).toBe(true);
+  });
+
+  it("always suggests sequential thinking MCP", () => {
+    const result = parse(
+      handleSetArchitecture({ projectPath: tmpDir, ...baseInput })
+    );
+    expect(result.suggestedCompanions.some((c: string) => c.includes("sequential-thinking"))).toBe(true);
+  });
+
+  it("always suggests semgrep MCP", () => {
+    const result = parse(
+      handleSetArchitecture({ projectPath: tmpDir, ...baseInput })
+    );
+    expect(result.suggestedCompanions.some((c: string) => c.includes("semgrep"))).toBe(true);
+  });
+
+  it("detects Vercel hosting -> vercel MCP", () => {
+    const result = parse(
+      handleSetArchitecture({
+        projectPath: tmpDir,
+        ...baseInput,
+        hosting: "Vercel",
+      })
+    );
+    expect(result.suggestedCompanions.some((c: string) => c.toLowerCase().includes("vercel"))).toBe(true);
+  });
+
+  it("detects Next.js framework -> vercel MCP", () => {
+    const result = parse(
+      handleSetArchitecture({
+        projectPath: tmpDir,
+        ...baseInput,
+        framework: "Next.js",
+      })
+    );
+    expect(result.suggestedCompanions.some((c: string) => c.toLowerCase().includes("vercel"))).toBe(true);
+  });
+
+  it("detects Cloudflare hosting -> cloudflare MCP", () => {
+    const result = parse(
+      handleSetArchitecture({
+        projectPath: tmpDir,
+        ...baseInput,
+        hosting: "Cloudflare Workers",
+      })
+    );
+    expect(result.suggestedCompanions.some((c: string) => c.toLowerCase().includes("cloudflare"))).toBe(true);
+  });
+
+  it("detects Stripe in features -> stripe MCP", () => {
+    const result = parse(
+      handleSetArchitecture({
+        projectPath: tmpDir,
+        ...baseInput,
+        features: ["User Auth", "Stripe Payment Integration"],
+      })
+    );
+    expect(result.suggestedCompanions.some((c: string) => c.toLowerCase().includes("stripe"))).toBe(true);
+  });
+
+  it("detects payment in features -> stripe MCP", () => {
+    const result = parse(
+      handleSetArchitecture({
+        projectPath: tmpDir,
+        ...baseInput,
+        features: ["Payment processing", "Subscriptions"],
+      })
+    );
+    expect(result.suggestedCompanions.some((c: string) => c.toLowerCase().includes("stripe"))).toBe(true);
+  });
+
+  it("detects Jira in features -> atlassian MCP", () => {
+    const result = parse(
+      handleSetArchitecture({
+        projectPath: tmpDir,
+        ...baseInput,
+        features: ["Jira Integration", "Task Sync"],
+      })
+    );
+    expect(result.suggestedCompanions.some((c: string) => c.toLowerCase().includes("atlassian"))).toBe(true);
+  });
+
+  it("detects Sentry in features -> sentry MCP", () => {
+    const result = parse(
+      handleSetArchitecture({
+        projectPath: tmpDir,
+        ...baseInput,
+        features: ["Sentry Error Tracking", "Monitoring"],
+      })
+    );
+    expect(result.suggestedCompanions.some((c: string) => c.toLowerCase().includes("sentry"))).toBe(true);
+  });
+
+  it("detects Upstash in otherTech -> upstash MCP", () => {
+    const result = parse(
+      handleSetArchitecture({
+        projectPath: tmpDir,
+        ...baseInput,
+        otherTech: ["Upstash Redis"],
+      })
+    );
+    expect(result.suggestedCompanions.some((c: string) => c.toLowerCase().includes("upstash"))).toBe(true);
+  });
+
+  it("detects Clerk in features -> non-MCP note", () => {
+    const result = parse(
+      handleSetArchitecture({
+        projectPath: tmpDir,
+        ...baseInput,
+        features: ["Clerk Auth", "User Management"],
+      })
+    );
+    expect(result.suggestedCompanions.some((c: string) => c.includes("Clerk"))).toBe(true);
+  });
+
+  it("detects Resend in features -> non-MCP note", () => {
+    const result = parse(
+      handleSetArchitecture({
+        projectPath: tmpDir,
+        ...baseInput,
+        features: ["Resend Email Notifications"],
+      })
+    );
+    expect(result.suggestedCompanions.some((c: string) => c.includes("Resend"))).toBe(true);
+  });
+
+  it("does not suggest Vercel MCP when hosting is not Vercel", () => {
+    const result = parse(
+      handleSetArchitecture({
+        projectPath: tmpDir,
+        ...baseInput,
+        hosting: "Hetzner",
+        framework: "FastAPI",
+      })
+    );
+    expect(result.suggestedCompanions.some((c: string) => c.toLowerCase().includes("vercel"))).toBe(false);
+  });
+
+  it("suggests GitHub MCP for all projects", () => {
+    const result = parse(
+      handleSetArchitecture({ projectPath: tmpDir, ...baseInput })
+    );
+    expect(result.suggestedCompanions.some((c: string) => c.includes("github-mcp-server"))).toBe(true);
+  });
 });

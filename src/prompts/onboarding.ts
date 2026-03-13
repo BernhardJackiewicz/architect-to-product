@@ -101,12 +101,30 @@ Dann rufe \`a2p_set_architecture\` mit allen Details auf (inkl. \`reviewMode\`).
 
 ### Companions einrichten
 Rufe \`a2p_setup_companions\` auf mit den passenden Companions für den Tech Stack:
+
+**IMMER installieren (Core):**
 - **codebase-memory-mcp**: IMMER (für Code-Qualität und Token-Effizienz)
+- **Git MCP**: IMMER → command: \`uvx mcp-server-git\` (Git-History, Commits, Diffs)
+- **Filesystem MCP**: IMMER → command: \`npx @modelcontextprotocol/server-filesystem\` (Datei-Operationen)
+- **Sequential Thinking**: IMMER → command: \`npx @modelcontextprotocol/server-sequential-thinking\` (komplexe Analyse)
+- **Semgrep MCP**: Wenn Semgrep Pro verfügbar → command: \`semgrep mcp\` (Security-Scans via MCP). Ohne Pro: Semgrep CLI wird direkt von \`a2p_run_sast\` genutzt.
+
+**Conditional:**
+- **GitHub MCP**: Wenn GitHub-Repo → command: \`github-mcp-server\` (Issues, PRs, Code Scanning)
 - **Datenbank-MCP**: Passend zur gewählten DB
   - Supabase → command: \`https://mcp.supabase.com/mcp\` (remote, kein Install nötig)
   - PostgreSQL → command: \`npx @modelcontextprotocol/server-postgres\`
   - SQLite → command: \`npx @modelcontextprotocol/server-sqlite\`
 - **Playwright MCP**: NUR wenn ein Frontend geplant ist → command: \`npx @playwright/mcp\`
+- **Cloudflare MCP**: Wenn hosting=Cloudflare/Workers → command: \`npx @cloudflare/mcp-server-cloudflare\`
+- **Stripe MCP**: Wenn Payment/Billing-Features → command: \`npx @stripe/mcp\`
+- **Atlassian MCP**: Wenn Jira/Confluence erwähnt → Remote MCP via OAuth URL
+- **Sentry MCP**: Wenn Error-Tracking gewünscht → command: \`npx @sentry/mcp-server\`
+- **Upstash MCP**: Wenn Redis serverless/Queue → command: \`npx @upstash/mcp-server\`
+
+**Kein MCP, aber als Tech-Stack erkannt:**
+- **Clerk**: Auth-Integration via API — Checklist-Items werden automatisch hinzugefügt
+- **Resend**: Email-Integration via API — Checklist-Items werden automatisch hinzugefügt
 
 Das Tool schreibt automatisch eine \`.mcp.json\` ins Projekt — der User muss KEINE manuellen \`claude mcp add\` Commands ausführen.
 

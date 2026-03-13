@@ -98,6 +98,16 @@ export function handleSetArchitecture(input: SetArchitectureInput): string {
   // Detect what companions are needed
   const suggestedCompanions: string[] = ["codebase-memory-mcp"];
 
+  // ALWAYS-ON MCPs
+  suggestedCompanions.push("mcp-server-git (via uvx)");
+  suggestedCompanions.push("@modelcontextprotocol/server-filesystem");
+  suggestedCompanions.push("@modelcontextprotocol/server-sequential-thinking");
+  suggestedCompanions.push("semgrep mcp");
+
+  // GitHub MCP — if the project has a GitHub remote
+  suggestedCompanions.push("github-mcp-server (if GitHub repo)");
+
+  // Database MCPs
   if (techStack.database) {
     const db = techStack.database.toLowerCase();
     if (db.includes("supabase")) suggestedCompanions.push("supabase-mcp");
@@ -111,6 +121,39 @@ export function handleSetArchitecture(input: SetArchitectureInput): string {
 
   if (techStack.frontend) {
     suggestedCompanions.push("playwright-mcp (for E2E testing)");
+  }
+
+  // Hosting-specific MCPs
+  const hosting = techStack.hosting?.toLowerCase() ?? "";
+  const framework = techStack.framework.toLowerCase();
+  if (hosting.includes("vercel") || framework.includes("next")) {
+    suggestedCompanions.push("vercel (Vercel MCP)");
+  }
+  if (hosting.includes("cloudflare") || hosting.includes("workers")) {
+    suggestedCompanions.push("@cloudflare/mcp-server-cloudflare");
+  }
+
+  // Feature-specific MCPs
+  const allFeatures = [...techStack.other, ...architecture.features].map((f) => f.toLowerCase()).join(" ");
+  if (allFeatures.match(/payment|stripe|billing/)) {
+    suggestedCompanions.push("@stripe/mcp");
+  }
+  if (allFeatures.match(/jira|confluence|atlassian/)) {
+    suggestedCompanions.push("atlassian-mcp (Remote OAuth)");
+  }
+  if (allFeatures.match(/sentry|error.?tracking/)) {
+    suggestedCompanions.push("@sentry/mcp-server");
+  }
+  if (allFeatures.match(/upstash|redis serverless/)) {
+    suggestedCompanions.push("@upstash/mcp-server");
+  }
+
+  // Non-MCP services detected (included in suggestions for awareness)
+  if (allFeatures.match(/clerk/)) {
+    suggestedCompanions.push("Clerk (no MCP — API integration, checklist items added)");
+  }
+  if (allFeatures.match(/resend|email/)) {
+    suggestedCompanions.push("Resend (no MCP — API integration, checklist items added)");
   }
 
   return JSON.stringify({

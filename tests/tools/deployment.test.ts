@@ -290,6 +290,90 @@ describe("handleGetChecklist", () => {
     expect(infraItems).toContain("unattended-upgrades");
   });
 
+  it("Clerk -> Clerk checklist items", () => {
+    initWithArch(tmpDir, { otherTech: ["Clerk"] });
+    const result = parse(handleGetChecklist({ projectPath: tmpDir }));
+    const preItems = result.checklist.preDeployment.map((i: any) => i.item).join(" ");
+    expect(preItems).toContain("Clerk");
+    expect(preItems).toContain("callback");
+  });
+
+  it("Resend -> Resend checklist items", () => {
+    initWithArch(tmpDir, { otherTech: ["Resend"] });
+    const result = parse(handleGetChecklist({ projectPath: tmpDir }));
+    const preItems = result.checklist.preDeployment.map((i: any) => i.item).join(" ");
+    expect(preItems).toContain("Resend");
+    expect(preItems).toContain("SPF");
+  });
+
+  it("Upstash -> Upstash checklist items", () => {
+    initWithArch(tmpDir, { otherTech: ["Upstash"] });
+    const result = parse(handleGetChecklist({ projectPath: tmpDir }));
+    const preItems = result.checklist.preDeployment.map((i: any) => i.item).join(" ");
+    expect(preItems).toContain("Upstash");
+  });
+
+  it("Sentry -> Sentry checklist items", () => {
+    initWithArch(tmpDir, { otherTech: ["Sentry"] });
+    const result = parse(handleGetChecklist({ projectPath: tmpDir }));
+    const preItems = result.checklist.preDeployment.map((i: any) => i.item).join(" ");
+    expect(preItems).toContain("Sentry");
+    expect(preItems).toContain("DSN");
+  });
+
+  it("Render hosting -> Render checklist items", () => {
+    initWithArch(tmpDir, { hosting: "Render" });
+    const result = parse(handleGetChecklist({ projectPath: tmpDir }));
+    const infraItems = result.checklist.infrastructure.map((i: any) => i.item).join(" ");
+    expect(infraItems).toContain("Render");
+    expect(infraItems).toContain("Blueprint");
+  });
+
+  it("Vercel hosting -> Vercel checklist items", () => {
+    initWithArch(tmpDir, { hosting: "Vercel" });
+    const result = parse(handleGetChecklist({ projectPath: tmpDir }));
+    const infraItems = result.checklist.infrastructure.map((i: any) => i.item).join(" ");
+    expect(infraItems).toContain("Vercel");
+  });
+
+  it("Cloudflare hosting -> Cloudflare checklist items", () => {
+    initWithArch(tmpDir, { hosting: "Cloudflare" });
+    const result = parse(handleGetChecklist({ projectPath: tmpDir }));
+    const infraItems = result.checklist.infrastructure.map((i: any) => i.item).join(" ");
+    expect(infraItems).toContain("Cloudflare");
+    expect(infraItems).toContain("SSL");
+  });
+
+  it("Fly.io hosting -> Fly checklist items", () => {
+    initWithArch(tmpDir, { hosting: "Fly.io" });
+    const result = parse(handleGetChecklist({ projectPath: tmpDir }));
+    const infraItems = result.checklist.infrastructure.map((i: any) => i.item).join(" ");
+    expect(infraItems).toContain("Fly");
+  });
+
+  it("Railway hosting -> Railway checklist items", () => {
+    initWithArch(tmpDir, { hosting: "Railway" });
+    const result = parse(handleGetChecklist({ projectPath: tmpDir }));
+    const infraItems = result.checklist.infrastructure.map((i: any) => i.item).join(" ");
+    expect(infraItems).toContain("Railway");
+  });
+
+  it("Render hosting -> Render recommendations in deployment", () => {
+    initWithArch(tmpDir, { hosting: "Render" });
+    const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
+    const recs = result.deploymentGuide.recommendations.join(" ").toLowerCase();
+    expect(recs).toContain("render");
+    expect(recs).toContain("blueprint");
+  });
+
+  it("Cloudflare hosting -> Cloudflare recommendations in deployment", () => {
+    initWithArch(tmpDir, { hosting: "Cloudflare" });
+    const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
+    const recs = result.deploymentGuide.recommendations.join(" ").toLowerCase();
+    expect(recs).toContain("cloudflare");
+    expect(recs).toContain("wrangler");
+  });
+
   it("returns error without project", () => {
     const otherDir = makeTmpDir();
     const result = parse(handleGetChecklist({ projectPath: otherDir }));

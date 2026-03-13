@@ -1,21 +1,20 @@
-# architect-to-product — MCP Server for AI-Driven TDD, Security Scanning, and Deployment
+# architect-to-product — Model Context Protocol (MCP) Server for AI-Driven TDD, Security Scanning, and Deployment
 
-Turn any software architecture into a tested, secure, production-ready codebase — powered by Claude Code.
+15 MCP tools. 500 tests. Any stack. From architecture to `docker-compose up` in one pipeline.
 
 [![npm version](https://img.shields.io/npm/v/architect-to-product)](https://www.npmjs.com/package/architect-to-product)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Tests: 274 passing](https://img.shields.io/badge/tests-274%20passing-brightgreen)]()
+[![Tests: 500 passing](https://img.shields.io/badge/tests-500%20passing-brightgreen)]()
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue)]()
 
 ---
 
-AI coding tools generate code fast. But that code ships without tests, with security holes, and with no deployment story. You spend more time fixing what the AI wrote than you saved.
+Vibe coding generates code fast — but ships it without tests, with security holes, and with no deployment story. You spend more time fixing what the AI wrote than you saved.
 
-- 45% of AI-generated code contains security vulnerabilities ([GitClear 2024](https://www.gitclear.com/coding_on_copilot_data_shows_ais_downward_pressure_on_code_quality))
-- AI agents waste tokens re-reading the same files — up to 20x more than necessary
+- 45% of AI-generated code introduces security vulnerabilities — and coding agents will delete validation, disable auth, or relax database policies just to make errors go away
 - "It works on my machine" turns into a 3am production incident
 
-**architect-to-product** adds what AI coding lacks: a structured pipeline from architecture to production. TDD ensures every feature works. SAST catches security issues before deploy. Stack-specific deployment configs mean you ship on day one, not day thirty.
+**architect-to-product** adds what vibe coding lacks: a structured pipeline from architecture to production. TDD ensures every feature works. SAST catches security issues before deploy. Stack-specific deployment configs mean you ship on day one, not day thirty.
 
 ## Without vs. With architect-to-product
 
@@ -33,7 +32,6 @@ AI coding tools generate code fast. But that code ships without tests, with secu
 - **Fewer bugs** — Every feature has tests before implementation (RED → GREEN → REFACTOR)
 - **Ship secure** — Semgrep + Bandit + OWASP Top 10 review built into the workflow
 - **Deploy on day one** — Stack-specific Dockerfile, docker-compose, Caddyfile, backup scripts
-- **Save tokens** — Pair with codebase-memory-mcp for up to 20x fewer exploration tokens
 - **Any stack** — Python, TypeScript, Go, Rust, Java, Ruby, PHP, C#, PostgreSQL, MySQL, MongoDB, Redis
 
 ## How it works
@@ -191,18 +189,63 @@ You don't have to run the full pipeline. Each prompt works standalone — pick w
 |----------|-------------|
 | **Languages** | Python, TypeScript/Node.js, Go, Rust, Java/Kotlin, Ruby, PHP, C#/.NET |
 | **Databases** | SQLite, PostgreSQL, MySQL/MariaDB, MongoDB, Redis |
-| **Hosting** | Hetzner, DigitalOcean, AWS, Fly.io, Railway, Vercel, any VPS |
+| **Hosting** | Hetzner, DigitalOcean, AWS, Fly.io, Railway, Vercel, Cloudflare, Render, any VPS |
 
-## Works great with
+## Supported Deploy Targets
 
-| Companion | What it adds | Source |
-|-----------|-------------|--------|
-| [codebase-memory-mcp](https://github.com/DeusData/codebase-memory-mcp) | Code graph intelligence — up to 20x fewer exploration tokens | Community |
-| [Playwright MCP](https://github.com/microsoft/playwright-mcp) | E2E visual testing for frontend projects | Official (Microsoft) |
-| [Supabase MCP](https://github.com/supabase-community/supabase-mcp) | Direct Supabase DB access (also available as remote: `mcp.supabase.com`) | Official (Supabase) |
-| [@modelcontextprotocol/server-postgres](https://github.com/modelcontextprotocol/servers) | PostgreSQL direct access | Official (MCP org) |
-| [@mongodb-js/mongodb-mcp-server](https://github.com/mongodb-js/mongodb-mcp-server) | MongoDB direct access | Official (MongoDB) |
-| [mcp-server-mysql](https://github.com/benborla/mcp-server-mysql) | MySQL/MariaDB direct access | Community |
+| Target | Method | What gets generated |
+|--------|--------|-------------------|
+| **Docker VPS** (Hetzner, DigitalOcean, any VPS) | Dockerfile + docker-compose + Caddy | Dockerfile, docker-compose.prod.yml, Caddyfile, backup.sh, DEPLOYMENT.md |
+| **Vercel** | Vercel CLI | vercel.json, Edge Middleware, env var setup |
+| **Cloudflare** (Pages/Workers) | Wrangler CLI / MCP | wrangler.toml, Page Rules, DNS config |
+| **Railway** | Railway CLI | railway.toml / Procfile, service config |
+| **Fly.io** | Fly CLI | fly.toml, secrets, volumes |
+| **Render** | Blueprint | render.yaml, health checks, auto-deploy |
+
+Each deploy path includes: env var handling, basic hardening, smoke checks, and domain checklist.
+
+## Companion MCP Servers
+
+a2p auto-configures companion MCP servers based on your tech stack. Each companion is integration-tested against its real server to verify tool availability.
+
+### Core (always installed)
+
+| Companion | What it adds | Verified Tools |
+|-----------|-------------|----------------|
+| [codebase-memory-mcp](https://github.com/DeusData/codebase-memory-mcp) | Code graph intelligence — up to 100x fewer exploration tokens vs. raw file scanning | 11 tools: `index_repository`, `search_graph`, `search_code`, `trace_call_path`, ... |
+| [mcp-server-git](https://github.com/modelcontextprotocol/servers) | Git history, commits, diffs | 12 tools: `git_log`, `git_diff`, `git_commit`, `git_status`, ... |
+| [@modelcontextprotocol/server-filesystem](https://github.com/modelcontextprotocol/servers) | File operations | 14 tools: `write_file`, `list_directory`, `read_file`, `search_files`, ... |
+| [@modelcontextprotocol/server-sequential-thinking](https://github.com/modelcontextprotocol/servers) | Step-by-step reasoning for complex decisions | 1 tool: `sequentialthinking` |
+
+### Conditional (installed based on stack)
+
+| Companion | When | Verified Tools |
+|-----------|------|----------------|
+| [Playwright MCP](https://github.com/microsoft/playwright-mcp) | Frontend projects | 22 tools: `browser_navigate`, `browser_click`, `browser_fill_form`, `browser_take_screenshot`, `browser_resize`, ... |
+| [GitHub MCP](https://github.com/github/github-mcp-server) | GitHub repos | 41 tools: `list_issues`, `create_pull_request`, `search_code`, `get_file_contents`, ... |
+| [Supabase MCP](https://github.com/supabase-community/supabase-mcp) | Supabase projects | 29 tools: `execute_sql`, `list_tables`, `apply_migration`, `deploy_edge_function`, ... |
+| [@stripe/mcp](https://github.com/stripe/agent-toolkit) | Payment/billing | 28 tools: `create_product`, `create_price`, `create_payment_link`, `create_customer`, ... |
+| [@cloudflare/mcp-server-cloudflare](https://github.com/cloudflare/mcp-server-cloudflare) | Cloudflare hosting | 85 tools: `worker_deploy`, `kv_put`, `d1_query`, `r2_put_object`, `zones_list`, `secret_put`, ... |
+| [@sentry/mcp-server](https://github.com/getsentry/sentry-mcp-server) | Error tracking | 22 tools: `list_issues`, `get_issue_details`, `find_projects`, `analyze_issue_with_seer`, ... |
+| [@upstash/mcp-server](https://github.com/upstash/mcp-server) | Serverless Redis/Queue | 26 tools: `redis_database_run_redis_commands`, `qstash_publish_message`, `workflow_logs_list`, ... |
+| [Semgrep MCP](https://semgrep.dev/) | Semgrep Pro users | `semgrep_scan`, `security_check`, `get_abstract_syntax_tree` (OSS uses CLI fallback) |
+| [Atlassian MCP](https://developer.atlassian.com/) | Jira/Confluence | Remote MCP via OAuth |
+
+### Database MCPs
+
+| Companion | When |
+|-----------|------|
+| [@modelcontextprotocol/server-postgres](https://github.com/modelcontextprotocol/servers) | PostgreSQL |
+| [@mongodb-js/mongodb-mcp-server](https://github.com/mongodb-js/mongodb-mcp-server) | MongoDB |
+| [mcp-server-mysql](https://github.com/benborla/mcp-server-mysql) | MySQL/MariaDB |
+
+### CLI-only (no MCP server, uses CLI commands)
+
+| Tool | When |
+|------|------|
+| Vercel CLI (`vercel`) | Vercel / Next.js hosting |
+| Clerk | Auth integration |
+| Resend | Email integration |
 
 > **Security note:** Companion MCPs are third-party software with access to your project files and databases. Before enabling a companion: check the source repo (author, stars, open issues), review the `.mcp.json` that gets generated, and confirm you trust the server. Official packages (`@modelcontextprotocol/*`, `@playwright/mcp`, `mcp.supabase.com`) are maintained by their respective organizations. Community packages are not audited by us — use at your own discretion.
 
@@ -211,6 +254,7 @@ You don't have to run the full pipeline. Each prompt works standalone — pick w
 - **vs. Copilot / Cursor** — They generate snippets. a2p generates entire tested projects from architecture to deployment.
 - **vs. create-\*-app scaffolders** — Static templates vs. dynamic architecture-driven generation with TDD and security gates.
 - **vs. manual deployment setup** — Weeks of DevOps vs. generated configs on day one.
+- **vs. vibe coding without a2p** — You ship fast but accumulate security debt, untested features, and manual deployment. a2p is the safety net that makes vibe coding production-viable.
 
 ## Disclaimer
 
@@ -223,7 +267,7 @@ git clone https://github.com/BernhardJackiewicz/architect-to-product.git
 cd architect-to-product
 npm install
 npm run typecheck   # Type checking
-npm test            # 274 tests
+npm test            # 500 tests
 npm run build       # Build
 npm run dev         # Dev mode
 ```
