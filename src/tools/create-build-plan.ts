@@ -49,6 +49,22 @@ export function handleCreateBuildPlan(input: CreateBuildPlanInput): string {
   const newIds = new Set(input.slices.map((s) => s.id));
   const allIds = new Set([...existingIds, ...newIds]);
 
+  // Check for duplicate IDs in input
+  const seenIds = new Set<string>();
+  for (const slice of input.slices) {
+    if (seenIds.has(slice.id)) {
+      return JSON.stringify({
+        error: `Duplicate slice ID "${slice.id}" in input.`,
+      });
+    }
+    if (existingIds.has(slice.id)) {
+      return JSON.stringify({
+        error: `Slice ID "${slice.id}" already exists in the current plan.`,
+      });
+    }
+    seenIds.add(slice.id);
+  }
+
   for (const slice of input.slices) {
     for (const dep of slice.dependencies) {
       if (!allIds.has(dep)) {
@@ -59,8 +75,14 @@ export function handleCreateBuildPlan(input: CreateBuildPlanInput): string {
     }
   }
 
-  // Check for circular dependencies (simple DFS)
-  const circularError = detectCircularDeps(input.slices);
+  // Check for circular dependencies on the COMBINED graph (existing + new)
+  const combinedSlices = input.append
+    ? [
+        ...state.slices.map((s) => ({ id: s.id, dependencies: s.dependencies })),
+        ...input.slices,
+      ]
+    : input.slices;
+  const circularError = detectCircularDeps(combinedSlices);
   if (circularError) {
     return JSON.stringify({ error: circularError });
   }

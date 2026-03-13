@@ -51,16 +51,21 @@ export function handleRunTests(input: RunTestsInput): string {
 
   sm.addTestResult(input.sliceId, testResult);
 
+  const countsParsed = counts.passed > 0 || counts.failed > 0 || counts.skipped > 0;
+
   return JSON.stringify({
     success: result.exitCode === 0,
     exitCode: result.exitCode,
     passed: counts.passed,
     failed: counts.failed,
     skipped: counts.skipped,
+    countsParsed,
     output: testResult.output,
     hint: result.exitCode === 0
       ? "All tests passed!"
-      : "Tests failed. Review the output and fix the issues.",
+      : countsParsed
+        ? "Tests failed. Review the output and fix the issues."
+        : "Tests failed. Could not parse test counts — check the raw output.",
   });
 }
 

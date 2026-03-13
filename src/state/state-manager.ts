@@ -406,6 +406,40 @@ export class StateManager {
     return state.currentProductPhase >= phases.length - 1;
   }
 
+  /** Add build events (for tools that record external results like E2E) */
+  addBuildEvents(events: Array<Omit<BuildEvent, "timestamp">>): ProjectState {
+    const state = this.read();
+    for (const event of events) {
+      state.buildHistory.push({
+        ...event,
+        timestamp: new Date().toISOString(),
+      });
+    }
+    this.write(state);
+    return state;
+  }
+
+  /** Update files tracked by a slice (merge with existing) */
+  updateSliceFiles(sliceId: string, files: string[]): void {
+    const state = this.read();
+    const slice = state.slices.find((s) => s.id === sliceId);
+    if (!slice) throw new Error(`Slice "${sliceId}" not found`);
+    const existing = new Set(slice.files);
+    for (const f of files) existing.add(f);
+    slice.files = [...existing];
+    this.write(state);
+  }
+
+  /** Set the current slice index (for index preservation after insert/append) */
+  setCurrentSliceIndex(index: number): void {
+    const state = this.read();
+    if (index < -1 || (index >= state.slices.length && state.slices.length > 0)) {
+      throw new Error(`Invalid slice index: ${index} (${state.slices.length} slices)`);
+    }
+    state.currentSliceIndex = index;
+    this.write(state);
+  }
+
   private addEvent(
     state: ProjectState,
     phase: Phase,

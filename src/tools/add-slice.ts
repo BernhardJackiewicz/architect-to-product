@@ -42,6 +42,13 @@ export function handleAddSlice(input: AddSliceInput): string {
     });
   }
 
+  // Reject self-dependency (check before existence validation)
+  if (input.slice.dependencies.includes(input.slice.id)) {
+    return JSON.stringify({
+      error: `Slice "${input.slice.id}" cannot depend on itself.`,
+    });
+  }
+
   // Validate dependencies exist
   const existingIds = new Set(state.slices.map((s) => s.id));
   for (const dep of input.slice.dependencies) {
@@ -72,18 +79,15 @@ export function handleAddSlice(input: AddSliceInput): string {
     ...(input.slice.hasUI !== undefined ? { hasUI: input.slice.hasUI } : {}),
   };
 
-  // Use addSlices for simple append (preserves currentSliceIndex properly)
+  // Save the current index before mutation
+  const previousIndex = state.currentSliceIndex;
+
   if (!input.insertAfterSliceId) {
+    // Append to end — use addSlices, then restore index
     sm.addSlices([newSlice]);
-    // Restore currentSliceIndex to where it was (addSlices moves it to the new slice)
-    const updated = sm.read();
-    const wasIndex = state.currentSliceIndex;
-    if (wasIndex >= 0 && wasIndex < state.slices.length) {
-      // Keep working on current slice, don't jump to the new one
-      updated.currentSliceIndex = wasIndex;
-      // We can't write directly, so let's accept addSlices behavior
-      // Actually for mid-build insertion the user wants to continue current work
-      // The addSlices sets index to the first new slice which isn't what we want here
+    // Restore the index to where we were (addSlices jumps to the new slice)
+    if (previousIndex >= 0 && previousIndex < state.slices.length) {
+      sm.setCurrentSliceIndex(previousIndex);
     }
 
     return JSON.stringify({
@@ -96,6 +100,7 @@ export function handleAddSlice(input: AddSliceInput): string {
         position: state.slices.length + 1,
       },
       totalSlices: state.slices.length + 1,
+      currentSlicePreserved: true,
       nextStep: `Slice "${newSlice.name}" added at position ${state.slices.length + 1}. Continue building current slice.`,
     });
   }
@@ -112,8 +117,18 @@ export function handleAddSlice(input: AddSliceInput): string {
   const newSlices = [...state.slices];
   newSlices.splice(insertIndex + 1, 0, newSlice);
 
-  // Use setSlices (resets index to 0), then restore
+  // Use setSlices (resets index to 0)
   sm.setSlices(newSlices);
+
+  // Restore the correct current slice index
+  // If inserted before or at the current position, shift index forward by 1
+  let correctedIndex = previousIndex;
+  if (insertIndex + 1 <= previousIndex) {
+    correctedIndex = previousIndex + 1;
+  }
+  if (correctedIndex >= 0) {
+    sm.setCurrentSliceIndex(correctedIndex);
+  }
 
   return JSON.stringify({
     success: true,
@@ -125,6 +140,8 @@ export function handleAddSlice(input: AddSliceInput): string {
       position: insertIndex + 2,
     },
     totalSlices: newSlices.length,
+    currentSlicePreserved: true,
+    insertedBeforeCurrentSlice: insertIndex + 1 <= previousIndex,
     nextStep: `Slice "${newSlice.name}" inserted after "${input.insertAfterSliceId}" at position ${insertIndex + 2}.`,
   });
 }

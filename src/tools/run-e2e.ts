@@ -41,18 +41,16 @@ export function handleRunE2e(input: RunE2eInput): string {
   const passed = input.scenarios.filter((s) => s.passed).length;
   const failed = input.scenarios.filter((s) => !s.passed).length;
 
-  // Record as build events
+  // Record as build events via proper StateManager API
   const state = sm.read();
-  for (const scenario of input.scenarios) {
-    state.buildHistory.push({
-      timestamp: new Date().toISOString(),
+  sm.addBuildEvents(
+    input.scenarios.map((scenario) => ({
       phase: state.phase,
       sliceId: null,
       action: "e2e_test",
       details: `${scenario.passed ? "PASS" : "FAIL"}: ${scenario.name}`,
-    });
-  }
-  sm.updateConfig(state.config); // trigger write
+    }))
+  );
 
   return JSON.stringify({
     success: failed === 0,
