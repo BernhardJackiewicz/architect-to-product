@@ -19,6 +19,8 @@ export function handleGetState(input: GetStateInput): string {
 
   const state = sm.read();
   const progress = sm.getProgress();
+  const phases = state.architecture?.phases;
+  const currentProductPhase = sm.getCurrentProductPhase();
 
   return JSON.stringify({
     projectName: state.projectName,
@@ -34,5 +36,13 @@ export function handleGetState(input: GetStateInput): string {
       installed: c.installed,
     })),
     config: state.config,
+    ...(phases && phases.length > 0
+      ? {
+          productPhase: currentProductPhase,
+          totalProductPhases: phases.length,
+          currentProductPhaseIndex: state.currentProductPhase,
+          phasesCompleted: phases.slice(0, state.currentProductPhase).map((p) => p.name),
+        }
+      : {}),
   });
 }

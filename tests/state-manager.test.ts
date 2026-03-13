@@ -491,4 +491,161 @@ describe("StateManager", () => {
       expect(existsSync(join(tmpDir, ".a2p", "state.json.bak"))).toBe(true);
     });
   });
+
+  describe("addSlices", () => {
+    it("appends slices to existing plan", () => {
+      sm.init("test", tmpDir);
+      sm.setSlices([makeSlice("s1"), makeSlice("s2")]);
+      const state = sm.addSlices([makeSlice("s3"), makeSlice("s4")]);
+
+      expect(state.slices.length).toBe(4);
+      expect(state.slices[2].id).toBe("s3");
+      expect(state.slices[3].id).toBe("s4");
+    });
+
+    it("sets currentSliceIndex to first new slice", () => {
+      sm.init("test", tmpDir);
+      sm.setSlices([makeSlice("s1"), makeSlice("s2")]);
+      const state = sm.addSlices([makeSlice("s3")]);
+      expect(state.currentSliceIndex).toBe(2);
+    });
+  });
+
+  describe("completeProductPhase", () => {
+    function setupWithPhases() {
+      sm.init("test", tmpDir);
+      sm.setArchitecture({
+        name: "Test",
+        description: "Test",
+        techStack: { language: "TS", framework: "Express", database: null, frontend: null, hosting: null, other: [] },
+        features: ["A", "B"],
+        dataModel: "x",
+        apiDesign: "REST",
+        raw: "",
+        phases: [
+          { id: "phase-0", name: "Spikes", description: "Evaluate", deliverables: ["A"], timeline: "W1" },
+          { id: "phase-1", name: "MVP", description: "Build", deliverables: ["B"], timeline: "W2-4" },
+        ],
+      });
+    }
+
+    it("throws when no phases defined", () => {
+      sm.init("test", tmpDir);
+      sm.setArchitecture({
+        name: "Test",
+        description: "Test",
+        techStack: { language: "TS", framework: "Express", database: null, frontend: null, hosting: null, other: [] },
+        features: ["A"],
+        dataModel: "x",
+        apiDesign: "REST",
+        raw: "",
+      });
+      expect(() => sm.completeProductPhase()).toThrow("No product phases");
+    });
+
+    it("throws when slices not done", () => {
+      setupWithPhases();
+      sm.setSlices([makeSlice("s1", { productPhaseId: "phase-0" })]);
+      expect(() => sm.completeProductPhase()).toThrow("not done");
+    });
+
+    it("advances to next phase when slices done", () => {
+      setupWithPhases();
+      sm.setSlices([makeSlice("s1", { productPhaseId: "phase-0", status: "done" })]);
+      const state = sm.completeProductPhase();
+      expect(state.currentProductPhase).toBe(1);
+      expect(state.phase).toBe("planning");
+    });
+
+    it("completes project on last phase", () => {
+      setupWithPhases();
+      sm.setSlices([
+        makeSlice("s1", { productPhaseId: "phase-0", status: "done" }),
+        makeSlice("s2", { productPhaseId: "phase-1", status: "done" }),
+      ]);
+      // Complete phase 0
+      sm.completeProductPhase();
+      // Complete phase 1
+      const state = sm.completeProductPhase();
+      expect(state.phase).toBe("complete");
+    });
+  });
+
+  describe("getCurrentProductPhase", () => {
+    it("returns null when no phases", () => {
+      sm.init("test", tmpDir);
+      expect(sm.getCurrentProductPhase()).toBeNull();
+    });
+
+    it("returns current phase", () => {
+      sm.init("test", tmpDir);
+      sm.setArchitecture({
+        name: "Test",
+        description: "Test",
+        techStack: { language: "TS", framework: "Express", database: null, frontend: null, hosting: null, other: [] },
+        features: ["A"],
+        dataModel: "x",
+        apiDesign: "REST",
+        raw: "",
+        phases: [
+          { id: "phase-0", name: "Spikes", description: "Evaluate", deliverables: ["A"], timeline: "W1" },
+        ],
+      });
+      const phase = sm.getCurrentProductPhase();
+      expect(phase?.id).toBe("phase-0");
+      expect(phase?.name).toBe("Spikes");
+    });
+  });
+
+  describe("isLastProductPhase", () => {
+    it("returns true when no phases", () => {
+      sm.init("test", tmpDir);
+      expect(sm.isLastProductPhase()).toBe(true);
+    });
+
+    it("returns false for first of two phases", () => {
+      sm.init("test", tmpDir);
+      sm.setArchitecture({
+        name: "Test",
+        description: "Test",
+        techStack: { language: "TS", framework: "Express", database: null, frontend: null, hosting: null, other: [] },
+        features: ["A"],
+        dataModel: "x",
+        apiDesign: "REST",
+        raw: "",
+        phases: [
+          { id: "phase-0", name: "Spikes", description: "Evaluate", deliverables: ["A"], timeline: "W1" },
+          { id: "phase-1", name: "MVP", description: "Build", deliverables: ["B"], timeline: "W2" },
+        ],
+      });
+      expect(sm.isLastProductPhase()).toBe(false);
+    });
+  });
+
+  describe("backward compat: state without currentProductPhase", () => {
+    it("reads old state file missing currentProductPhase field (defaults to 0)", () => {
+      sm.init("test", tmpDir);
+      // Simulate old state file by removing currentProductPhase
+      const { readFileSync, writeFileSync } = require("node:fs");
+      const statePath = join(tmpDir, ".a2p", "state.json");
+      const raw = JSON.parse(readFileSync(statePath, "utf-8"));
+      delete raw.currentProductPhase;
+      writeFileSync(statePath, JSON.stringify(raw), "utf-8");
+
+      const state = sm.read();
+      expect(state.currentProductPhase).toBe(0);
+    });
+  });
+
+  describe("deployment to planning transition", () => {
+    it("allows deployment → planning for multi-phase", () => {
+      sm.init("test", tmpDir);
+      sm.setPhase("planning");
+      sm.setPhase("building");
+      sm.setPhase("security");
+      sm.setPhase("deployment");
+      const state = sm.setPhase("planning");
+      expect(state.phase).toBe("planning");
+    });
+  });
 });

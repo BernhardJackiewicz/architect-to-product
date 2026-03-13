@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { StateManager } from "../state/state-manager.js";
-import type { Architecture, TechStack } from "../state/types.js";
+import type { Architecture, TechStack, ProductPhase } from "../state/types.js";
 
 export const setArchitectureSchema = z.object({
   projectPath: z.string().describe("Absolute path to the project directory"),
@@ -16,6 +16,18 @@ export const setArchitectureSchema = z.object({
   dataModel: z.string().describe("Data model description (tables, entities, relationships)"),
   apiDesign: z.string().describe("API design (REST, GraphQL, RPC, etc.)"),
   rawArchitecture: z.string().optional().describe("Full architecture document if available"),
+  phases: z
+    .array(
+      z.object({
+        id: z.string().describe("Phase ID (e.g. phase-0, phase-1)"),
+        name: z.string().describe("Phase name (e.g. Foundations/Spikes, MVP)"),
+        description: z.string().describe("What this phase achieves"),
+        deliverables: z.array(z.string()).describe("Features/deliverables for this phase"),
+        timeline: z.string().describe("Timeline (e.g. Weeks 1-8)"),
+      })
+    )
+    .optional()
+    .describe("Product phases if the architecture defines multiple phases/milestones"),
 });
 
 export type SetArchitectureInput = z.infer<typeof setArchitectureSchema>;
@@ -38,6 +50,14 @@ export function handleSetArchitecture(input: SetArchitectureInput): string {
     other: input.otherTech ?? [],
   };
 
+  const phases: ProductPhase[] | undefined = input.phases?.map((p) => ({
+    id: p.id,
+    name: p.name,
+    description: p.description,
+    deliverables: p.deliverables,
+    timeline: p.timeline,
+  }));
+
   const architecture: Architecture = {
     name: input.name,
     description: input.description,
@@ -46,6 +66,7 @@ export function handleSetArchitecture(input: SetArchitectureInput): string {
     dataModel: input.dataModel,
     apiDesign: input.apiDesign,
     raw: input.rawArchitecture ?? "",
+    ...(phases ? { phases } : {}),
   };
 
   sm.setArchitecture(architecture);
@@ -75,7 +96,15 @@ export function handleSetArchitecture(input: SetArchitectureInput): string {
       techStack,
       featureCount: architecture.features.length,
     },
+    ...(phases
+      ? {
+          phasesDetected: phases.length,
+          phaseNames: phases.map((p) => p.name),
+        }
+      : {}),
     suggestedCompanions,
-    nextStep: "Run a2p_setup_companions to install recommended MCP servers, then a2p_create_build_plan to create slices.",
+    nextStep: phases
+      ? `${phases.length} product phases detected. Run a2p_setup_companions, then a2p_create_build_plan for Phase 0: "${phases[0].name}".`
+      : "Run a2p_setup_companions to install recommended MCP servers, then a2p_create_build_plan to create slices.",
   });
 }

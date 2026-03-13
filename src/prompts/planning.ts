@@ -34,12 +34,32 @@ Ein Slice ist eine vertikale Feature-Einheit, die:
 - **Test-Strategie**: Welche Tests? (Unit, Integration, E2E)
 - **Dateien**: Welche Dateien werden erstellt/geändert?
 
+## Slice-Typen
+Jeder Slice hat einen Typ:
+- "feature": Normale Feature-Slices (Standard)
+- "integration": Library/Service/API-Integration — Adapter-Pattern, austauschbar
+- "infrastructure": CI/CD, Auth, DB-Setup, Monitoring
+
+Bei Phase-0-Spikes die erfolgreich waren: Erstelle in Phase 1 einen
+"integration"-Slice der das Spike-Ergebnis sauber in die Codebasis integriert.
+Beispiel: Spike "Mustangproject erzeugt valides ZUGFeRD" → Phase-1-Slice
+"integration: Mustangproject-Adapter" mit Adapter-Pattern und TDD.
+
+Setze \`hasUI: true\` wenn ein Slice Frontend-Komponenten enthält (Seiten, Formulare, UI-Elemente).
+
+## Multi-Phase Projekte
+Wenn \`a2p_get_state\` Phasen anzeigt:
+- Plane NUR Slices für die aktuelle Produkt-Phase
+- Setze \`productPhaseId\` auf jede Slice
+- Nutze \`append: true\` bei create_build_plan ab Phase 1
+- Nach Phase-Abschluss: \`a2p_complete_phase\` → nächste Phase planen
+
 ## Ausgabe
 Rufe \`a2p_create_build_plan\` mit der sortierten Slice-Liste auf.
 
 Zeige dem User den Plan als übersichtliche Tabelle:
-| # | Slice | Beschreibung | Abhängigkeiten |
-|---|-------|-------------|----------------|
+| # | Slice | Typ | Beschreibung | Abhängigkeiten |
+|---|-------|-----|-------------|----------------|
 
 Frage: "Soll ich mit dem Bauen starten? Nutze den a2p_build_slice Prompt."
 `;

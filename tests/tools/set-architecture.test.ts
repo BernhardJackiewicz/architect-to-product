@@ -148,4 +148,40 @@ describe("handleSetArchitecture", () => {
     );
     expect(result.architecture.featureCount).toBe(3);
   });
+
+  it("accepts and stores phases", () => {
+    const result = parse(
+      handleSetArchitecture({
+        projectPath: tmpDir,
+        ...baseInput,
+        phases: [
+          { id: "phase-0", name: "Spikes", description: "Evaluate tools", deliverables: ["Spike A"], timeline: "Week 1" },
+          { id: "phase-1", name: "MVP", description: "Build MVP", deliverables: ["Feature A", "Feature B"], timeline: "Weeks 2-8" },
+        ],
+      })
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.phasesDetected).toBe(2);
+    expect(result.phaseNames).toEqual(["Spikes", "MVP"]);
+
+    // Verify persisted in state
+    const sm = new StateManager(tmpDir);
+    const state = sm.read();
+    expect(state.architecture?.phases?.length).toBe(2);
+    expect(state.architecture?.phases?.[0].id).toBe("phase-0");
+    expect(state.architecture?.phases?.[1].name).toBe("MVP");
+  });
+
+  it("works without phases (backward compat)", () => {
+    const result = parse(
+      handleSetArchitecture({ projectPath: tmpDir, ...baseInput })
+    );
+    expect(result.success).toBe(true);
+    expect(result.phasesDetected).toBeUndefined();
+
+    const sm = new StateManager(tmpDir);
+    const state = sm.read();
+    expect(state.architecture?.phases).toBeUndefined();
+  });
 });

@@ -15,6 +15,8 @@ import { runQualitySchema, handleRunQuality } from "./tools/run-quality.js";
 import { runE2eSchema, handleRunE2e } from "./tools/run-e2e.js";
 import { generateDeploymentSchema, handleGenerateDeployment } from "./tools/generate-deployment.js";
 import { getChecklistSchema, handleGetChecklist } from "./tools/get-checklist.js";
+import { completePhaseSchema, handleCompletePhase } from "./tools/complete-phase.js";
+import { addSliceSchema, handleAddSlice } from "./tools/add-slice.js";
 
 // Prompts
 import { ONBOARDING_PROMPT } from "./prompts/onboarding.js";
@@ -87,6 +89,7 @@ export function createServer(): McpServer {
       dataModel: setArchitectureSchema.shape.dataModel,
       apiDesign: setArchitectureSchema.shape.apiDesign,
       rawArchitecture: setArchitectureSchema.shape.rawArchitecture,
+      phases: setArchitectureSchema.shape.phases,
     },
     wrapTool(handleSetArchitecture as ToolHandler)
   );
@@ -107,8 +110,29 @@ export function createServer(): McpServer {
     {
       projectPath: createBuildPlanSchema.shape.projectPath,
       slices: createBuildPlanSchema.shape.slices,
+      append: createBuildPlanSchema.shape.append,
     },
     wrapTool(handleCreateBuildPlan as ToolHandler)
+  );
+
+  server.tool(
+    "a2p_complete_phase",
+    "Complete current product phase and advance to next (multi-phase projects only)",
+    {
+      projectPath: completePhaseSchema.shape.projectPath,
+    },
+    wrapTool(handleCompletePhase as ToolHandler)
+  );
+
+  server.tool(
+    "a2p_add_slice",
+    "Add a single slice to the existing build plan mid-project (e.g. integration slices)",
+    {
+      projectPath: addSliceSchema.shape.projectPath,
+      slice: addSliceSchema.shape.slice,
+      insertAfterSliceId: addSliceSchema.shape.insertAfterSliceId,
+    },
+    wrapTool(handleAddSlice as ToolHandler)
   );
 
   server.tool(

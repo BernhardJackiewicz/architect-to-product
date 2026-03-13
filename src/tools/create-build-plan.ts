@@ -13,10 +13,14 @@ export const createBuildPlanSchema = z.object({
         acceptanceCriteria: z.array(z.string()).describe("When is this slice done?"),
         testStrategy: z.string().describe("How to test this slice"),
         dependencies: z.array(z.string()).describe("IDs of slices this depends on"),
+        productPhaseId: z.string().optional().describe("Product phase this slice belongs to"),
+        type: z.enum(["feature", "integration", "infrastructure"]).optional().describe("Slice type (default: feature)"),
+        hasUI: z.boolean().optional().describe("Whether this slice has frontend/UI changes"),
       })
     )
     .min(1)
     .describe("Ordered list of vertical slices to build"),
+  append: z.boolean().optional().describe("If true, append slices to existing plan instead of replacing (for multi-phase)"),
 });
 
 export type CreateBuildPlanInput = z.infer<typeof createBuildPlanSchema>;
@@ -36,11 +40,16 @@ export function handleCreateBuildPlan(input: CreateBuildPlanInput): string {
     });
   }
 
-  // Validate dependencies reference existing slice IDs
-  const ids = new Set(input.slices.map((s) => s.id));
+  // When appending, include existing slice IDs for dependency validation
+  const existingIds = input.append
+    ? new Set(state.slices.map((s) => s.id))
+    : new Set<string>();
+  const newIds = new Set(input.slices.map((s) => s.id));
+  const allIds = new Set([...existingIds, ...newIds]);
+
   for (const slice of input.slices) {
     for (const dep of slice.dependencies) {
-      if (!ids.has(dep)) {
+      if (!allIds.has(dep)) {
         return JSON.stringify({
           error: `Slice "${slice.id}" depends on "${dep}" which doesn't exist in the plan.`,
         });
@@ -62,23 +71,40 @@ export function handleCreateBuildPlan(input: CreateBuildPlanInput): string {
     acceptanceCriteria: s.acceptanceCriteria,
     testStrategy: s.testStrategy,
     dependencies: s.dependencies,
-    status: "pending",
+    status: "pending" as const,
     files: [],
     testResults: [],
     sastFindings: [],
+    ...(s.productPhaseId ? { productPhaseId: s.productPhaseId } : {}),
+    ...(s.type ? { type: s.type } : {}),
+    ...(s.hasUI !== undefined ? { hasUI: s.hasUI } : {}),
   }));
 
-  sm.setSlices(slices);
-  sm.setPhase("planning");
+  if (input.append) {
+    sm.addSlices(slices);
+  } else {
+    sm.setSlices(slices);
+  }
+
+  // Only transition to planning if not already there (e.g. after completeProductPhase)
+  if (state.phase !== "planning") {
+    sm.setPhase("planning");
+  }
+
+  const totalSlices = input.append ? state.slices.length + slices.length : slices.length;
 
   return JSON.stringify({
     success: true,
     sliceCount: slices.length,
+    totalSlices,
+    appended: input.append ?? false,
     slices: slices.map((s, i) => ({
-      order: i + 1,
+      order: (input.append ? state.slices.length : 0) + i + 1,
       id: s.id,
       name: s.name,
       dependencies: s.dependencies,
+      ...(s.type ? { type: s.type } : {}),
+      ...(s.productPhaseId ? { productPhaseId: s.productPhaseId } : {}),
     })),
     nextStep:
       "Build plan created. Transition to building phase and start the TDD loop with a2p_build_slice prompt.",

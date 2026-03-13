@@ -9,6 +9,14 @@ export const TechStackSchema = z.object({
   other: z.array(z.string()),
 });
 
+export const ProductPhaseSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  description: z.string(),
+  deliverables: z.array(z.string()),
+  timeline: z.string(),
+});
+
 export const ArchitectureSchema = z.object({
   name: z.string().min(1),
   description: z.string().min(1),
@@ -17,6 +25,7 @@ export const ArchitectureSchema = z.object({
   dataModel: z.string(),
   apiDesign: z.string(),
   raw: z.string(),
+  phases: z.array(ProductPhaseSchema).optional(),
 });
 
 export const TestResultSchema = z.object({
@@ -52,6 +61,9 @@ export const SliceSchema = z.object({
   files: z.array(z.string()),
   testResults: z.array(TestResultSchema),
   sastFindings: z.array(SASTFindingSchema),
+  productPhaseId: z.string().optional(),
+  type: z.enum(["feature", "integration", "infrastructure"]).optional(),
+  hasUI: z.boolean().optional(),
 });
 
 export const QualityIssueSchema = z.object({
@@ -116,6 +128,7 @@ export const ProjectStateSchema = z.object({
   companions: z.array(CompanionServerSchema),
   qualityIssues: z.array(QualityIssueSchema),
   buildHistory: z.array(BuildEventSchema),
+  currentProductPhase: z.number().int().min(0).default(0),
   createdAt: z.string(),
   updatedAt: z.string(),
 });

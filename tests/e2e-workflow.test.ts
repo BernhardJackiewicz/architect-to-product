@@ -16,6 +16,8 @@ import { handleGenerateDeployment } from "../src/tools/generate-deployment.js";
 import { handleGetChecklist } from "../src/tools/get-checklist.js";
 import { handleSetupCompanions } from "../src/tools/setup-companions.js";
 import { handleRunSast } from "../src/tools/run-sast.js";
+import { handleCompletePhase } from "../src/tools/complete-phase.js";
+import { handleAddSlice } from "../src/tools/add-slice.js";
 import { StateManager } from "../src/state/state-manager.js";
 
 function makeTmpDir(): string {
@@ -756,6 +758,253 @@ describe("E2E Workflow: Full project lifecycle", () => {
       expect(progress.progress.doneSlices).toBe(2);
       expect(progress.progress.totalSlices).toBe(2);
       expect(progress.progress.qualityIssues).toBe(1);
+    });
+  });
+
+  describe("get-state with product phases", () => {
+    it("returns phase info when phases are defined", () => {
+      handleInitProject({ projectPath: tmpDir, projectName: "phased-app" });
+      handleSetArchitecture({
+        projectPath: tmpDir,
+        name: "Phased",
+        description: "Phased app",
+        language: "Python",
+        framework: "FastAPI",
+        features: ["A", "B"],
+        dataModel: "x",
+        apiDesign: "REST",
+        phases: [
+          { id: "phase-0", name: "Spikes", description: "Evaluate", deliverables: ["A"], timeline: "W1" },
+          { id: "phase-1", name: "MVP", description: "Build", deliverables: ["B"], timeline: "W2-4" },
+        ],
+      });
+
+      const result = parse(handleGetState({ projectPath: tmpDir }));
+      expect(result.totalProductPhases).toBe(2);
+      expect(result.currentProductPhaseIndex).toBe(0);
+      expect(result.productPhase.id).toBe("phase-0");
+      expect(result.productPhase.name).toBe("Spikes");
+      expect(result.phasesCompleted).toEqual([]);
+    });
+
+    it("does not return phase fields when no phases defined", () => {
+      handleInitProject({ projectPath: tmpDir, projectName: "simple" });
+      handleSetArchitecture({
+        projectPath: tmpDir,
+        name: "Simple",
+        description: "No phases",
+        language: "Python",
+        framework: "FastAPI",
+        features: ["A"],
+        dataModel: "x",
+        apiDesign: "REST",
+      });
+
+      const result = parse(handleGetState({ projectPath: tmpDir }));
+      expect(result.totalProductPhases).toBeUndefined();
+      expect(result.productPhase).toBeUndefined();
+      expect(result.currentProductPhaseIndex).toBeUndefined();
+      expect(result.phasesCompleted).toBeUndefined();
+    });
+
+    it("phasesCompleted updates after completing a phase", () => {
+      handleInitProject({ projectPath: tmpDir, projectName: "phased" });
+      handleSetArchitecture({
+        projectPath: tmpDir,
+        name: "Phased",
+        description: "Phased",
+        language: "Python",
+        framework: "FastAPI",
+        features: ["A", "B"],
+        dataModel: "x",
+        apiDesign: "REST",
+        phases: [
+          { id: "phase-0", name: "Spikes", description: "Eval", deliverables: ["A"], timeline: "W1" },
+          { id: "phase-1", name: "MVP", description: "Build", deliverables: ["B"], timeline: "W2" },
+        ],
+      });
+      handleCreateBuildPlan({
+        projectPath: tmpDir,
+        slices: [
+          { id: "s01", name: "Spike", description: "Spike", acceptanceCriteria: ["works"], testStrategy: "manual", dependencies: [], productPhaseId: "phase-0" },
+        ],
+      });
+
+      const sm = new StateManager(tmpDir);
+      sm.setPhase("building");
+      sm.setSliceStatus("s01", "red");
+      sm.setSliceStatus("s01", "green");
+      sm.setSliceStatus("s01", "refactor");
+      sm.setSliceStatus("s01", "sast");
+      sm.setSliceStatus("s01", "done");
+      sm.setPhase("security");
+      sm.setPhase("deployment");
+      handleCompletePhase({ projectPath: tmpDir });
+
+      const result = parse(handleGetState({ projectPath: tmpDir }));
+      expect(result.currentProductPhaseIndex).toBe(1);
+      expect(result.phasesCompleted).toEqual(["Spikes"]);
+      expect(result.productPhase.name).toBe("MVP");
+    });
+  });
+
+  describe("Multi-Phase Lifecycle", () => {
+    it("complete 2-phase project with integration slice mid-build", () => {
+      // Phase 0: Init with phases
+      handleInitProject({ projectPath: tmpDir, projectName: "multi-phase-app" });
+      handleSetArchitecture({
+        projectPath: tmpDir,
+        name: "E-Invoice App",
+        description: "ZUGFeRD invoicing",
+        language: "Java",
+        framework: "Spring Boot",
+        database: "PostgreSQL",
+        features: ["Spike: ZUGFeRD", "Invoice CRUD", "PDF Generation"],
+        dataModel: "invoices, line_items",
+        apiDesign: "REST",
+        phases: [
+          { id: "phase-0", name: "Spikes", description: "Evaluate tools", deliverables: ["ZUGFeRD Spike"], timeline: "Week 1" },
+          { id: "phase-1", name: "MVP", description: "Core invoicing", deliverables: ["Invoice CRUD", "PDF Generation"], timeline: "Weeks 2-6" },
+        ],
+      });
+
+      // Verify phases in state
+      let state = parse(handleGetState({ projectPath: tmpDir }));
+      expect(state.totalProductPhases).toBe(2);
+      expect(state.currentProductPhaseIndex).toBe(0);
+      expect(state.productPhase.name).toBe("Spikes");
+
+      // Phase 0: Plan spike slices only
+      handleCreateBuildPlan({
+        projectPath: tmpDir,
+        slices: [
+          {
+            id: "s01-spike",
+            name: "ZUGFeRD Spike",
+            description: "Evaluate Mustangproject library",
+            acceptanceCriteria: ["generates valid ZUGFeRD PDF"],
+            testStrategy: "manual validation",
+            dependencies: [],
+            productPhaseId: "phase-0",
+            type: "infrastructure" as any,
+          },
+        ],
+      });
+
+      // Build phase 0
+      const sm = new StateManager(tmpDir);
+      sm.setPhase("building");
+      handleUpdateSlice({ projectPath: tmpDir, sliceId: "s01-spike", status: "red" });
+      handleUpdateSlice({ projectPath: tmpDir, sliceId: "s01-spike", status: "green" });
+      handleUpdateSlice({ projectPath: tmpDir, sliceId: "s01-spike", status: "refactor" });
+      handleUpdateSlice({ projectPath: tmpDir, sliceId: "s01-spike", status: "sast" });
+      handleUpdateSlice({ projectPath: tmpDir, sliceId: "s01-spike", status: "done" });
+
+      // Security + Deployment for phase 0
+      sm.setPhase("security");
+      sm.setPhase("deployment");
+
+      // Complete phase 0 → go to phase 1
+      let phaseResult = parse(handleCompletePhase({ projectPath: tmpDir }));
+      expect(phaseResult.success).toBe(true);
+      expect(phaseResult.completedPhase).toBe("Spikes");
+      expect(phaseResult.nextPhase.name).toBe("MVP");
+
+      state = parse(handleGetState({ projectPath: tmpDir }));
+      expect(state.phase).toBe("planning");
+      expect(state.currentProductPhaseIndex).toBe(1);
+      expect(state.phasesCompleted).toEqual(["Spikes"]);
+
+      // Phase 1: Plan MVP slices (append)
+      handleCreateBuildPlan({
+        projectPath: tmpDir,
+        slices: [
+          {
+            id: "s02-crud",
+            name: "Invoice CRUD",
+            description: "Create/Read/Update/Delete invoices",
+            acceptanceCriteria: ["CRUD endpoints work"],
+            testStrategy: "integration tests",
+            dependencies: [],
+            productPhaseId: "phase-1",
+          },
+          {
+            id: "s03-pdf",
+            name: "PDF Generation",
+            description: "Generate ZUGFeRD PDFs",
+            acceptanceCriteria: ["valid ZUGFeRD 2.4.0 PDF"],
+            testStrategy: "unit + integration",
+            dependencies: ["s02-crud"],
+            productPhaseId: "phase-1",
+            type: "integration" as any,
+          },
+        ],
+        append: true,
+      });
+
+      // Verify append worked
+      const stateAfterAppend = sm.read();
+      expect(stateAfterAppend.slices.length).toBe(3); // 1 from phase 0 + 2 from phase 1
+
+      // Build phase 1: start building s02
+      sm.setPhase("building");
+      handleUpdateSlice({ projectPath: tmpDir, sliceId: "s02-crud", status: "red" });
+      handleUpdateSlice({ projectPath: tmpDir, sliceId: "s02-crud", status: "green" });
+
+      // Mid-build: add integration slice
+      const addResult = parse(
+        handleAddSlice({
+          projectPath: tmpDir,
+          slice: {
+            id: "s02b-adapter",
+            name: "Mustangproject Adapter",
+            description: "Adapter for Mustangproject library",
+            acceptanceCriteria: ["adapter interface defined", "generates valid output"],
+            testStrategy: "unit tests with real library",
+            dependencies: ["s02-crud"],
+            type: "integration",
+            productPhaseId: "phase-1",
+          },
+          insertAfterSliceId: "s02-crud",
+        })
+      );
+      expect(addResult.success).toBe(true);
+      expect(addResult.totalSlices).toBe(4);
+
+      // Continue building
+      handleUpdateSlice({ projectPath: tmpDir, sliceId: "s02-crud", status: "refactor" });
+      handleUpdateSlice({ projectPath: tmpDir, sliceId: "s02-crud", status: "sast" });
+      handleUpdateSlice({ projectPath: tmpDir, sliceId: "s02-crud", status: "done" });
+
+      // Build the inserted adapter slice
+      handleUpdateSlice({ projectPath: tmpDir, sliceId: "s02b-adapter", status: "red" });
+      handleUpdateSlice({ projectPath: tmpDir, sliceId: "s02b-adapter", status: "green" });
+      handleUpdateSlice({ projectPath: tmpDir, sliceId: "s02b-adapter", status: "refactor" });
+      handleUpdateSlice({ projectPath: tmpDir, sliceId: "s02b-adapter", status: "sast" });
+      handleUpdateSlice({ projectPath: tmpDir, sliceId: "s02b-adapter", status: "done" });
+
+      // Build PDF generation slice
+      handleUpdateSlice({ projectPath: tmpDir, sliceId: "s03-pdf", status: "red" });
+      handleUpdateSlice({ projectPath: tmpDir, sliceId: "s03-pdf", status: "green" });
+      handleUpdateSlice({ projectPath: tmpDir, sliceId: "s03-pdf", status: "refactor" });
+      handleUpdateSlice({ projectPath: tmpDir, sliceId: "s03-pdf", status: "sast" });
+      handleUpdateSlice({ projectPath: tmpDir, sliceId: "s03-pdf", status: "done" });
+
+      // Security + Deployment for phase 1
+      sm.setPhase("security");
+      sm.setPhase("deployment");
+
+      // Complete phase 1 (last phase) → project complete
+      phaseResult = parse(handleCompletePhase({ projectPath: tmpDir }));
+      expect(phaseResult.success).toBe(true);
+      expect(phaseResult.completedPhase).toBe("MVP");
+      expect(phaseResult.projectComplete).toBe(true);
+
+      // Final state
+      const finalState = sm.read();
+      expect(finalState.phase).toBe("complete");
+      expect(finalState.slices.length).toBe(4);
+      expect(finalState.slices.every((s) => s.status === "done")).toBe(true);
     });
   });
 });
