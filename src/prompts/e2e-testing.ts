@@ -56,6 +56,13 @@ Dieser Gesamt-E2E-Test prüft:
 - End-to-End User Journeys (vollständige Workflows)
 - Gesamtbild: Wirkt die App konsistent und professionell?
 
+## Test-Artefakte speichern (wenn Filesystem MCP verfügbar)
+Wenn der Filesystem MCP konfiguriert ist:
+- Speichere Screenshots in \`tests/screenshots/\` mit beschreibendem Namen
+- Speichere Accessibility-Reports als JSON in \`tests/reports/accessibility/\`
+- Nutze \`write_file\` für konsistente Dateinamen (z.B. \`{scenario}-{viewport}.png\`)
+- Nutze \`list_directory\` um bestehende Artefakte zu prüfen und nicht zu überschreiben
+
 ## Ergebnisse dokumentieren
 Rufe \`a2p_run_e2e\` auf mit allen Szenarien und Ergebnissen.
 

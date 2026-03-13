@@ -91,7 +91,22 @@ export const QualityIssueSchema = z.object({
 
 export const CompanionServerSchema = z.object({
   name: z.string().min(1),
-  type: z.enum(["codebase_memory", "database", "playwright"]),
+  type: z.enum([
+    "codebase_memory",
+    "database",
+    "playwright",
+    "github",
+    "git",
+    "filesystem",
+    "semgrep",
+    "sequential_thinking",
+    "vercel",
+    "cloudflare",
+    "stripe",
+    "atlassian",
+    "sentry",
+    "upstash",
+  ]),
   command: z.string(),
   installed: z.boolean(),
   config: z.record(z.string(), z.string()),

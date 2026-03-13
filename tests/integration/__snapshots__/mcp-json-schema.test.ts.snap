@@ -1,0 +1,85 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`MCP JSON schema validation > snapshot > full config with all companions matches snapshot 1`] = `
+{
+  "mcpServers": {
+    "atlassian-mcp": {
+      "type": "http",
+      "url": "https://atlassian.example.com/mcp",
+    },
+    "cf-mcp": {
+      "args": [
+        "@cloudflare/mcp-server-cloudflare",
+      ],
+      "command": "npx",
+    },
+    "codebase-memory": {
+      "args": [],
+      "command": "codebase-memory-mcp",
+    },
+    "fs-mcp": {
+      "args": [
+        "@modelcontextprotocol/server-filesystem",
+        "/path/to/project",
+      ],
+      "command": "npx",
+    },
+    "git-mcp": {
+      "args": [
+        "mcp-server-git",
+      ],
+      "command": "uvx",
+    },
+    "github-mcp": {
+      "args": [],
+      "command": "github-mcp-server",
+    },
+    "playwright": {
+      "args": [
+        "@playwright/mcp",
+      ],
+      "command": "npx",
+    },
+    "semgrep-mcp": {
+      "args": [
+        "mcp",
+      ],
+      "command": "semgrep",
+    },
+    "sentry-mcp": {
+      "args": [
+        "@sentry/mcp-server",
+      ],
+      "command": "npx",
+    },
+    "seq-think": {
+      "args": [
+        "@modelcontextprotocol/server-sequential-thinking",
+      ],
+      "command": "npx",
+    },
+    "stripe-mcp": {
+      "args": [
+        "@stripe/mcp",
+      ],
+      "command": "npx",
+    },
+    "supabase": {
+      "type": "http",
+      "url": "https://mcp.supabase.com/mcp",
+    },
+    "upstash-mcp": {
+      "args": [
+        "@upstash/mcp-server",
+      ],
+      "command": "npx",
+    },
+    "vercel-mcp": {
+      "args": [
+        "vercel",
+      ],
+      "command": "npx",
+    },
+  },
+}
+`;

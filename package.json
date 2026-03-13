@@ -13,7 +13,12 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit"
   },
-  "keywords": ["mcp", "architecture", "tdd", "code-quality"],
+  "keywords": [
+    "mcp",
+    "architecture",
+    "tdd",
+    "code-quality"
+  ],
   "author": "",
   "license": "MIT",
   "description": "MCP server that turns software architectures into tested, secure products",
@@ -22,6 +27,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@playwright/mcp": "^0.0.68",
     "@types/node": "^25.5.0",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",

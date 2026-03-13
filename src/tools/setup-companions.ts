@@ -11,7 +11,22 @@ export const setupCompanionsSchema = z.object({
     .array(
       z.object({
         type: z
-          .enum(["codebase_memory", "database", "playwright"])
+          .enum([
+            "codebase_memory",
+            "database",
+            "playwright",
+            "github",
+            "git",
+            "filesystem",
+            "semgrep",
+            "sequential_thinking",
+            "vercel",
+            "cloudflare",
+            "stripe",
+            "atlassian",
+            "sentry",
+            "upstash",
+          ])
           .describe("Type of companion"),
         name: z.string().describe("Display name (e.g. supabase-mcp)"),
         command: z
@@ -154,6 +169,28 @@ function getInstallHint(type: string, name: string): string {
       return `Not installed locally. Install: npm install -g ${name}. Configured in .mcp.json.`;
     case "playwright":
       return "Not installed locally. Install: npm install -g @playwright/mcp. Configured in .mcp.json.";
+    case "github":
+      return "Not installed locally. Install: go install github.com/github/github-mcp-server@latest or download from https://github.com/github/github-mcp-server/releases. Configured in .mcp.json.";
+    case "git":
+      return "Not installed locally. Install: pip install mcp-server-git (or use uvx mcp-server-git). Configured in .mcp.json.";
+    case "filesystem":
+      return "Not installed locally. Install: npm install -g @modelcontextprotocol/server-filesystem. Configured in .mcp.json.";
+    case "semgrep":
+      return "Not installed locally. Semgrep MCP is built into semgrep CLI. Install: pip install semgrep, then run: semgrep mcp. Configured in .mcp.json.";
+    case "sequential_thinking":
+      return "Not installed locally. Install: npm install -g @modelcontextprotocol/server-sequential-thinking. Configured in .mcp.json.";
+    case "vercel":
+      return "Not installed locally. Install: npm install -g vercel. Configured in .mcp.json.";
+    case "cloudflare":
+      return "Not installed locally. Install: npm install -g @cloudflare/mcp-server-cloudflare. Configured in .mcp.json.";
+    case "stripe":
+      return "Not installed locally. Install: npm install -g @stripe/mcp. Configured in .mcp.json.";
+    case "atlassian":
+      return "Atlassian MCP uses OAuth — configure via remote MCP URL. See https://developer.atlassian.com/cloud/jira/platform/mcp/. Configured in .mcp.json.";
+    case "sentry":
+      return "Not installed locally. Install: npm install -g @sentry/mcp-server. Configured in .mcp.json.";
+    case "upstash":
+      return "Not installed locally. Install: npm install -g @upstash/mcp-server. Configured in .mcp.json.";
     default:
       return `Install ${name} manually. Configured in .mcp.json.`;
   }

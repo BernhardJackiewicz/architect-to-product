@@ -193,9 +193,9 @@ describe("DB-MCP integration", () => {
 
     it("DB checks appear before deployment steps", () => {
       const dbCheckPos = DEPLOY_PROMPT.indexOf("Datenbank prüfen");
-      const step1Pos = DEPLOY_PROMPT.indexOf("Schritt 1");
+      const deployPathPos = DEPLOY_PROMPT.indexOf("Deploy-Pfad wählen");
       expect(dbCheckPos).toBeGreaterThan(-1);
-      expect(dbCheckPos).toBeLessThan(step1Pos);
+      expect(dbCheckPos).toBeLessThan(deployPathPos);
     });
   });
 });
@@ -317,6 +317,253 @@ describe("Playwright MCP integration", () => {
   });
 });
 
+// ─── Git MCP ──────────────────────────────────────────────────────────────────
+// Akzeptanzkriterium: Git MCP wird in build-slice und refactor mit
+// konkreten Tool-Aufrufen (git_log, git_diff) referenziert.
+
+describe("Git MCP integration", () => {
+  describe("build-slice", () => {
+    it("references Git MCP for commits after TDD phases", () => {
+      expect(BUILD_SLICE_PROMPT).toContain("Git MCP");
+    });
+
+    it("uses git_log to check commits", () => {
+      expect(BUILD_SLICE_PROMPT).toContain("git_log");
+    });
+
+    it("uses git_diff to check changes", () => {
+      expect(BUILD_SLICE_PROMPT).toContain("git_diff");
+    });
+
+    it("recommends conventional commit messages", () => {
+      expect(BUILD_SLICE_PROMPT).toMatch(/feat:|test:|refactor:/);
+    });
+  });
+
+  describe("refactor", () => {
+    it("uses git_log for hotspot analysis", () => {
+      expect(REFACTOR_PROMPT).toContain("git_log");
+    });
+
+    it("mentions change hotspots", () => {
+      expect(REFACTOR_PROMPT).toMatch(/[Hh]otspot/);
+    });
+  });
+});
+
+// ─── Filesystem MCP ──────────────────────────────────────────────────────────
+// Akzeptanzkriterium: Filesystem MCP wird in build-slice und e2e-testing
+// mit konkreten Tool-Aufrufen referenziert.
+
+describe("Filesystem MCP integration", () => {
+  describe("build-slice", () => {
+    it("references Filesystem MCP for migrations", () => {
+      expect(BUILD_SLICE_PROMPT).toContain("Filesystem MCP");
+    });
+
+    it("uses write_file for migration files", () => {
+      expect(BUILD_SLICE_PROMPT).toContain("write_file");
+    });
+
+    it("uses list_directory to check existing migrations", () => {
+      expect(BUILD_SLICE_PROMPT).toContain("list_directory");
+    });
+  });
+
+  describe("e2e-testing", () => {
+    it("references Filesystem MCP for test artifacts", () => {
+      expect(E2E_TESTING_PROMPT).toContain("Filesystem MCP");
+    });
+
+    it("saves screenshots to tests/screenshots/", () => {
+      expect(E2E_TESTING_PROMPT).toContain("tests/screenshots/");
+    });
+
+    it("saves accessibility reports as JSON", () => {
+      expect(E2E_TESTING_PROMPT).toContain("accessibility");
+      expect(E2E_TESTING_PROMPT).toContain("JSON");
+    });
+  });
+});
+
+// ─── Sequential Thinking MCP ──────────────────────────────────────────────────
+// Akzeptanzkriterium: Sequential Thinking MCP wird in planning und refactor
+// mit konkreten Aufrufen referenziert.
+
+describe("Sequential Thinking MCP integration", () => {
+  describe("planning", () => {
+    it("uses sequentialthinking for complex dependency graphs", () => {
+      expect(PLANNING_PROMPT).toContain("sequentialthinking");
+    });
+
+    it("mentions complex dependencies as trigger", () => {
+      expect(PLANNING_PROMPT).toMatch(/komple.*Abhängigkeit/i);
+    });
+  });
+
+  describe("refactor", () => {
+    it("uses sequentialthinking for complex decoupling", () => {
+      expect(REFACTOR_PROMPT).toContain("sequentialthinking");
+    });
+
+    it("mentions decoupling strategies", () => {
+      expect(REFACTOR_PROMPT).toMatch(/[Ee]ntkoppl/);
+    });
+  });
+});
+
+// ─── Semgrep MCP ──────────────────────────────────────────────────────────────
+// Akzeptanzkriterium: Semgrep MCP wird bevorzugt vor CLI aufgerufen,
+// mit konkreten Tool-Namen.
+
+describe("Semgrep MCP integration", () => {
+  describe("build-slice", () => {
+    it("prefers Semgrep MCP over CLI", () => {
+      expect(BUILD_SLICE_PROMPT).toContain("Semgrep MCP");
+      expect(BUILD_SLICE_PROMPT).toContain("semgrep_scan");
+    });
+
+    it("uses security_check for security analysis", () => {
+      expect(BUILD_SLICE_PROMPT).toContain("security_check");
+    });
+
+    it("uses get_abstract_syntax_tree for deep analysis", () => {
+      expect(BUILD_SLICE_PROMPT).toContain("get_abstract_syntax_tree");
+    });
+
+    it("falls back to a2p_run_sast", () => {
+      const semgrepSection = BUILD_SLICE_PROMPT.indexOf("Semgrep MCP bevorzugt");
+      const fallback = BUILD_SLICE_PROMPT.indexOf("a2p_run_sast", semgrepSection);
+      expect(fallback).toBeGreaterThan(semgrepSection);
+    });
+  });
+
+  describe("security-gate", () => {
+    it("prefers Semgrep MCP over CLI", () => {
+      expect(SECURITY_GATE_PROMPT).toContain("Semgrep MCP");
+    });
+
+    it("uses semgrep_scan for full scan", () => {
+      expect(SECURITY_GATE_PROMPT).toContain("semgrep_scan");
+    });
+
+    it("uses security_check for security analysis", () => {
+      expect(SECURITY_GATE_PROMPT).toContain("security_check");
+    });
+
+    it("uses get_abstract_syntax_tree for AST analysis", () => {
+      expect(SECURITY_GATE_PROMPT).toContain("get_abstract_syntax_tree");
+    });
+
+    it("CLI fallback appears after MCP preference", () => {
+      const mcpPos = SECURITY_GATE_PROMPT.indexOf("Semgrep MCP bevorzugt");
+      const cliPos = SECURITY_GATE_PROMPT.indexOf("Standard: CLI via a2p_run_sast");
+      expect(mcpPos).toBeGreaterThan(-1);
+      expect(cliPos).toBeGreaterThan(mcpPos);
+    });
+  });
+});
+
+// ─── GitHub MCP ──────────────────────────────────────────────────────────────
+// Akzeptanzkriterium: GitHub MCP wird in planning und security-gate
+// mit konkreten Aktionen referenziert.
+
+describe("GitHub MCP integration", () => {
+  describe("planning", () => {
+    it("references GitHub Issues as slice input", () => {
+      expect(PLANNING_PROMPT).toContain("GitHub");
+      expect(PLANNING_PROMPT).toMatch(/GitHub.*Issues/);
+    });
+
+    it("links issues with slices", () => {
+      expect(PLANNING_PROMPT).toMatch(/Issue.*Slice/i);
+    });
+  });
+
+  describe("security-gate", () => {
+    it("checks Dependabot alerts", () => {
+      expect(SECURITY_GATE_PROMPT).toContain("Dependabot");
+    });
+
+    it("checks Code Scanning alerts", () => {
+      expect(SECURITY_GATE_PROMPT).toContain("Code Scanning");
+    });
+
+    it("integrates alerts as findings", () => {
+      expect(SECURITY_GATE_PROMPT).toContain("a2p_record_finding");
+    });
+  });
+});
+
+// ─── Stripe MCP ──────────────────────────────────────────────────────────────
+
+describe("Stripe MCP integration", () => {
+  describe("build-slice", () => {
+    it("references Stripe MCP for payment slices", () => {
+      expect(BUILD_SLICE_PROMPT).toContain("Stripe MCP");
+    });
+
+    it("mentions Products and Prices", () => {
+      expect(BUILD_SLICE_PROMPT).toContain("Products");
+      expect(BUILD_SLICE_PROMPT).toContain("Prices");
+    });
+
+    it("mentions Webhooks", () => {
+      expect(BUILD_SLICE_PROMPT).toContain("Webhooks");
+    });
+
+    it("validates webhook signatures", () => {
+      expect(BUILD_SLICE_PROMPT).toMatch(/[Ww]ebhook.*[Ss]ignatur/);
+    });
+  });
+});
+
+// ─── Atlassian MCP ──────────────────────────────────────────────────────────
+
+describe("Atlassian MCP integration", () => {
+  describe("planning", () => {
+    it("references Jira tickets as slice input", () => {
+      expect(PLANNING_PROMPT).toContain("Jira");
+    });
+
+    it("links tickets with slices", () => {
+      expect(PLANNING_PROMPT).toMatch(/Ticket.*Slice/i);
+    });
+
+    it("uses Sprint planning for prioritization", () => {
+      expect(PLANNING_PROMPT).toContain("Sprint");
+    });
+  });
+});
+
+// ─── Sentry MCP ──────────────────────────────────────────────────────────────
+
+describe("Sentry MCP integration", () => {
+  describe("build-slice", () => {
+    it("configures error tracking after GREEN", () => {
+      expect(BUILD_SLICE_PROMPT).toContain("Sentry MCP");
+    });
+
+    it("sets Sentry tags for slices", () => {
+      expect(BUILD_SLICE_PROMPT).toContain("Sentry-Tags");
+    });
+
+    it("checks source maps upload", () => {
+      expect(BUILD_SLICE_PROMPT).toMatch(/[Ss]ource [Mm]aps/);
+    });
+  });
+
+  describe("security-gate", () => {
+    it("checks Sentry configuration", () => {
+      expect(SECURITY_GATE_PROMPT).toContain("Sentry");
+    });
+
+    it("checks DSN configuration", () => {
+      expect(SECURITY_GATE_PROMPT).toContain("DSN");
+    });
+  });
+});
+
 // ─── Onboarding: Companion-Vollständigkeit ──────────────────────────────────
 // Akzeptanzkriterium: Das Onboarding konfiguriert ALLE benötigten
 // Companions und Tools, nicht nur eine Teilmenge.
@@ -349,6 +596,59 @@ describe("Onboarding completeness", () => {
 
   it("installs Bandit for Python projects", () => {
     expect(ONBOARDING_PROMPT).toContain("pip install bandit");
+  });
+
+  it("always sets up Git MCP", () => {
+    expect(ONBOARDING_PROMPT).toContain("uvx mcp-server-git");
+  });
+
+  it("always sets up Filesystem MCP", () => {
+    expect(ONBOARDING_PROMPT).toContain("@modelcontextprotocol/server-filesystem");
+  });
+
+  it("always sets up Sequential Thinking MCP", () => {
+    expect(ONBOARDING_PROMPT).toContain("@modelcontextprotocol/server-sequential-thinking");
+  });
+
+  it("always sets up Semgrep MCP", () => {
+    expect(ONBOARDING_PROMPT).toContain("semgrep mcp");
+  });
+
+  it("conditionally sets up GitHub MCP", () => {
+    expect(ONBOARDING_PROMPT).toContain("github-mcp-server");
+  });
+
+  it("does not reference Vercel as MCP (it is CLI-only)", () => {
+    // Vercel has no official MCP server — deploy prompt uses vercel CLI
+    expect(ONBOARDING_PROMPT).not.toMatch(/Vercel MCP.*command/);
+  });
+
+  it("conditionally sets up Cloudflare MCP", () => {
+    expect(ONBOARDING_PROMPT).toContain("@cloudflare/mcp-server-cloudflare");
+  });
+
+  it("conditionally sets up Stripe MCP", () => {
+    expect(ONBOARDING_PROMPT).toContain("@stripe/mcp");
+  });
+
+  it("conditionally sets up Atlassian MCP", () => {
+    expect(ONBOARDING_PROMPT).toMatch(/Atlassian MCP/);
+  });
+
+  it("conditionally sets up Sentry MCP", () => {
+    expect(ONBOARDING_PROMPT).toContain("@sentry/mcp-server");
+  });
+
+  it("conditionally sets up Upstash MCP", () => {
+    expect(ONBOARDING_PROMPT).toContain("@upstash/mcp-server");
+  });
+
+  it("mentions Clerk as non-MCP tech stack option", () => {
+    expect(ONBOARDING_PROMPT).toContain("Clerk");
+  });
+
+  it("mentions Resend as non-MCP tech stack option", () => {
+    expect(ONBOARDING_PROMPT).toContain("Resend");
   });
 
   it("writes .mcp.json automatically", () => {

@@ -142,6 +142,40 @@ Prüfe den Output von \`a2p_update_slice\`:
   Warte auf explizite Bestätigung.
 - Wenn \`awaitingHumanReview: false\` → Zeige die Summary, fahre fort.
 
+## Git-Commits nach jeder TDD-Phase (wenn Git MCP verfügbar)
+Wenn der Git MCP konfiguriert ist, nutze ihn für automatische Commits:
+- Nach RED: \`git_log\` prüfen ob Tests committed sind
+- Nach GREEN: \`git_diff\` prüfen welche Dateien geändert wurden, dann committen
+- Nach REFACTOR: Commit mit Refactoring-Zusammenfassung
+- Nutze konventionelle Commit-Messages: \`feat:\`, \`test:\`, \`refactor:\`
+
+## Filesystem MCP für Migrations (wenn Filesystem MCP verfügbar)
+Wenn der Filesystem MCP konfiguriert ist:
+- Nutze \`write_file\` für Migration-Dateien (konsistente Formatierung)
+- Nutze \`list_directory\` um bestehende Migrations zu prüfen
+- Stelle sicher dass Migration-Dateien korrekt benannt sind (Timestamp-Prefix)
+
+## Semgrep MCP bevorzugt vor CLI (wenn Semgrep Pro MCP verfügbar)
+Wenn der Semgrep MCP konfiguriert ist (braucht Semgrep Pro Engine), bevorzuge ihn vor dem CLI-Aufruf:
+- Nutze \`semgrep_scan\` für gezielte Scans einzelner Dateien
+- Nutze \`security_check\` für Security-spezifische Checks
+- Nutze \`get_abstract_syntax_tree\` für tiefe Code-Analyse
+
+Ohne Semgrep Pro: Nutze \`a2p_run_sast\` — das ruft die Semgrep CLI direkt auf (funktioniert mit der kostenlosen OSS-Version).
+
+## Stripe MCP bei Payment-Slices (wenn Stripe MCP verfügbar)
+Wenn der Slice Payment/Billing-Funktionalität enthält und der Stripe MCP konfiguriert ist:
+- Erstelle Products und Prices über den Stripe MCP
+- Konfiguriere Webhooks für Payment-Events
+- Teste den Payment-Flow mit Stripe-Testmodus
+- Validiere Webhook-Signaturen im Code
+
+## Sentry MCP nach GREEN (wenn Sentry MCP verfügbar)
+Wenn der Sentry MCP konfiguriert ist und der Slice einen neuen Service/Endpoint einführt:
+- Konfiguriere Error-Tracking für den neuen Service
+- Setze Sentry-Tags für den Slice (slice-id, phase)
+- Prüfe ob Source Maps korrekt hochgeladen werden
+
 ## Nach jedem Slice: Codebase-Index aktualisieren
 Wenn codebase-memory-mcp verfügbar:
 - Rufe \`index_repository\` auf — das hält den Code-Graphen aktuell für:

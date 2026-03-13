@@ -20,6 +20,14 @@ Lies \`a2p_get_state\` — die gesamte Codebase sollte fertig gebaut sein (alle 
 3. Prüfe ob Foreign Keys und Constraints korrekt gesetzt sind
 
 ## Phase 1: Automatische Scans
+
+### Semgrep MCP bevorzugt (wenn Semgrep Pro MCP verfügbar)
+Wenn der Semgrep MCP konfiguriert ist (braucht Semgrep Pro Engine), nutze ihn bevorzugt:
+- \`semgrep_scan\` für den vollständigen Codebase-Scan
+- \`security_check\` für Security-fokussierte Analyse
+- \`get_abstract_syntax_tree\` für tiefe AST-basierte Analyse kritischer Stellen
+
+### Standard: CLI via a2p_run_sast (kein Pro nötig)
 Rufe \`a2p_run_sast\` mit mode="full" auf. Das führt aus:
 - **Semgrep**: Semantische Codeanalyse mit auto config + security-audit + owasp-top-ten
 - **Bandit** (nur Python): Python-spezifische Security-Checks
@@ -28,6 +36,18 @@ Wenn \`a2p_run_sast\` meldet dass Semgrep oder Bandit nicht installiert sind:
 1. Installiere fehlende Tools: \`pip install semgrep bandit\`
 2. Führe \`a2p_run_sast\` erneut aus
 3. Wenn Installation nicht möglich → Informiere den User und fahre mit dem manuellen Review fort
+
+### GitHub Security Alerts (wenn GitHub MCP verfügbar)
+Wenn der GitHub MCP konfiguriert ist:
+- Prüfe Dependabot Alerts für bekannte Vulnerabilities in Dependencies
+- Prüfe Code Scanning Alerts (wenn GitHub Advanced Security aktiv)
+- Integriere gefundene Alerts als Findings via \`a2p_record_finding\`
+
+### Sentry Error-Tracking Prüfung (wenn Sentry MCP verfügbar)
+Wenn der Sentry MCP konfiguriert ist:
+- Prüfe ob Error-Tracking für alle Services konfiguriert ist
+- Prüfe ob Source Maps korrekt hochgeladen werden
+- Prüfe ob Sentry-DSN in der Produktion gesetzt ist
 
 ## Phase 2: Manuelles Code-Review (OWASP Top 10)
 

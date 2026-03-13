@@ -122,7 +122,21 @@ export interface QualityIssue {
 
 export interface CompanionServer {
   name: string;
-  type: "codebase_memory" | "database" | "playwright";
+  type:
+    | "codebase_memory"
+    | "database"
+    | "playwright"
+    | "github"
+    | "git"
+    | "filesystem"
+    | "semgrep"
+    | "sequential_thinking"
+    | "vercel"
+    | "cloudflare"
+    | "stripe"
+    | "atlassian"
+    | "sentry"
+    | "upstash";
   command: string;
   installed: boolean;
   config: Record<string, string>;
