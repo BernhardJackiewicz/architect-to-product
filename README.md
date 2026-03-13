@@ -1,4 +1,6 @@
-# architect-to-product — Model Context Protocol (MCP) Server for AI-Driven TDD, Security Scanning, and Deployment
+# A2P — Architect-to-Product
+
+MCP server that turns AI-generated code into production-ready software with TDD, security scanning, and deployment automation.
 
 15 MCP tools that add test driven development, static code analysis, and deployment automation to your AI coding workflow. From architecture to `docker-compose up` in one pipeline. 500 tests.
 
