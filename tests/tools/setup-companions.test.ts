@@ -68,14 +68,14 @@ describe("handleSetupCompanions", () => {
     handleSetupCompanions({
       projectPath: tmpDir,
       companions: [
-        { type: "playwright", name: "playwright", command: "npx @anthropic/mcp-playwright" },
+        { type: "playwright", name: "playwright", command: "npx @playwright/mcp" },
       ],
     });
 
     const mcpJson = JSON.parse(readFileSync(join(tmpDir, ".mcp.json"), "utf-8"));
     expect(mcpJson.mcpServers["playwright"]).toEqual({
       command: "npx",
-      args: ["@anthropic/mcp-playwright"],
+      args: ["@playwright/mcp"],
     });
   });
 
@@ -121,7 +121,7 @@ describe("handleSetupCompanions", () => {
       companions: [
         { type: "codebase_memory", name: "codebase-memory", command: "codebase-memory-mcp" },
         { type: "database", name: "supabase", command: "https://mcp.supabase.com/mcp" },
-        { type: "playwright", name: "playwright", command: "npx @anthropic/mcp-playwright" },
+        { type: "playwright", name: "playwright", command: "npx @playwright/mcp" },
       ],
     });
 

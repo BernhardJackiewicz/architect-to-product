@@ -49,11 +49,11 @@ fi
 # 4. Check for Playwright MCP (optional)
 echo ""
 echo "4/4 Checking Playwright MCP (optional, for frontend E2E testing)..."
-if npm list -g @anthropic/mcp-playwright &>/dev/null 2>&1; then
+if npm list -g @playwright/mcp &>/dev/null 2>&1; then
     echo "    ✓ Already installed"
 else
-    echo "    ℹ Not installed. Install later with: npm install -g @anthropic/mcp-playwright"
-    echo "    ℹ Then register: claude mcp add playwright -- npx @anthropic/mcp-playwright"
+    echo "    ℹ Not installed. Install later with: npm install -g @playwright/mcp"
+    echo "    ℹ Then register: claude mcp add playwright -- npx @playwright/mcp"
 fi
 
 echo ""

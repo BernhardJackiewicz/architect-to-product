@@ -4,7 +4,7 @@ Turn any software architecture into a tested, secure, production-ready codebase 
 
 [![npm version](https://img.shields.io/npm/v/architect-to-product)](https://www.npmjs.com/package/architect-to-product)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Tests: 270 passing](https://img.shields.io/badge/tests-270%20passing-brightgreen)]()
+[![Tests: 274 passing](https://img.shields.io/badge/tests-274%20passing-brightgreen)]()
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue)]()
 
 ---
@@ -195,11 +195,16 @@ You don't have to run the full pipeline. Each prompt works standalone — pick w
 
 ## Works great with
 
-| Companion | What it adds |
-|-----------|-------------|
-| [codebase-memory-mcp](https://github.com/DeusData/codebase-memory-mcp) | Code graph intelligence — up to 20x fewer exploration tokens |
-| [Playwright MCP](https://github.com/anthropics/mcp-playwright) | E2E visual testing for frontend projects |
-| Database MCP servers | Direct DB access — [Supabase](https://github.com/supabase-community/supabase-mcp), [Postgres](https://github.com/ergut/mcp-bigquery), [SQLite](https://github.com/anthropics/mcp-sqlite), [MySQL](https://github.com/benborla/mcp-server-mysql), [MongoDB](https://github.com/kiliczsh/mcp-mongo-server) |
+| Companion | What it adds | Source |
+|-----------|-------------|--------|
+| [codebase-memory-mcp](https://github.com/DeusData/codebase-memory-mcp) | Code graph intelligence — up to 20x fewer exploration tokens | Community |
+| [Playwright MCP](https://github.com/microsoft/playwright-mcp) | E2E visual testing for frontend projects | Official (Microsoft) |
+| [Supabase MCP](https://github.com/supabase-community/supabase-mcp) | Direct Supabase DB access (also available as remote: `mcp.supabase.com`) | Official (Supabase) |
+| [@modelcontextprotocol/server-postgres](https://github.com/modelcontextprotocol/servers) | PostgreSQL direct access | Official (MCP org) |
+| [@mongodb-js/mongodb-mcp-server](https://github.com/mongodb-js/mongodb-mcp-server) | MongoDB direct access | Official (MongoDB) |
+| [mcp-server-mysql](https://github.com/benborla/mcp-server-mysql) | MySQL/MariaDB direct access | Community |
+
+> **Security note:** Companion MCPs are third-party software with access to your project files and databases. Before enabling a companion: check the source repo (author, stars, open issues), review the `.mcp.json` that gets generated, and confirm you trust the server. Official packages (`@modelcontextprotocol/*`, `@playwright/mcp`, `mcp.supabase.com`) are maintained by their respective organizations. Community packages are not audited by us — use at your own discretion.
 
 ## How is this different?
 
@@ -218,7 +223,7 @@ git clone https://github.com/BernhardJackiewicz/architect-to-product.git
 cd architect-to-product
 npm install
 npm run typecheck   # Type checking
-npm test            # 270 tests
+npm test            # 274 tests
 npm run build       # Build
 npm run dev         # Dev mode
 ```

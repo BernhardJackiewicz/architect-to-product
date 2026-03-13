@@ -264,7 +264,7 @@ describe("Playwright MCP integration", () => {
   describe("onboarding", () => {
     it("configures Playwright MCP for frontend projects", () => {
       expect(ONBOARDING_PROMPT).toContain("Playwright MCP");
-      expect(ONBOARDING_PROMPT).toContain("@anthropic/mcp-playwright");
+      expect(ONBOARDING_PROMPT).toContain("@playwright/mcp");
     });
   });
 
@@ -340,7 +340,7 @@ describe("Onboarding completeness", () => {
   });
 
   it("sets up Playwright MCP for frontend projects", () => {
-    expect(ONBOARDING_PROMPT).toContain("@anthropic/mcp-playwright");
+    expect(ONBOARDING_PROMPT).toContain("@playwright/mcp");
   });
 
   it("installs Semgrep for all projects", () => {
@@ -357,5 +357,25 @@ describe("Onboarding completeness", () => {
 
   it("instructs user to restart Claude Code", () => {
     expect(ONBOARDING_PROMPT).toMatch(/[Ss]tarte Claude Code.*neu/);
+  });
+
+  it("shows security warning about third-party MCPs", () => {
+    expect(ONBOARDING_PROMPT).toContain("Sicherheitshinweis");
+    expect(ONBOARDING_PROMPT).toContain(".mcp.json");
+  });
+
+  it("asks user to verify unknown packages before enabling", () => {
+    expect(ONBOARDING_PROMPT).toMatch(/[Pp]rüfe/);
+    expect(ONBOARDING_PROMPT).toMatch(/npm|GitHub/);
+  });
+
+  it("distinguishes official from community MCPs", () => {
+    expect(ONBOARDING_PROMPT).toContain("@modelcontextprotocol/*");
+    expect(ONBOARDING_PROMPT).toContain("@playwright/mcp");
+    expect(ONBOARDING_PROMPT).toMatch(/[Cc]ommunity/);
+  });
+
+  it("requires explicit user confirmation after security note", () => {
+    expect(ONBOARDING_PROMPT).toMatch(/[Bb]estätige/);
   });
 });
