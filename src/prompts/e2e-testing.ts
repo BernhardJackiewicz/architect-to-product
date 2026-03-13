@@ -42,6 +42,13 @@ Prüfe bei jedem Screenshot:
 - Keine leeren States ohne Hinweis
 - Loading States vorhanden
 
+## Hinweis
+Einzelne Slices mit \`hasUI: true\` wurden bereits visuell geprüft (im Build-Zyklus).
+Dieser Gesamt-E2E-Test prüft:
+- Cross-Slice Interaktionen (Feature A beeinflusst Feature B?)
+- End-to-End User Journeys (vollständige Workflows)
+- Gesamtbild: Wirkt die App konsistent und professionell?
+
 ## Ergebnisse dokumentieren
 Rufe \`a2p_run_e2e\` auf mit allen Szenarien und Ergebnissen.
 

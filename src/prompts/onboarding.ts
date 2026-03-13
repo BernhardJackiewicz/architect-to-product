@@ -42,6 +42,13 @@ Basierend auf dem Tech Stack, rufe \`a2p_setup_companions\` auf:
   - SQLite → \`@modelcontextprotocol/server-sqlite\`
 - **Playwright MCP**: NUR wenn ein Frontend geplant ist
 
+### Phasen-Erkennung
+Wenn die Architektur Phasen, Meilensteine oder zeitliche Gruppierungen enthält:
+1. Extrahiere die Phasen mit ihren Deliverables
+2. Übergebe sie als \`phases\` Array an \`a2p_set_architecture\`
+3. Frage NICHT welche Phase zuerst — starte IMMER mit Phase 0
+4. Sage: "Ich habe X Phasen erkannt. Wir starten mit Phase 0: {name}."
+
 ### Schritt 5: Weiter zur Planung
 Sage dem User: "Architektur steht! Jetzt zerlegen wir das Projekt in Slices. Nutze den a2p_planning Prompt."
 `;

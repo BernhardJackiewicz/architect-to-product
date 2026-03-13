@@ -11,6 +11,7 @@ import type {
   QualityIssue,
   CompanionServer,
   TestResult,
+  ProductPhase,
 } from "./types.js";
 
 const STATE_VERSION = 1;
@@ -25,7 +26,7 @@ const PHASE_TRANSITIONS: Record<Phase, Phase[]> = {
   refactoring: ["e2e_testing", "security"],
   e2e_testing: ["security"],
   security: ["deployment", "building"], // back to building if fixes needed
-  deployment: ["complete"],
+  deployment: ["complete", "planning"],
   complete: [],
 };
 
@@ -87,6 +88,7 @@ export class StateManager {
       companions: [],
       qualityIssues: [],
       buildHistory: [],
+      currentProductPhase: 0,
       createdAt: now,
       updatedAt: now,
     };
@@ -336,6 +338,72 @@ export class StateManager {
       openFindings,
       qualityIssues: openQuality,
     };
+  }
+
+  /** Append slices to the existing build plan (for multi-phase) */
+  addSlices(slices: Slice[]): ProjectState {
+    const state = this.read();
+    const firstNewIndex = state.slices.length;
+    state.slices.push(...slices);
+    state.currentSliceIndex = firstNewIndex;
+    this.addEvent(state, state.phase, null, "slices_added", `${slices.length} slices appended (total: ${state.slices.length})`);
+    this.write(state);
+    return state;
+  }
+
+  /** Complete the current product phase and advance to next */
+  completeProductPhase(): ProjectState {
+    const state = this.read();
+    const phases = state.architecture?.phases;
+
+    if (!phases || phases.length === 0) {
+      throw new Error("No product phases defined in architecture");
+    }
+
+    const currentPhase = phases[state.currentProductPhase];
+    if (!currentPhase) {
+      throw new Error(`Invalid currentProductPhase index: ${state.currentProductPhase}`);
+    }
+
+    // Validate all slices of the current phase are done
+    const phaseSlices = state.slices.filter((s) => s.productPhaseId === currentPhase.id);
+    const notDone = phaseSlices.filter((s) => s.status !== "done");
+    if (notDone.length > 0) {
+      throw new Error(
+        `Cannot complete phase "${currentPhase.name}": ${notDone.length} slice(s) not done (${notDone.map((s) => s.id).join(", ")})`
+      );
+    }
+
+    const isLast = state.currentProductPhase >= phases.length - 1;
+
+    if (isLast) {
+      state.phase = "complete";
+      this.addEvent(state, "complete", null, "phase_complete", `Final product phase "${currentPhase.name}" completed → project complete`);
+    } else {
+      state.currentProductPhase++;
+      state.phase = "planning";
+      const nextPhase = phases[state.currentProductPhase];
+      this.addEvent(state, "planning", null, "phase_complete", `Product phase "${currentPhase.name}" completed → next: "${nextPhase.name}"`);
+    }
+
+    this.write(state);
+    return state;
+  }
+
+  /** Get current product phase or null */
+  getCurrentProductPhase(): ProductPhase | null {
+    const state = this.read();
+    const phases = state.architecture?.phases;
+    if (!phases || phases.length === 0) return null;
+    return phases[state.currentProductPhase] ?? null;
+  }
+
+  /** Check if current phase is the last one */
+  isLastProductPhase(): boolean {
+    const state = this.read();
+    const phases = state.architecture?.phases;
+    if (!phases || phases.length === 0) return true;
+    return state.currentProductPhase >= phases.length - 1;
   }
 
   private addEvent(

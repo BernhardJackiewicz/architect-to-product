@@ -25,6 +25,16 @@ export type FindingSeverity = "critical" | "high" | "medium" | "low" | "info";
 
 export type FindingStatus = "open" | "fixed" | "accepted" | "false_positive";
 
+export interface ProductPhase {
+  id: string; // "phase-0", "phase-1"
+  name: string; // "Foundations/Spikes", "MVP"
+  description: string;
+  deliverables: string[]; // Features dieser Phase
+  timeline: string; // "Weeks 1-8"
+}
+
+export type SliceType = "feature" | "integration" | "infrastructure";
+
 export interface Architecture {
   name: string;
   description: string;
@@ -33,6 +43,7 @@ export interface Architecture {
   dataModel: string;
   apiDesign: string;
   raw: string; // Original architecture text from user
+  phases?: ProductPhase[]; // Optional for backward compat
 }
 
 export interface TechStack {
@@ -55,6 +66,9 @@ export interface Slice {
   files: string[];
   testResults: TestResult[];
   sastFindings: SASTFinding[];
+  productPhaseId?: string; // Which phase this slice belongs to
+  type?: SliceType; // default "feature"
+  hasUI?: boolean; // Does this slice have frontend changes?
 }
 
 export interface TestResult {
@@ -123,6 +137,7 @@ export interface ProjectState {
   companions: CompanionServer[];
   qualityIssues: QualityIssue[];
   buildHistory: BuildEvent[];
+  currentProductPhase: number; // Index in architecture.phases[], default 0
   createdAt: string;
   updatedAt: string;
 }

@@ -30,6 +30,33 @@ Nutze idealerweise den test-writer Subagent (.claude/agents/test-writer.md) für
 
 **WICHTIG**: Ändere NICHT die Tests in dieser Phase!
 
+### Visual Verification (nur bei Frontend-Slices)
+Wenn der aktuelle Slice \`hasUI: true\` hat (Frontend-Komponenten, Seiten, Formulare):
+
+**PFLICHT nach GREEN, vor REFACTOR:**
+
+1. App starten (oder sicherstellen dass sie läuft)
+2. Zur relevanten Seite navigieren (\`browser_navigate\`)
+3. Screenshot machen (\`browser_take_screenshot\`) — visueller Check:
+   - Sieht es professionell aus? Keine Layout-Brüche?
+   - Text lesbar, keine Überlappungen?
+   - Konsistente Abstände und Farben?
+4. Interaktion testen:
+   - Buttons klicken (\`browser_click\`) — passiert das Erwartete?
+   - Formulare ausfüllen (\`browser_fill_form\`) — Validierung? Erfolg?
+   - Navigation — richtige Seite?
+5. Responsive prüfen:
+   - \`browser_resize\` auf Mobile (375x667) → Screenshot
+   - Zurück auf Desktop (1280x720)
+6. Console-Errors prüfen (\`browser_console_messages\`) — keine Errors?
+
+**Wenn visuell nicht ok:**
+- Fix implementieren (bleibt in GREEN Phase)
+- Erneut prüfen bis es gut aussieht UND funktioniert
+- Erst dann weiter zu REFACTOR
+
+**Wenn kein Frontend im Slice (\`hasUI\` nicht gesetzt):** Überspringen, direkt zu REFACTOR.
+
 ### Phase REFACTOR: Code aufräumen
 **Ziel**: Code-Qualität verbessern ohne Verhalten zu ändern.
 
@@ -58,6 +85,26 @@ Nutze idealerweise den test-writer Subagent (.claude/agents/test-writer.md) für
 1. Wenn codebase-memory-mcp verfügbar: Lass Claude den Index aktualisieren
 2. Prüfe: Gibt es einen nächsten Slice? → Weiter mit dem nächsten
 3. Alle Slices done? → Weiter zur Refactoring-Phase (a2p_refactor Prompt)
+
+## Integration-Slices (type: "integration")
+Wenn ein Slice eine externe Library/Service/API integriert:
+
+### RED Phase:
+- Schreibe Tests die das GEWÜNSCHTE Verhalten der Integration prüfen
+- Teste gegen das echte Interface, nicht gegen Mocks
+- Teste Fehlerszenarien: Library nicht verfügbar, falsches Format, Timeout
+- Teste Version/Kompatibilität (z.B. "erzeugt valides ZUGFeRD 2.4.0")
+
+### GREEN Phase:
+- Wrapper/Adapter-Pattern: eigene Schnittstelle VOR der Library
+- Library-spezifischer Code NUR im Adapter, nie im Business-Code
+- Konfiguration externalisieren (nicht hardcoded)
+- Error Handling: Library-Exceptions in eigene Fehlertypen übersetzen
+
+### REFACTOR Phase:
+- Ist der Adapter austauschbar? (z.B. Mustangproject → factur-x wechselbar?)
+- Sind Library-Types nach aussen geleckt?
+- Gibt es unnötige Kopplungen?
 
 ## Regeln
 - NIEMALS Tests und Implementation gleichzeitig schreiben

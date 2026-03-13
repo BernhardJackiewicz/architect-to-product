@@ -186,4 +186,108 @@ describe("handleCreateBuildPlan", () => {
     expect(result.slices[1].order).toBe(2);
     expect(result.slices[2].order).toBe(3);
   });
+
+  it("append mode adds slices to existing plan", () => {
+    initWithArch(tmpDir);
+    // First plan
+    handleCreateBuildPlan({
+      projectPath: tmpDir,
+      slices: [makeSliceInput("s01"), makeSliceInput("s02")],
+    });
+
+    // Append more slices
+    const sm = new StateManager(tmpDir);
+    sm.setPhase("building");
+    sm.setPhase("security");
+    sm.setPhase("deployment");
+
+    const result = parse(
+      handleCreateBuildPlan({
+        projectPath: tmpDir,
+        slices: [makeSliceInput("s03"), makeSliceInput("s04", ["s01"])],
+        append: true,
+      })
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.sliceCount).toBe(2);
+    expect(result.totalSlices).toBe(4);
+    expect(result.appended).toBe(true);
+    expect(result.slices[0].order).toBe(3); // continues from existing
+    expect(result.slices[1].order).toBe(4);
+
+    // Verify in state
+    const state = sm.read();
+    expect(state.slices.length).toBe(4);
+  });
+
+  it("append mode validates deps against existing + new slices", () => {
+    initWithArch(tmpDir);
+    handleCreateBuildPlan({
+      projectPath: tmpDir,
+      slices: [makeSliceInput("s01")],
+    });
+
+    const sm = new StateManager(tmpDir);
+    sm.setPhase("building");
+    sm.setPhase("security");
+    sm.setPhase("deployment");
+
+    // s03 depends on s01 (existing) — should work
+    const result = parse(
+      handleCreateBuildPlan({
+        projectPath: tmpDir,
+        slices: [makeSliceInput("s03", ["s01"])],
+        append: true,
+      })
+    );
+    expect(result.success).toBe(true);
+  });
+
+  it("append mode rejects dep that exists in neither old nor new slices", () => {
+    initWithArch(tmpDir);
+    handleCreateBuildPlan({
+      projectPath: tmpDir,
+      slices: [makeSliceInput("s01")],
+    });
+
+    const sm = new StateManager(tmpDir);
+    sm.setPhase("building");
+    sm.setPhase("security");
+    sm.setPhase("deployment");
+
+    const result = parse(
+      handleCreateBuildPlan({
+        projectPath: tmpDir,
+        slices: [makeSliceInput("s03", ["ghost"])],
+        append: true,
+      })
+    );
+    expect(result.error).toContain("ghost");
+  });
+
+  it("passes productPhaseId and type through to slices", () => {
+    initWithArch(tmpDir);
+    const result = parse(
+      handleCreateBuildPlan({
+        projectPath: tmpDir,
+        slices: [
+          {
+            ...makeSliceInput("s01"),
+            productPhaseId: "phase-0",
+            type: "integration" as const,
+            hasUI: true,
+          },
+        ],
+      })
+    );
+
+    expect(result.success).toBe(true);
+
+    const sm = new StateManager(tmpDir);
+    const state = sm.read();
+    expect(state.slices[0].productPhaseId).toBe("phase-0");
+    expect(state.slices[0].type).toBe("integration");
+    expect(state.slices[0].hasUI).toBe(true);
+  });
 });

@@ -64,6 +64,10 @@ Frage den User:
 - "Hast du eine Domain? Wenn nicht, empfehle ich INWX oder Cloudflare."
 - Biete an, beim konkreten Deployment zu helfen (SSH-Befehle, DNS-Setup, etc.)
 
+## Multi-Phase Projekte
+Bei Multi-Phase-Projekten: Nach erfolgreichem Deployment \`a2p_complete_phase\` aufrufen,
+falls weitere Phasen ausstehen. Das bringt den Workflow zurück zur Planning-Phase für die nächste Phase.
+
 ## Wichtig
 - ALLE Dateien werden dynamisch generiert — nicht aus Templates kopiert
 - Jede Datei ist spezifisch für dieses Projekt und seinen Tech Stack
