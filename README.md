@@ -1,61 +1,126 @@
-# architect-to-product
+# architect-to-product — Model Context Protocol (MCP) Server for AI-Driven TDD, Security Scanning, and Deployment
 
-MCP server that turns software architectures into tested, secure, deployable products. It implements the workflow from "How Anthropic Engineers Use Agents" -- TDD, vertical slices, subagents, hooks -- as a structured toolkit for Claude Code.
+Turn any software architecture into a tested, secure, production-ready codebase — powered by Claude Code.
 
-Claude remains the orchestrator. This server provides the tools, prompts, and resources Claude needs to execute the full lifecycle: architecture in, production-ready code out.
+[![npm version](https://img.shields.io/npm/v/architect-to-product)](https://www.npmjs.com/package/architect-to-product)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Tests: 142 passing](https://img.shields.io/badge/tests-142%20passing-brightgreen)]()
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue)]()
+
+---
+
+AI coding tools generate code fast. But that code ships without tests, with security holes, and with no deployment story. You spend more time fixing what the AI wrote than you saved.
+
+- 45% of AI-generated code contains security vulnerabilities ([GitClear 2024](https://www.gitclear.com/coding_on_copilot_data_shows_ais_downward_pressure_on_code_quality))
+- AI agents waste tokens re-reading the same files — up to 20x more than necessary
+- "It works on my machine" turns into a 3am production incident
+
+**architect-to-product** adds what AI coding lacks: a structured pipeline from architecture to production. TDD ensures every feature works. SAST catches security issues before deploy. Stack-specific deployment configs mean you ship on day one, not day thirty.
+
+## Without vs. With architect-to-product
+
+| Without a2p | With a2p |
+|---|---|
+| Vibe code a feature | Architecture-driven vertical slices |
+| Manually write some tests (maybe) | TDD per slice: RED → GREEN → REFACTOR |
+| Miss security vulnerabilities | Automated SAST + OWASP Top 10 review |
+| Copy-paste a Dockerfile from StackOverflow | Generated Dockerfile + docker-compose + Caddyfile + backup scripts |
+| Hope for the best | Ship to production with confidence |
+
+## Key Benefits
+
+- **Develop faster** — Vertical slices with TDD, no yak shaving
+- **Fewer bugs** — Every feature has tests before implementation (RED → GREEN → REFACTOR)
+- **Ship secure** — Semgrep + Bandit + OWASP Top 10 review built into the workflow
+- **Deploy on day one** — Stack-specific Dockerfile, docker-compose, Caddyfile, backup scripts
+- **Save tokens** — Pair with codebase-memory-mcp for up to 20x fewer exploration tokens
+- **Any stack** — Python, TypeScript, Go, Rust, Java, Ruby, PHP, C#, PostgreSQL, MySQL, MongoDB, Redis
 
 ## How it works
 
-The server guides projects through 5 phases:
+```
+Architecture → Plan → Build (TDD) → Security Gate → Deploy
+```
 
-1. **Onboarding** -- Capture or co-develop the architecture. Detect database and frontend tech. Set up companion MCP servers.
-2. **Planning** -- Break the architecture into ordered vertical slices, each a deployable feature unit with acceptance criteria.
-3. **Build Loop** -- TDD per slice: RED (write failing tests) -> GREEN (minimal implementation) -> REFACTOR (clean up) -> SAST (lightweight security scan). Repeat.
-4. **Security Gate** -- Full SAST scan (Semgrep + Bandit), OWASP Top 10 manual review, dependency audit. Fix all critical/high findings.
-5. **Deployment** -- Generate Dockerfile, docker-compose, Caddyfile, backup scripts, hardening guides. Stack-specific launch checklist.
+- **Onboarding** — Capture or co-develop the architecture. Detect database and frontend tech. Set up companion MCP servers.
+- **Planning** — Break the architecture into ordered vertical slices, each a deployable feature unit with acceptance criteria.
+- **Build Loop** — TDD per slice: RED (write failing tests) → GREEN (minimal implementation) → REFACTOR (clean up) → SAST (lightweight security scan). Repeat.
+- **Security Gate** — Full SAST scan (Semgrep + Bandit), OWASP Top 10 manual review, dependency audit. Fix all critical/high findings.
+- **Deployment** — Generate Dockerfile, docker-compose, Caddyfile, backup scripts, hardening guides. Stack-specific launch checklist.
 
-Between phases 3 and 4, optional quality analysis (dead code, redundancy, coupling via codebase-memory-mcp) and E2E testing (Playwright MCP) can run.
-
-## Key design decisions
-
-- **Stack-agnostic**: No hardcoded templates. Everything is generated dynamically based on the architecture. Opinionated deployment recommendations for Python, TypeScript, Go, Rust, Java/Kotlin, Ruby, PHP, C#/.NET, PostgreSQL, MySQL, MongoDB, Redis, and hosting on Hetzner, DigitalOcean, AWS, Fly.io, Railway, Vercel, or bare VPS.
-- **State as JSON**: Each project stores state in `.a2p/state.json` -- inspectable, diffable, git-committable.
-- **Companion ecosystem**: Integrates codebase-memory-mcp (code graph queries), database-specific MCP servers (Supabase, Postgres, SQLite, MySQL, MongoDB), and Playwright MCP (E2E testing).
-- **Strict state machine**: Phase transitions and TDD slice states are enforced (you can't skip RED or mark done without green tests).
-
-## Installation
+## Quick Start
 
 ```bash
-# Install globally
+# Install
 npm install -g architect-to-product
 
 # Register in Claude Code
 claude mcp add architect-to-product -- npx architect-to-product
 ```
 
-### Optional: Companion servers
+Then use the `a2p_onboarding` prompt to start your first project.
+
+## Client Configuration
+
+### Claude Code (CLI)
 
 ```bash
-# codebase-memory-mcp (code graph intelligence)
-curl -L https://github.com/DeusData/codebase-memory-mcp/releases/latest/download/codebase-memory-mcp-darwin-arm64 \
-  -o /usr/local/bin/codebase-memory-mcp
-chmod +x /usr/local/bin/codebase-memory-mcp
-claude mcp add codebase-memory -- codebase-memory-mcp
-
-# Playwright MCP (E2E testing) -- if your project has a frontend
-npm install -g @anthropic/mcp-playwright
+claude mcp add architect-to-product -- npx architect-to-product
 ```
 
-## MCP primitives
+### Claude Desktop
 
-### Tools (14)
+Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows):
+
+```json
+{
+  "mcpServers": {
+    "architect-to-product": {
+      "command": "npx",
+      "args": ["architect-to-product"]
+    }
+  }
+}
+```
+
+### Cursor
+
+Add to `.cursor/mcp.json` in your project root:
+
+```json
+{
+  "mcpServers": {
+    "architect-to-product": {
+      "command": "npx",
+      "args": ["architect-to-product"]
+    }
+  }
+}
+```
+
+### VS Code
+
+Add to `.vscode/mcp.json`:
+
+```json
+{
+  "servers": {
+    "architect-to-product": {
+      "command": "npx",
+      "args": ["architect-to-product"]
+    }
+  }
+}
+```
+
+## MCP Tools (14)
 
 | Tool | Phase | Description |
 |------|-------|-------------|
 | `a2p_init_project` | 0 | Scaffold project with CLAUDE.md, hooks, agents, state |
 | `a2p_set_architecture` | 0 | Parse architecture, detect DB/frontend, store in state |
 | `a2p_setup_companions` | 0 | Register companion MCP servers |
-| `a2p_create_build_plan` | 1 | Architecture -> ordered vertical slices |
+| `a2p_create_build_plan` | 1 | Architecture → ordered vertical slices |
 | `a2p_get_state` | * | Read current project state |
 | `a2p_update_slice` | 2 | Update slice status (red/green/refactor/sast/done) |
 | `a2p_run_tests` | 2 | Execute test command, parse results (pytest/vitest/jest/go) |
@@ -67,56 +132,31 @@ npm install -g @anthropic/mcp-playwright
 | `a2p_get_checklist` | 4 | Pre/post-deployment verification checklist |
 | `a2p_get_quality_report` | 2.5 | Quality metrics: dead code, duplicates, coupling |
 
-### Prompts (7)
+## Supported Stacks
 
-| Prompt | When to use |
-|--------|-------------|
-| `a2p_onboarding` | Project start, architecture capture |
-| `a2p_planning` | Architecture -> slice plan |
-| `a2p_build_slice` | TDD loop per slice |
-| `a2p_refactor` | Code quality via codebase-memory graph analysis |
-| `a2p_e2e_testing` | Playwright visual testing |
-| `a2p_security_gate` | Full SAST + OWASP review |
-| `a2p_deploy` | Production configs + hardening |
+| Category | Technologies |
+|----------|-------------|
+| **Languages** | Python, TypeScript/Node.js, Go, Rust, Java/Kotlin, Ruby, PHP, C#/.NET |
+| **Databases** | SQLite, PostgreSQL, MySQL/MariaDB, MongoDB, Redis |
+| **Hosting** | Hetzner, DigitalOcean, AWS, Fly.io, Railway, Vercel, any VPS |
 
-### Resources (4)
+## Works great with
 
-| Resource | URI | Description |
-|----------|-----|-------------|
-| Build plan | `a2p://plan` | Slice list with status |
-| Progress | `a2p://progress` | Slices done, test rate, findings |
-| SAST report | `a2p://sast-report` | All security findings |
-| Quality report | `a2p://quality` | Dead code, duplicates, coupling metrics |
+| Companion | What it adds |
+|-----------|-------------|
+| [codebase-memory-mcp](https://github.com/DeusData/codebase-memory-mcp) | Code graph intelligence — up to 20x fewer exploration tokens |
+| [Playwright MCP](https://github.com/anthropics/mcp-playwright) | E2E visual testing for frontend projects |
+| Database MCP servers | Direct DB access — [Supabase](https://github.com/supabase-community/supabase-mcp), [Postgres](https://github.com/ergut/mcp-bigquery), [SQLite](https://github.com/anthropics/mcp-sqlite), [MySQL](https://github.com/benborla/mcp-server-mysql), [MongoDB](https://github.com/kiliczsh/mcp-mongo-server) |
 
-## Usage
+## How is this different?
 
-Start a new project by invoking the onboarding prompt in Claude Code:
+- **vs. Copilot / Cursor** — They generate snippets. a2p generates entire tested projects from architecture to deployment.
+- **vs. create-\*-app scaffolders** — Static templates vs. dynamic architecture-driven generation with TDD and security gates.
+- **vs. manual deployment setup** — Weeks of DevOps vs. generated configs on day one.
 
-```
-Use the a2p_onboarding prompt to start a new project.
-```
+## Disclaimer
 
-Or go step by step:
-
-```
-# 1. Initialize
-Call a2p_init_project with projectPath="/path/to/my-app" and projectName="my-app"
-
-# 2. Set architecture
-Call a2p_set_architecture with the tech stack details
-
-# 3. Plan
-Call a2p_create_build_plan with your slices
-
-# 4. Build (per slice)
-Use the a2p_build_slice prompt -- it guides RED -> GREEN -> REFACTOR -> SAST
-
-# 5. Security gate
-Use the a2p_security_gate prompt
-
-# 6. Deploy
-Use the a2p_deploy prompt
-```
+This is not a guarantee of bug-free code. It's an engineering-grade safety net that catches what vibe coding misses.
 
 ## Development
 
@@ -124,39 +164,10 @@ Use the a2p_deploy prompt
 git clone https://github.com/BernhardJackiewicz/architect-to-product.git
 cd architect-to-product
 npm install
-
-# Typecheck
-npm run typecheck
-
-# Run tests (142 tests)
-npm test
-
-# Build
-npm run build
-
-# Run in dev mode
-npm run dev
-```
-
-## Project structure
-
-```
-src/
-  index.ts              # Entry point (stdio transport)
-  server.ts             # Tool/prompt/resource registration
-  state/
-    types.ts            # TypeScript interfaces
-    validators.ts       # Zod schemas
-    state-manager.ts    # State persistence + transitions
-  tools/                # 14 tool handlers
-  prompts/              # 7 prompt definitions
-  resources/            # 4 resource handlers (in server.ts)
-  utils/
-    process-runner.ts   # Child process with timeout
-    constants.ts        # Server name/version
-tests/
-  state-manager.test.ts # 34 unit tests
-  e2e-workflow.test.ts  # 24 integration tests
+npm run typecheck   # Type checking
+npm test            # 142 tests
+npm run build       # Build
+npm run dev         # Dev mode
 ```
 
 ## License
