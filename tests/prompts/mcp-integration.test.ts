@@ -679,3 +679,78 @@ describe("Onboarding completeness", () => {
     expect(ONBOARDING_PROMPT).toMatch(/[Bb]estätige/);
   });
 });
+
+// ─── Anthropic engineering patterns in build-slice ──────────────────────────
+// Akzeptanzkriterium: Build-Slice folgt dem Anthropic-Engineering-Ansatz:
+// Explore → Plan → Code → Verify, Rollen-Trennung, Scope-Lock, Evidence-based.
+
+describe("Anthropic engineering patterns in build-slice", () => {
+  it("has explore phase before TDD cycle", () => {
+    const explorePos = BUILD_SLICE_PROMPT.indexOf("Phase EXPLORE");
+    const tddPos = BUILD_SLICE_PROMPT.indexOf("TDD-Zyklus");
+    expect(explorePos).toBeGreaterThan(-1);
+    expect(explorePos).toBeLessThan(tddPos);
+  });
+
+  it("has scope-lock section that prevents feature creep", () => {
+    expect(BUILD_SLICE_PROMPT).toContain("Scope-Lock");
+    expect(BUILD_SLICE_PROMPT).toContain("Keine neuen Features im GREEN");
+    expect(BUILD_SLICE_PROMPT).toMatch(/Keine.*Umbauten.*REFACTOR/);
+  });
+
+  it("requires test-writer subagent for RED phase (not optional)", () => {
+    const redSection = BUILD_SLICE_PROMPT.indexOf("Phase RED");
+    const greenSection = BUILD_SLICE_PROMPT.indexOf("Phase GREEN");
+    const section = BUILD_SLICE_PROMPT.slice(redSection, greenSection);
+    expect(section).toContain("test-writer");
+    // Must NOT say "idealerweise" — role separation is mandatory
+    expect(section).not.toContain("idealerweise");
+  });
+
+  it("includes engineering loop with explore and evidence", () => {
+    expect(BUILD_SLICE_PROMPT).toContain("Engineering Loop");
+    expect(BUILD_SLICE_PROMPT).toContain("Explore");
+    expect(BUILD_SLICE_PROMPT).toContain("Evidence over narration");
+  });
+
+  it("preserves sequential TDD core: RED → GREEN → REFACTOR", () => {
+    const redPos = BUILD_SLICE_PROMPT.indexOf("### Phase RED");
+    const greenPos = BUILD_SLICE_PROMPT.indexOf("### Phase GREEN");
+    const refactorPos = BUILD_SLICE_PROMPT.indexOf("### Phase REFACTOR");
+    expect(redPos).toBeLessThan(greenPos);
+    expect(greenPos).toBeLessThan(refactorPos);
+  });
+
+  it("SAST findings are fixed in place with re-verification", () => {
+    const sastSection = BUILD_SLICE_PROMPT.indexOf("Phase SAST");
+    const endSection = BUILD_SLICE_PROMPT.indexOf("## Nach jedem", sastSection);
+    const section = BUILD_SLICE_PROMPT.slice(sastSection, endSection);
+    expect(section).toContain("fixen");
+    expect(section).toContain("wiederholen");
+  });
+
+  it("invariants section enforces scope rule", () => {
+    expect(BUILD_SLICE_PROMPT).toContain("Invarianten");
+    expect(BUILD_SLICE_PROMPT).toMatch(/Scope.*Slice/);
+  });
+
+  it("git commits are proper phase-end steps", () => {
+    const gitSection = BUILD_SLICE_PROMPT.indexOf("Git-Commits");
+    expect(gitSection).toBeGreaterThan(-1);
+    const sectionEnd = BUILD_SLICE_PROMPT.indexOf("\n## ", gitSection + 5);
+    const block = BUILD_SLICE_PROMPT.slice(gitSection, sectionEnd > -1 ? sectionEnd : undefined);
+    // Should mention committing after each phase
+    expect(block).toContain("Nach RED");
+    expect(block).toContain("Nach GREEN");
+    expect(block).toContain("Nach REFACTOR");
+  });
+
+  it("explore phase contains all three codebase-memory tools", () => {
+    const explorePos = BUILD_SLICE_PROMPT.indexOf("Phase EXPLORE");
+    const tddPos = BUILD_SLICE_PROMPT.indexOf("TDD-Zyklus");
+    const section = BUILD_SLICE_PROMPT.slice(explorePos, tddPos);
+    expect(section).toContain("index_repository");
+    expect(section).toContain("search_code");
+    expect(section).toContain("trace_call_path");
+  });
+});
