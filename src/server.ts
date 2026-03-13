@@ -229,31 +229,31 @@ export function createServer(): McpServer {
 
   // ===== PROMPTS =====
 
-  server.prompt("a2p", "Start a new project: define architecture or brainstorm an idea", () => ({
+  server.prompt("a2p", "architect-to-product onboarding: When the user says 'a2p', 'onboarding', 'start project', or 'new project' — use THIS prompt to guide them through architecture definition, tech stack selection, UI design, and project setup. This is the entry point for architect-to-product.", () => ({
     messages: [{ role: "user", content: { type: "text", text: ONBOARDING_PROMPT } }],
   }));
 
-  server.prompt("a2p_planning", "Break architecture into vertical slices (build plan)", () => ({
+  server.prompt("a2p_planning", "architect-to-product planning: When the user says 'a2p planning', 'create slices', or 'build plan' — use THIS prompt to break the architecture into ordered vertical slices with acceptance criteria.", () => ({
     messages: [{ role: "user", content: { type: "text", text: PLANNING_PROMPT } }],
   }));
 
-  server.prompt("a2p_build_slice", "Build the current slice with TDD: RED → GREEN → REFACTOR → SAST", () => ({
+  server.prompt("a2p_build_slice", "architect-to-product build: When the user says 'a2p build', 'build slice', or 'next slice' — use THIS prompt to build the current slice with TDD: RED → GREEN → REFACTOR → SAST.", () => ({
     messages: [{ role: "user", content: { type: "text", text: BUILD_SLICE_PROMPT } }],
   }));
 
-  server.prompt("a2p_refactor", "Analyze codebase for dead code, redundancy, and coupling via codebase-memory", () => ({
+  server.prompt("a2p_refactor", "architect-to-product refactor: When the user says 'a2p refactor' — use THIS prompt to analyze codebase for dead code, redundancy, and coupling via codebase-memory.", () => ({
     messages: [{ role: "user", content: { type: "text", text: REFACTOR_PROMPT } }],
   }));
 
-  server.prompt("a2p_e2e_testing", "Run visual E2E tests with Playwright MCP (screenshots, button clicks)", () => ({
+  server.prompt("a2p_e2e_testing", "architect-to-product e2e: When the user says 'a2p e2e' or 'e2e tests' — use THIS prompt to run visual E2E tests with Playwright MCP.", () => ({
     messages: [{ role: "user", content: { type: "text", text: E2E_TESTING_PROMPT } }],
   }));
 
-  server.prompt("a2p_security_gate", "Full SAST scan + OWASP Top 10 manual review", () => ({
+  server.prompt("a2p_security_gate", "architect-to-product security: When the user says 'a2p security' or 'security gate' — use THIS prompt for full SAST scan + OWASP Top 10 manual review.", () => ({
     messages: [{ role: "user", content: { type: "text", text: SECURITY_GATE_PROMPT } }],
   }));
 
-  server.prompt("a2p_deploy", "Generate production deployment configs and deployment guide", () => ({
+  server.prompt("a2p_deploy", "architect-to-product deploy: When the user says 'a2p deploy' or 'deployment' — use THIS prompt to generate production deployment configs and deployment guide.", () => ({
     messages: [{ role: "user", content: { type: "text", text: DEPLOY_PROMPT } }],
   }));
 
