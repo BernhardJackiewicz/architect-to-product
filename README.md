@@ -2,7 +2,7 @@
 
 MCP server that turns AI-generated code into production-ready software with TDD, security scanning, and deployment automation.
 
-15 MCP tools that add test driven development, static code analysis, and deployment automation to your AI coding workflow. From architecture to `docker-compose up` in one pipeline. 527 tests.
+**15 MCP tools** · **527 tests** · **Architecture → Plan → Build → Security → Deploy**
 
 [![npm version](https://img.shields.io/npm/v/architect-to-product)](https://www.npmjs.com/package/architect-to-product)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -13,10 +13,35 @@ MCP server that turns AI-generated code into production-ready software with TDD,
 
 Vibe coding with Claude Code, Cursor, or any AI coding assistant generates code fast — but ships it without tests, with security holes, and with no deployment story. You spend more time fixing what the AI wrote than you saved.
 
-- 45% of AI-generated code introduces security vulnerabilities — and coding agents will delete validation, disable auth, or relax database policies just to make errors go away
+- AI-generated code frequently introduces security vulnerabilities — and coding agents will delete validation, disable auth, or relax database policies just to make errors go away
 - "It works on my machine" turns into a 3am production incident
 
-**architect-to-product** is an MCP server that adds what vibe coding lacks: a structured AI workflow automation pipeline from architecture to production. AI-driven test driven development (AI TDD) ensures every feature works. Built-in SAST tools (Semgrep for all languages, Bandit for Python) run static code analysis and OWASP Top 10 reviews before deploy. Stack-specific deployment configs mean you ship on day one, not day thirty.
+**Architect-to-Product** is an MCP server that turns AI-generated code into production-ready software. It adds TDD, static code analysis, and deployment automation to AI coding workflows.
+
+AI-driven test driven development (AI TDD) ensures every feature works. Built-in SAST tools (Semgrep for all languages, Bandit for Python) run static code analysis and OWASP Top 10 reviews before deploy. Stack-specific deployment configs mean you ship on day one, not day thirty.
+
+## Quick Start
+
+```bash
+npm install -g architect-to-product
+claude mcp add architect-to-product -- npx architect-to-product
+```
+
+Then restart Claude Code and run: **`a2p`**
+
+The onboarding will co-develop your architecture, auto-configure companion MCP servers, and install SAST tools. One restart, then you're building.
+
+## What A2P Actually Does
+
+A2P is an MCP server that orchestrates an AI engineering workflow. Instead of vibe coding features, A2P builds software in vertical slices with TDD and security gates.
+
+It coordinates:
+- **Test-driven development** — every feature has tests before implementation
+- **Static code analysis** — Semgrep + Bandit scan for vulnerabilities automatically
+- **Security reviews** — OWASP Top 10 review before deploy
+- **Deployment generation** — stack-specific Dockerfile, docker-compose, Caddyfile, backup scripts
+
+A2P is not a replacement for engineers. It is an engineering safety net for AI-generated code.
 
 ## Without vs. With architect-to-product
 
@@ -32,7 +57,7 @@ Vibe coding with Claude Code, Cursor, or any AI coding assistant generates code 
 
 - **Develop faster** — Vertical slices with TDD, no yak shaving
 - **Fewer bugs** — AI-driven test driven development (TDD): every feature has tests before implementation (RED → GREEN → REFACTOR)
-- **Ship secure** — Static code analysis (Semgrep + Bandit) + OWASP Top 10 review built into the workflow
+- **Ship secure** — Static code analysis (Semgrep + Bandit) + OWASP Top 10 review built into the AI coding workflow
 - **Deploy on day one** — Stack-specific Dockerfile, docker-compose, Caddyfile, backup scripts
 - **Code quality** — Built-in code quality tool: dead code detection, redundancy analysis, coupling metrics
 - **Any stack** — Python, TypeScript, Go, Rust, Java, Ruby, PHP, C#, PostgreSQL, MySQL, MongoDB, Redis
@@ -42,7 +67,22 @@ Vibe coding with Claude Code, Cursor, or any AI coding assistant generates code 
 The full AI workflow automation pipeline:
 
 ```
-Architecture → Plan → Build (TDD) → Security Gate → Deploy
+AI Assistant
+     │
+     ▼
+Architecture
+     │
+     ▼
+Planning (vertical slices)
+     │
+     ▼
+Build (TDD loop per slice)
+     │
+     ▼
+Security Gate (SAST + OWASP)
+     │
+     ▼
+Deployment
 ```
 
 For multi-phase projects (e.g. Phase 0: Spikes, Phase 1: MVP, Phase 2: Scale), this loop repeats per phase automatically.
@@ -59,27 +99,9 @@ Phase 1: Plan → Build → Security → Deploy → complete_phase
 4. **Security Gate**: Full SAST scan (static code analysis via Semgrep + Bandit), OWASP Top 10 manual review, dependency audit. Acts as an AI code review tool and AI code scanner for your entire codebase. Fix all critical/high findings.
 5. **Deployment**: Generate Dockerfile, docker-compose, Caddyfile, backup scripts, hardening guides. Stack-specific launch checklist.
 
-## Quick Start
-
-```bash
-# Install globally
-npm install -g architect-to-product
-
-# Register in Claude Code
-claude mcp add architect-to-product -- npx architect-to-product
-```
-
-Then restart Claude Code and use the `a2p` prompt. The onboarding will:
-1. Co-develop or capture your architecture
-2. Auto-generate a `.mcp.json` with all needed companion MCP servers (database, Playwright, codebase-memory)
-3. Install SAST tools (Semgrep, Bandit for Python) for the security gate
-4. Ask you to restart Claude Code **once** — after that, everything is ready
-
-No manual `claude mcp add` commands needed for companions.
-
 ## Client Configuration
 
-Works with any MCP-compatible AI coding assistant:
+Works with Claude Code, Cursor AI, and any MCP-compatible AI coding assistant:
 
 ### Claude Code (CLI)
 
@@ -145,11 +167,11 @@ Add to `.vscode/mcp.json`:
 | `a2p_get_state` | * | Read current project state (includes phase info) |
 | `a2p_update_slice` | 2 | Update slice status with review checkpoints and slice summaries |
 | `a2p_run_tests` | 2 | Execute test command, parse results (pytest/vitest/jest/go) |
-| `a2p_run_quality` | 2.5 | Code quality analysis: dead code, redundancy, coupling metrics |
+| `a2p_run_quality` | 2.5 | Code quality analysis — dead code, redundancy, coupling metrics |
 | `a2p_run_e2e` | 2.6 | Record Playwright E2E test results |
-| `a2p_run_sast` | 2,3 | Run SAST tools (Semgrep/Bandit), record findings |
+| `a2p_run_sast` | 2,3 | Static code analysis with Semgrep/Bandit, deduplicated findings |
 | `a2p_record_finding` | 3 | Manually record a security finding |
-| `a2p_generate_deployment` | 4 | Get stack-specific deployment guidance |
+| `a2p_generate_deployment` | 4 | Stack-specific deployment guidance |
 | `a2p_get_checklist` | 4 | Pre/post-deployment verification checklist |
 
 ## Prompts (7)
@@ -158,11 +180,11 @@ Type these in Claude Code to trigger each workflow phase:
 
 | Command | What it does |
 |---------|-------------|
-| `a2p` | Start onboarding: define architecture, UI design, tech stack, companions |
+| `a2p` | Start onboarding — define architecture, UI design, tech stack, companions |
 | `a2p planning` | Break architecture into ordered vertical slices |
 | `a2p build` | Build the current slice with TDD (RED → GREEN → REFACTOR → SAST) |
-| `a2p refactor` | Code quality tool: analyze codebase for dead code, redundancy, coupling |
-| `a2p e2e` | AI testing tool: run visual E2E tests with Playwright |
+| `a2p refactor` | Code quality tool — analyze codebase for dead code, redundancy, coupling |
+| `a2p e2e` | AI testing tool — run visual E2E tests with Playwright |
 | `a2p security` | Full SAST scan + OWASP Top 10 review |
 | `a2p deploy` | Generate deployment configs and launch checklist |
 
@@ -265,10 +287,6 @@ a2p auto-configures companion MCP servers based on your tech stack. Each compani
 
 Works alongside autonomous AI agents — a2p adds the engineering rigor (TDD, SAST, deployment) that autonomous AI coding needs.
 
-## Disclaimer
-
-This is not a guarantee of bug-free code. It's an engineering-grade safety net that catches what vibe coding misses.
-
 ## Development
 
 ```bash
@@ -276,7 +294,7 @@ git clone https://github.com/BernhardJackiewicz/architect-to-product.git
 cd architect-to-product
 npm install
 npm run typecheck   # Type checking
-npm test            # 500 tests
+npm test            # 527 tests
 npm run build       # Build
 npm run dev         # Dev mode
 ```
