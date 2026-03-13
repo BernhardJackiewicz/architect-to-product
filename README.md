@@ -4,7 +4,7 @@ Turn any software architecture into a tested, secure, production-ready codebase 
 
 [![npm version](https://img.shields.io/npm/v/architect-to-product)](https://www.npmjs.com/package/architect-to-product)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Tests: 198 passing](https://img.shields.io/badge/tests-198%20passing-brightgreen)]()
+[![Tests: 208 passing](https://img.shields.io/badge/tests-208%20passing-brightgreen)]()
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue)]()
 
 ---
@@ -59,14 +59,19 @@ Phase 1: Plan → Build → Security → Deploy → complete_phase
 ## Quick Start
 
 ```bash
-# Install
+# Install globally
 npm install -g architect-to-product
 
 # Register in Claude Code
 claude mcp add architect-to-product -- npx architect-to-product
 ```
 
-Then use the `a2p_onboarding` prompt to start your first project.
+Then restart Claude Code and use the `a2p_onboarding` prompt. The onboarding will:
+1. Co-develop or capture your architecture
+2. Auto-generate a `.mcp.json` with all needed companion servers (database, Playwright, codebase-memory)
+3. Ask you to restart Claude Code **once** — after that, everything is ready
+
+No manual `claude mcp add` commands needed for companions.
 
 ## Client Configuration
 
@@ -174,7 +179,7 @@ git clone https://github.com/BernhardJackiewicz/architect-to-product.git
 cd architect-to-product
 npm install
 npm run typecheck   # Type checking
-npm test            # 198 tests
+npm test            # 208 tests
 npm run build       # Build
 npm run dev         # Dev mode
 ```

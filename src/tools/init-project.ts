@@ -29,10 +29,21 @@ See .a2p/state.json for architecture details and build progress.
 - Slices: One vertical feature per slice
 - Security: SAST after each slice, full scan before deployment
 
-## Workflow
-- All tests must pass before a slice is marked done
-- Code quality checked via codebase-memory-mcp
-- Security reviewed via SAST tools
+## Workflow (architect-to-product)
+This project uses the architect-to-product MCP server for structured development.
+All tools start with the \`a2p_\` prefix. Key commands:
+- \`a2p_get_state\` — see current progress, phase, and slice status
+- \`a2p_create_build_plan\` — break architecture into vertical slices
+- \`a2p_update_slice\` — advance a slice through RED → GREEN → REFACTOR → SAST → DONE
+- \`a2p_run_tests\` — execute tests and record results
+- \`a2p_run_sast\` — run security scan on changed files
+
+Use the \`a2p_build_slice\` prompt to build the next slice with TDD.
+Use the \`a2p_planning\` prompt to create or extend the build plan.
+
+All tests must pass before a slice is marked done.
+Code quality checked via codebase-memory-mcp.
+Security reviewed via SAST tools.
 `;
 
 const TEST_WRITER_AGENT = `---
