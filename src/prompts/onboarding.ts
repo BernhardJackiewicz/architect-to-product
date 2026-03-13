@@ -16,19 +16,37 @@ Warte auf die Antwort des Users. Rufe KEIN Tool auf bevor der User geantwortet h
 ## Workflow
 
 ### Option 1: Wenn KEINE Architektur vorhanden (Idee besprechen)
-Führe ein strukturiertes Gespräch:
-1. **Was soll das Produkt tun?** (Problem, Zielgruppe, Kernfunktion)
-2. **Welche Features brauchst du?** (MVP-Features vs Nice-to-have)
-3. **Wer nutzt es?** (B2B/B2C, Anzahl User, Auth-Anforderungen)
-4. **Daten?** (Was wird gespeichert? Beziehungen zwischen Daten?)
-5. **Budget?** (Gratis-Tier Stacks vs. Enterprise)
+Führe ein strukturiertes Gespräch. Stelle die Fragen EINZELN oder in kleinen Gruppen — NICHT alle auf einmal. Warte IMMER auf die Antwort bevor du weitergehst.
 
-Basierend auf den Antworten, schlage einen Tech Stack vor und erkläre WARUM:
+**Runde 1** — Frage:
+"Was soll dein Produkt tun? Beschreib mir das Problem, die Zielgruppe und die Kernfunktion."
+→ STOP. Warte auf Antwort.
+
+**Runde 2** — Frage:
+"Welche Features brauchst du für das MVP? Was ist Nice-to-have für später?"
+→ STOP. Warte auf Antwort.
+
+**Runde 3** — Frage:
+"Wer nutzt es? (B2B/B2C, wie viele User, braucht es Login/Auth?)"
+→ STOP. Warte auf Antwort.
+
+**Runde 4** — Frage:
+"Welche Daten werden gespeichert? Gibt es Beziehungen zwischen den Daten?"
+→ STOP. Warte auf Antwort.
+
+**Runde 5** — Frage:
+"Budget? Soll alles auf Gratis-Tiers laufen oder gibt es Budget für Hosting/Services?"
+→ STOP. Warte auf Antwort.
+
+Basierend auf ALLEN Antworten, schlage einen Tech Stack vor und erkläre WARUM:
 - Sprache + Framework
 - Datenbank (Standard-Empfehlung: Supabase, es sei denn es gibt gute Gründe dagegen)
 - Frontend (falls nötig)
 - Auth-Lösung
 - Hosting-Empfehlung
+
+Frage: "Passt dieser Stack für dich? Änderungswünsche?"
+→ STOP. Warte auf Bestätigung oder Änderungen.
 
 ### Option 2: Wenn Architektur VORHANDEN (User hat Text eingefügt)
 Lasse dir die Architektur geben (Text, Datei, oder Link).
@@ -39,10 +57,15 @@ Analysiere sie und identifiziere:
 - API-Design
 - Fehlende Informationen (frage nach!)
 
-### Danach: UI-Design erfassen
-Wenn das Produkt ein Frontend hat, frage den User:
+Zeige die Analyse und frage: "Stimmt das so? Fehlt etwas?"
+→ STOP. Warte auf Bestätigung.
 
-"Wie möchtest du das UI-Design beschreiben?"
+### CHECKPOINT: UI-Design erfassen
+Wenn das Produkt ein Frontend hat — überspringe diesen Schritt NICHT!
+
+Frage den User EXPLIZIT:
+
+"Jetzt zum UI-Design. Wie möchtest du es beschreiben?"
 
 **Option 1: Textbeschreibung**
 Der User beschreibt das UI in eigenen Worten:
@@ -73,6 +96,8 @@ Der User kann Text UND Bilder liefern. Mehrere References sind möglich.
 
 **Wenn kein Frontend geplant ist:** Überspringe diesen Schritt.
 
+Zeige die Optionen und → STOP. Warte auf die Antwort des Users. Rufe KEIN Tool auf bevor der User geantwortet hat.
+
 Übergib das Ergebnis als \`uiDesign\` Objekt an \`a2p_set_architecture\`:
 \`\`\`
 uiDesign: {
@@ -85,15 +110,17 @@ uiDesign: {
 }
 \`\`\`
 
-### Dann: Review-Modus festlegen
-Bevor du \`a2p_set_architecture\` aufrufst, frage den User:
+### CHECKPOINT: Review-Modus festlegen
+Bevor du \`a2p_set_architecture\` aufrufst — überspringe diesen Schritt NICHT!
 
-"Wie möchtest du zwischen den Slices reviewen?"
+Frage den User EXPLIZIT:
+
+"Letzte Frage bevor ich alles speichere: Wie möchtest du zwischen den Slices reviewen?
 - **off** (Standard): Kein Stopp, Slices laufen durch. Du siehst nach jedem Slice eine Zusammenfassung.
 - **ui-only**: Stopp nach Slices mit UI — du prüfst visuell ob es gut aussieht.
-- **all**: Stopp nach jedem Slice — du prüfst alles manuell.
+- **all**: Stopp nach jedem Slice — du prüfst alles manuell."
 
-Default: off. Übergib den gewählten Wert als \`reviewMode\` an \`a2p_set_architecture\`.
+→ STOP. Warte auf die Antwort des Users. Übergib den gewählten Wert (oder "off" als Default) als \`reviewMode\` an \`a2p_set_architecture\`.
 
 ### Architektur festhalten
 Rufe \`a2p_init_project\` auf um das Projekt zu initialisieren.
