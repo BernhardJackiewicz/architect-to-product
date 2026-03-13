@@ -66,7 +66,7 @@ npm install -g architect-to-product
 claude mcp add architect-to-product -- npx architect-to-product
 ```
 
-Then restart Claude Code and use the `a2p_onboarding` prompt. The onboarding will:
+Then restart Claude Code and use the `a2p` prompt. The onboarding will:
 1. Co-develop or capture your architecture
 2. Auto-generate a `.mcp.json` with all needed companion servers (database, Playwright, codebase-memory)
 3. Ask you to restart Claude Code **once** — after that, everything is ready

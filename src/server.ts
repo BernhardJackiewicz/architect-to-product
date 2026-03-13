@@ -229,7 +229,7 @@ export function createServer(): McpServer {
 
   // ===== PROMPTS =====
 
-  server.prompt("a2p_onboarding", "Start a new project: define architecture or brainstorm an idea", () => ({
+  server.prompt("a2p", "Start a new project: define architecture or brainstorm an idea", () => ({
     messages: [{ role: "user", content: { type: "text", text: ONBOARDING_PROMPT } }],
   }));
 

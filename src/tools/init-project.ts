@@ -186,6 +186,6 @@ export function handleInitProject(input: InitProjectInput): string {
       ".a2p/state.json",
     ],
     nextStep:
-      "Now set your architecture with a2p_set_architecture, or use the a2p_onboarding prompt to brainstorm one.",
+      "Now set your architecture with a2p_set_architecture, or use the a2p prompt to brainstorm one.",
   });
 }
