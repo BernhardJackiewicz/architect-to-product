@@ -146,6 +146,20 @@ Add to `.vscode/mcp.json`:
 | `a2p_generate_deployment` | 4 | Get stack-specific deployment guidance |
 | `a2p_get_checklist` | 4 | Pre/post-deployment verification checklist |
 
+## Prompts (7)
+
+Type these in Claude Code to trigger each workflow phase:
+
+| Command | What it does |
+|---------|-------------|
+| `a2p` | Start onboarding: define architecture, UI design, tech stack, companions |
+| `a2p planning` | Break architecture into ordered vertical slices |
+| `a2p build` | Build the current slice with TDD (RED → GREEN → REFACTOR → SAST) |
+| `a2p refactor` | Analyze codebase for dead code, redundancy, coupling |
+| `a2p e2e` | Run visual E2E tests with Playwright |
+| `a2p security` | Full SAST scan + OWASP Top 10 review |
+| `a2p deploy` | Generate deployment configs and launch checklist |
+
 ## Supported Stacks
 
 | Category | Technologies |
