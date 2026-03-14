@@ -56,6 +56,7 @@ export interface OversightConfig {
   buildSignoff: boolean;         // MANDATORY (always true) — must confirm product works after building
   deployApproval: boolean;       // MANDATORY (always true) — must confirm before deploy
   securitySignoff: boolean;      // default: false — explicit go/no-go after security gate
+  uiVerification: boolean;       // default: true when frontend detected — human reviews Playwright screenshots
 }
 
 export type UISourceType = "description" | "wireframe" | "mockup" | "screenshot" | "file";

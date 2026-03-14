@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { handleSetArchitecture } from "../../src/tools/set-architecture.js";
 import { handleInitProject } from "../../src/tools/init-project.js";
 import { StateManager } from "../../src/state/state-manager.js";
+import { OversightConfigSchema } from "../../src/state/validators.js";
 import { makeTmpDir, cleanTmpDir, parse } from "../helpers/setup.js";
 
 const baseInput = {
@@ -520,5 +521,70 @@ describe("handleSetArchitecture", () => {
       handleSetArchitecture({ projectPath: tmpDir, ...baseInput })
     );
     expect(result.suggestedCompanions.some((c: string) => c.includes("github-mcp-server"))).toBe(true);
+  });
+
+  // ─── UI Verification ──────────────────────────────────────────────────
+
+  it("uiVerification defaults to true when frontend is set", () => {
+    handleSetArchitecture({
+      projectPath: tmpDir,
+      ...baseInput,
+      frontend: "React",
+      oversight: {},
+    });
+
+    const sm = new StateManager(tmpDir);
+    const state = sm.read();
+    expect(state.architecture?.oversight?.uiVerification).toBe(true);
+  });
+
+  it("uiVerification defaults to false when no frontend", () => {
+    handleSetArchitecture({
+      projectPath: tmpDir,
+      ...baseInput,
+      frontend: undefined,
+      oversight: {},
+    });
+
+    const sm = new StateManager(tmpDir);
+    const state = sm.read();
+    expect(state.architecture?.oversight?.uiVerification).toBe(false);
+  });
+
+  it("uiVerification can be explicitly set to false even with frontend", () => {
+    handleSetArchitecture({
+      projectPath: tmpDir,
+      ...baseInput,
+      frontend: "Vue",
+      oversight: { uiVerification: false },
+    });
+
+    const sm = new StateManager(tmpDir);
+    const state = sm.read();
+    expect(state.architecture?.oversight?.uiVerification).toBe(false);
+  });
+
+  it("uiVerification can be explicitly set to true without frontend", () => {
+    handleSetArchitecture({
+      projectPath: tmpDir,
+      ...baseInput,
+      frontend: undefined,
+      oversight: { uiVerification: true },
+    });
+
+    const sm = new StateManager(tmpDir);
+    const state = sm.read();
+    expect(state.architecture?.oversight?.uiVerification).toBe(true);
+  });
+
+  it("old state without uiVerification loads with default true", () => {
+    const result = OversightConfigSchema.parse({
+      sliceReview: "off",
+      planApproval: true,
+      buildSignoff: true,
+      deployApproval: true,
+      securitySignoff: false,
+    });
+    expect(result.uiVerification).toBe(true);
   });
 });

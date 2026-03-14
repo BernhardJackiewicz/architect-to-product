@@ -111,6 +111,13 @@ Wenn Playwright MCP nicht verfügbar ist, sage dem User dass er es starten soll.
    - \`browser_fill_form\` — Formulare, Validierung
 6. \`browser_resize\` auf Mobile (375x667) → Screenshot → zurück Desktop (1280x720)
 
+**Human Review (wenn \`oversight.uiVerification: true\`):**
+Nach den Screenshots: zeige dem User die Ergebnisse und frage:
+"**UI-Verification für Slice [name].** Screenshots aufgenommen. Sieht das korrekt aus?"
+→ STOP. Warte auf Bestätigung bevor du zu REFACTOR weitergehst.
+
+**Wenn \`oversight.uiVerification: false\`:** automatisch weiter zu REFACTOR (kein manueller Review-Stop).
+
 **Wenn visuell nicht ok:** Fix in GREEN Phase, erneut prüfen.
 **Wenn kein Frontend (\`hasUI\` nicht gesetzt):** direkt zu REFACTOR.
 
