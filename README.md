@@ -1,6 +1,6 @@
 # A2P — Architect-to-Product
 
-MCP server that turns AI-generated code into production-ready software with TDD, security scanning, and deployment automation.
+MCP server that turns AI-generated code into production-ready software with TDD, security scanning, and deployment automation. Up to 100 times fewer exploration tokens for claude code.
 
 **15 MCP tools** · **527 tests** · **Architecture → Plan → Build → Security → Deploy**
 
