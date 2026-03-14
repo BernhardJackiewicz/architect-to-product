@@ -17,6 +17,7 @@ import { generateDeploymentSchema, handleGenerateDeployment } from "./tools/gene
 import { getChecklistSchema, handleGetChecklist } from "./tools/get-checklist.js";
 import { completePhaseSchema, handleCompletePhase } from "./tools/complete-phase.js";
 import { addSliceSchema, handleAddSlice } from "./tools/add-slice.js";
+import { getBuildLogSchema, handleGetBuildLog } from "./tools/get-build-log.js";
 
 // Prompts
 import { ONBOARDING_PROMPT } from "./prompts/onboarding.js";
@@ -225,6 +226,19 @@ export function createServer(): McpServer {
     "Get pre/post-deployment checklist specific to the project's tech stack",
     { projectPath: getChecklistSchema.shape.projectPath },
     wrapTool(handleGetChecklist as ToolHandler)
+  );
+
+  server.tool(
+    "a2p_get_build_log",
+    "Get chronological workflow log from build history. Filterable by phase, slice, action type.",
+    {
+      projectPath: getBuildLogSchema.shape.projectPath,
+      filter: getBuildLogSchema.shape.filter,
+      sliceId: getBuildLogSchema.shape.sliceId,
+      phase: getBuildLogSchema.shape.phase,
+      limit: getBuildLogSchema.shape.limit,
+    },
+    wrapTool(handleGetBuildLog as ToolHandler)
   );
 
   // ===== PROMPTS =====
