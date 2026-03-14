@@ -18,7 +18,7 @@ Vibe coding with Claude Code, Cursor, or any AI coding assistant generates code 
 
 **Architect-to-Product** is an MCP server that turns AI-generated code into production-ready software. It adds TDD, static code analysis, and deployment automation to AI coding workflows.
 
-AI-driven test driven development (AI TDD) ensures every feature works. Built-in SAST tools (Semgrep for all languages, Bandit for Python) run static code analysis and OWASP Top 10 reviews before deploy. Stack-specific deployment configs mean you ship on day one, not day thirty.
+AI-driven test driven development (AI TDD) ensures every feature works. Built-in SAST tools (Semgrep for all languages, Bandit for Python) run static code analysis and OWASP Top 10 reviews before deploy. Stack-aware backup strategy infers what needs protecting — databases, uploads, deployment artifacts — and generates backup, restore, and verification scripts automatically. Stack-specific deployment configs mean you ship on day one, not day thirty.
 
 ## Quick Start
 
@@ -45,8 +45,8 @@ It coordinates:
 - **Security reviews** — OWASP Top 10 review before deploy
 - **Structured build log** — every tool run tracked with log levels, duration, status, run correlation, and automatic secret redaction. Composable filters by phase, slice, level, time range, or errors
 - **Configurable human oversight** — mandatory build signoff and deploy approval, optional plan approval, slice review, and security signoff
-- **Automated backup strategy** — Stack-aware backup inference: database, uploads, deployment artifacts. Restore scripts, verification, retention, offsite sync. Stateful apps get mandatory backup warnings before deployment
-- **Deployment generation** — stack-specific Dockerfile, docker-compose, Caddyfile, backup scripts
+- **Backup strategy** — Automatic inference of backup targets (database, uploads, artifacts) from tech stack. Stack-aware backup/restore commands, retention policies, verification scripts, offsite sync. Stateful apps get deployment gate warnings if backup is missing
+- **Deployment generation** — stack-specific Dockerfile, docker-compose, Caddyfile, backup/restore/verify scripts, hardening guides
 
 A2P is not a replacement for engineers. It is an engineering safety net for AI-generated code.
 
@@ -76,8 +76,8 @@ A2P is not a replacement for engineers. It is an engineering safety net for AI-g
 - **Active verification** — Runtime gate tests prove that workflow invariants actually hold: state transitions require evidence, deployment gates block on critical findings, state survives round-trips
 - **Human oversight** — Mandatory build signoff (before wasting tokens on audit/security) and deploy approval. Configurable plan approval, slice review, and security signoff. Two gates are always on, the rest you control
 - **Audit before release** — Quality audits catch debug artifacts, hardcoded secrets, and test coverage gaps during development. Release audits verify README, .gitignore, temp files, and aggregate findings before publish. Critical release findings block deployment (enforced in code)
-- **Automated backup strategy** — Stack-aware backup inference of backup targets (database, uploads, artifacts), stack-aware backup/restore commands, retention, verification scripts, offsite sync, deployment gate warnings for stateful apps
-- **Deploy on day one** — Stack-specific Dockerfile, docker-compose, Caddyfile, backup scripts
+- **Automated backup strategy** — Stack-aware inference of what needs protecting (database, uploads, artifacts). Generates backup, restore, and verification scripts with stack-specific commands (`pg_dump`, `mysqldump`, `mongodump`, `sqlite3 .backup`). Retention policies, offsite sync, and deployment gate warnings for stateful apps
+- **Deploy on day one** — Stack-specific Dockerfile, docker-compose, Caddyfile, backup/restore/verify scripts, hardening guides
 - **Code quality** — Built-in code quality tool: dead code detection, redundancy analysis, coupling metrics
 - **Documentation first** — When the architecture uses unfamiliar tech (exotic auth, new ORMs, niche APIs), Claude reads the official docs via WebSearch + WebFetch instead of hallucinating API signatures. Enforced in every prompt, documented in CLAUDE.md
 - **Model preference** — Configure which Claude model does the programming (`opus`, `sonnet`, `haiku`). Default: opus (Claude Opus 4.6 with maximum effort). Stored in project config, referenced by all prompts
@@ -121,6 +121,40 @@ These cannot be bypassed — they are enforced in code, not just in prompts:
 - **Security gate**: Cannot deploy with open CRITICAL/HIGH SAST findings
 - **Whitebox gate**: Cannot deploy with blocking whitebox findings (confirmed exploitable auth/secrets/tenant issues)
 - **Audit gate**: Cannot deploy with critical release audit findings
+- **Backup gate**: Stateful apps (database or uploads) trigger a warning when deploying without configured backup — visible in deploy approval and build history
+
+### Backup Strategy
+
+A2P automatically infers a backup strategy from your tech stack during onboarding. No manual configuration needed — if your app has a database or handles uploads, A2P knows it needs backups.
+
+**How inference works:**
+- **Database detected** (PostgreSQL, MySQL, SQLite, MongoDB) → `required: true`, target `"database"` added, stack-specific `pg_dump`/`mysqldump`/`mongodump`/`sqlite3 .backup` commands generated
+- **Uploads/media detected** (features mentioning upload, file storage, media, images) → `required: true`, targets `"uploads"` + `"local_media"` added
+- **Hosting detected** → offsite provider inferred (Hetzner → `hetzner_storage`, AWS → `s3`, DigitalOcean → `spaces`)
+- **Stateless apps** → `enabled: true` but `required: false`, only `"deploy_artifacts"` backup (no warnings, no gates)
+
+**What gets generated during deployment:**
+- `scripts/backup.sh` — database + artifact backup with retention and manifest
+- `scripts/restore.sh` — restore from backup with verification
+- `scripts/backup-verify.sh` — verify backup integrity and freshness
+- `scripts/backup-offsite.sh` — sync to offsite provider (if configured)
+- `ops/backup.env.example` — backup configuration (paths, retention, offsite credentials)
+- `docs/BACKUP.md` — strategy, schedule, restore procedures, verification steps
+
+**Security by design:**
+- MySQL: uses `--defaults-file` instead of `-p$PASSWORD` — no password leaks in scripts or logs
+- SQLite restore: warns to stop the application first for consistent restore
+- Scheduler: recommends systemd timers over cron on VPS/Linux (better logging, failure notification)
+
+**Deployment checklist integration:**
+- Backup scripts generated and tested locally
+- Backup scheduler active (daily at 02:00)
+- Retention configured (14 days default)
+- Restore documentation present
+- Offsite backup configured (if provider detected)
+- First backup completed successfully
+- Backup verification passed (restore to temp + integrity check)
+- Pre-deploy snapshot taken
 
 ### Model Preference
 
@@ -146,11 +180,11 @@ This rule is enforced in the shared Engineering Loop (all prompts), the build-sl
 
 ### Recommended Configurations
 
-**Solo developer (default):** Plan approval on, everything else off. Build signoff and deploy approval are always on. Model: opus.
+**Solo developer (default):** Plan approval on, everything else off. Build signoff and deploy approval are always on. Backup strategy auto-inferred from stack. Model: opus.
 
-**Team / enterprise:** All oversight on — every phase gets human review. Model: opus.
+**Team / enterprise:** All oversight on — every phase gets human review. Backup warnings visible in deploy approval. Model: opus.
 
-**Rapid prototyping:** Plan approval off, slice review off. You still get mandatory build signoff and deploy approval. Model: sonnet for speed.
+**Rapid prototyping:** Plan approval off, slice review off. You still get mandatory build signoff and deploy approval. Backup still inferred — even fast prototypes need a restore plan. Model: sonnet for speed.
 
 ## How it works
 
@@ -160,7 +194,7 @@ The full AI workflow automation pipeline:
 AI Assistant
      │
      ▼
-Architecture + Oversight Config
+Architecture + Oversight Config + Backup Inference
      │
      ▼
 Planning (vertical slices) ─── [planApproval? → STOP]
@@ -185,20 +219,20 @@ Release Audit (pre-publish checks)
      │
      ▼
 DEPLOY APPROVAL [MANDATORY] ─── "Ready to ship?" + backup status
-     │
+     │  ⚠️ Warning if stateful app has no backup configured
      ▼
-Deployment
+Deployment (configs + backup/restore/verify scripts)
 ```
 
 For multi-phase projects (e.g. Phase 0: Spikes, Phase 1: MVP, Phase 2: Scale), this loop repeats per phase automatically.
 
 ```
-Phase 0: Plan → Build → BUILD SIGNOFF → Security → Whitebox → Release Audit → DEPLOY APPROVAL → Deploy → complete_phase
-Phase 1: Plan → Build → BUILD SIGNOFF → Security → Whitebox → Release Audit → DEPLOY APPROVAL → Deploy → complete_phase
+Phase 0: Plan → Build → BUILD SIGNOFF → Security → Whitebox → Release Audit → DEPLOY APPROVAL (+ backup check) → Deploy → complete_phase
+Phase 1: Plan → Build → BUILD SIGNOFF → Security → Whitebox → Release Audit → DEPLOY APPROVAL (+ backup check) → Deploy → complete_phase
 ...
 ```
 
-1. **Onboarding**: Capture or co-develop the AI software architecture. Detect database and frontend tech. Describe UI via text, upload wireframes/mockups/screenshots, or let AI generate a design concept. Set up companion MCP servers via the MCP protocol. If the architecture defines phases, they get extracted automatically.
+1. **Onboarding**: Capture or co-develop the AI software architecture. Detect database and frontend tech. Automatically infer backup strategy from tech stack — databases and uploads get mandatory backup, hosting determines offsite provider. Describe UI via text, upload wireframes/mockups/screenshots, or let AI generate a design concept. Set up companion MCP servers via the MCP protocol. If the architecture defines phases, they get extracted automatically.
 2. **Planning**: Break the architecture into ordered vertical slices, each a deployable feature unit with acceptance criteria. Three slice types: `feature` (default), `integration` (library/API adapters with TDD), `infrastructure` (CI, auth, monitoring).
 3. **Build Loop**: TDD per slice: RED (write failing tests) → GREEN (minimal implementation) → REFACTOR (clean up) → SAST (lightweight AI security testing). Frontend slices with `hasUI: true` get visual verification via Playwright between GREEN and REFACTOR. Configurable review checkpoints (`oversight.sliceReview`: `off`, `all`, `ui-only`) pause after slices for human approval. Domain logic triggers a WebSearch step before tests to verify facts (tax rates, regulations, standards). Quality audits run every ~5-10 commits to catch TODOs, debug artifacts, hardcoded secrets, and test coverage gaps. **Mandatory build signoff** after all slices are done — you verify the product works before spending tokens on audit and security. **Structured build log** tracks every tool run with log levels, duration, status, run correlation, and secret redaction — queryable by phase, slice, level, time range, or errors.
 4. **Security Gate**: Full SAST scan (static code analysis via Semgrep + Bandit), OWASP Top 10 manual review, dependency audit. Acts as an AI code review tool and AI code scanner for your entire codebase. Fix all critical/high findings.
@@ -324,7 +358,7 @@ You don't have to run the full pipeline. Each prompt works standalone — pick w
 - `/a2p_security_gate` — catch injection, auth holes, hardcoded secrets
 
 **Existing project, just need deployment:**
-- `/a2p_deploy` — stack-specific configs, backup scripts, hardening guide
+- `/a2p_deploy` — stack-specific configs, backup/restore/verify scripts, offsite sync, hardening guide
 
 **Built the MVP with slices, now entering Phase 2:**
 - `/a2p_planning` — create new slices for the next phase
@@ -342,14 +376,14 @@ You don't have to run the full pipeline. Each prompt works standalone — pick w
 
 | Target | Method | What gets generated |
 |--------|--------|-------------------|
-| **Docker VPS** (Hetzner, DigitalOcean, any VPS) | Dockerfile + docker-compose + Caddy | Dockerfile, docker-compose.prod.yml, Caddyfile, backup.sh, DEPLOYMENT.md |
+| **Docker VPS** (Hetzner, DigitalOcean, any VPS) | Dockerfile + docker-compose + Caddy | Dockerfile, docker-compose.prod.yml, Caddyfile, backup/restore/verify scripts, BACKUP.md, DEPLOYMENT.md |
 | **Vercel** | Vercel CLI | vercel.json, Edge Middleware, env var setup |
 | **Cloudflare** (Pages/Workers) | Wrangler CLI / MCP | wrangler.toml, Page Rules, DNS config |
 | **Railway** | Railway CLI | railway.toml / Procfile, service config |
 | **Fly.io** | Fly CLI | fly.toml, secrets, volumes |
 | **Render** | Blueprint | render.yaml, health checks, auto-deploy |
 
-Each deploy path includes: env var handling, basic hardening, smoke checks, and domain checklist.
+Each deploy path includes: env var handling, basic hardening, smoke checks, domain checklist, and stack-aware backup/restore scripts.
 
 ## Companion MCP Servers
 
@@ -400,7 +434,7 @@ a2p auto-configures companion MCP servers based on your tech stack. Each compani
 
 - **vs. AI coding assistants alone (Claude Code, Cursor AI, Copilot)** — They generate code. a2p adds the TDD, security scanning, and deployment that AI coding assistants skip.
 - **vs. create-\*-app scaffolders** — Static templates vs. dynamic architecture-driven AI app builder with TDD and security gates.
-- **vs. manual deployment setup** — Weeks of DevOps vs. generated configs on day one.
+- **vs. manual deployment setup** — Weeks of DevOps vs. generated configs, backup/restore scripts, and verification on day one.
 - **vs. vibe coding without a2p** — You ship fast but accumulate security debt, untested features, and manual deployment. a2p is the safety net that makes vibe coding production-viable.
 
 Works alongside autonomous AI agents — a2p adds the engineering rigor (TDD, SAST, deployment) that autonomous AI coding needs.
