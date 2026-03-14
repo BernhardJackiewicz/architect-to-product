@@ -5,7 +5,7 @@ import { handleCreateBuildPlan } from "../../src/tools/create-build-plan.js";
 import { handleCompletePhase } from "../../src/tools/complete-phase.js";
 import { handleUpdateSlice } from "../../src/tools/update-slice.js";
 import { handleRecordFinding } from "../../src/tools/record-finding.js";
-import { makeTmpDir, initWithStateManager, addPassingTests, addSastEvidence, walkSliceToStatus, forcePhase } from "../helpers/setup.js";
+import { makeTmpDir, initWithStateManager, addPassingTests, addSastEvidence, walkSliceToStatus, forcePhase, addQualityAudit, addReleaseAudit, addPassingVerification } from "../helpers/setup.js";
 
 // ─── StateManager new methods ───────────────────────────────────────────────
 
@@ -449,8 +449,11 @@ describe("Security gate: setPhase(deployment) blocks on open CRITICAL/HIGH", () 
     sm.setPhase("building");
     walkSliceToStatus(sm, "s1", "done");
     sm.setBuildSignoff();
+    addQualityAudit(sm);
     sm.setPhase("security");
     sm.markFullSastRun(0);
+    addReleaseAudit(sm);
+    addPassingVerification(sm);
   });
 
   it("throws when open CRITICAL finding exists", () => {
@@ -466,6 +469,10 @@ describe("Security gate: setPhase(deployment) blocks on open CRITICAL/HIGH", () 
       description: "unparameterized query",
       fix: "use params",
     });
+    // Re-run SAST so it's not stale after adding finding
+    sm.markFullSastRun(1);
+    addReleaseAudit(sm);
+    addPassingVerification(sm);
 
     expect(() => sm.setPhase("deployment")).toThrow("CRITICAL/HIGH");
   });
@@ -483,6 +490,10 @@ describe("Security gate: setPhase(deployment) blocks on open CRITICAL/HIGH", () 
       description: "reflected xss",
       fix: "escape",
     });
+    // Re-run SAST so it's not stale after adding finding
+    sm.markFullSastRun(1);
+    addReleaseAudit(sm);
+    addPassingVerification(sm);
 
     expect(() => sm.setPhase("deployment")).toThrow("CRITICAL/HIGH");
   });
@@ -502,6 +513,8 @@ describe("Security gate: setPhase(deployment) blocks on open CRITICAL/HIGH", () 
     });
     // Re-run full SAST after the change so it's not stale
     sm.markFullSastRun(0);
+    addReleaseAudit(sm);
+    addPassingVerification(sm);
 
     const state = sm.setPhase("deployment");
     expect(state.phase).toBe("deployment");
@@ -528,6 +541,8 @@ describe("Security gate: setPhase(deployment) blocks on open CRITICAL/HIGH", () 
     });
     // Re-run full SAST after the change so it's not stale
     sm.markFullSastRun(1);
+    addReleaseAudit(sm);
+    addPassingVerification(sm);
 
     const state = sm.setPhase("deployment");
     expect(state.phase).toBe("deployment");

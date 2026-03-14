@@ -5,7 +5,7 @@ import { StateManager } from "../../src/state/state-manager.js";
 import { handleInitProject } from "../../src/tools/init-project.js";
 import { handleSetArchitecture } from "../../src/tools/set-architecture.js";
 import { handleCreateBuildPlan } from "../../src/tools/create-build-plan.js";
-import type { TestResult, Phase } from "../../src/state/types.js";
+import type { TestResult, Phase, AuditResult, ActiveVerificationResult } from "../../src/state/types.js";
 import { readFileSync, writeFileSync } from "node:fs";
 
 /** Create a temporary directory for test isolation. */
@@ -84,6 +84,50 @@ export function forceField(dir: string, field: string, value: unknown): void {
   const state = JSON.parse(readFileSync(statePath, "utf-8"));
   state[field] = value;
   writeFileSync(statePath, JSON.stringify(state, null, 2), "utf-8");
+}
+
+/** Add a quality audit result (evidence for building->security gate). */
+export function addQualityAudit(sm: StateManager): void {
+  sm.addAuditResult({
+    id: `AUD-Q-${Date.now()}`,
+    mode: "quality",
+    timestamp: new Date().toISOString(),
+    findings: [],
+    summary: { critical: 0, high: 0, medium: 0, low: 0 },
+    buildPassed: true,
+    testsPassed: true,
+    aggregated: { openSastFindings: 0, openQualityIssues: 0, slicesDone: 0, slicesTotal: 0 },
+  });
+}
+
+/** Add a release audit result (evidence for security->deployment gate). */
+export function addReleaseAudit(sm: StateManager): void {
+  sm.addAuditResult({
+    id: `AUD-R-${Date.now()}`,
+    mode: "release",
+    timestamp: new Date().toISOString(),
+    findings: [],
+    summary: { critical: 0, high: 0, medium: 0, low: 0 },
+    buildPassed: true,
+    testsPassed: true,
+    aggregated: { openSastFindings: 0, openQualityIssues: 0, slicesDone: 0, slicesTotal: 0 },
+  });
+}
+
+/** Add a passing active verification result (evidence for security->deployment gate). */
+export function addPassingVerification(sm: StateManager): void {
+  sm.addActiveVerificationResult({
+    id: `AVR-${Date.now()}`,
+    timestamp: new Date().toISOString(),
+    round: 1,
+    tests_run: 1,
+    tests_passed: 1,
+    tests_failed: 0,
+    findings: [],
+    summary: { critical: 0, high: 0, medium: 0, low: 0 },
+    blocking_count: 0,
+    requires_human_review: false,
+  });
 }
 
 /** Initialize a project with a basic architecture (no slices). */

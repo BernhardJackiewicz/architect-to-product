@@ -236,10 +236,44 @@ export class StateManager {
           "Build signoff invalidated by slice changes. Call a2p_build_signoff again."
         );
       }
+
+      // Quality audit gate: at least one quality audit must exist before proceeding to security
+      const qualityAudits = state.auditResults.filter((a) => a.mode === "quality");
+      if (qualityAudits.length === 0) {
+        throw new Error(
+          "Cannot proceed to security without a quality audit. Run a2p_run_audit mode=quality first."
+        );
+      }
+
+      // Quality audit staleness: latest audit must be after last security-relevant change
+      const latestQuality = qualityAudits[qualityAudits.length - 1];
+      if (state.lastSecurityRelevantChangeAt &&
+          latestQuality.timestamp < state.lastSecurityRelevantChangeAt) {
+        throw new Error(
+          "Quality audit is stale — code changed after last audit. Re-run a2p_run_audit mode=quality."
+        );
+      }
     }
 
-    // Security gate: block deployment if open CRITICAL/HIGH findings exist
+    // Security→Deployment gates (ordered by workflow sequence)
     if (state.phase === "security" && newPhase === "deployment") {
+      // 1. Full SAST gate: at least one full SAST scan must have been run
+      if (!state.lastFullSastAt) {
+        throw new Error(
+          "Cannot deploy without a full SAST scan. Run a2p_run_sast mode=full first."
+        );
+      }
+
+      // 2. Stale SAST check: full SAST must be after last security-relevant change
+      if (state.lastSecurityRelevantChangeAt &&
+          state.lastFullSastAt &&
+          state.lastFullSastAt < state.lastSecurityRelevantChangeAt) {
+        throw new Error(
+          "Full SAST scan is stale — code changed after last scan. Re-run a2p_run_sast mode=full."
+        );
+      }
+
+      // 3. Open CRITICAL/HIGH SAST findings block deployment
       const openBlockers = state.slices
         .flatMap((s) => s.sastFindings)
         .filter(
@@ -257,7 +291,7 @@ export class StateManager {
         );
       }
 
-      // Whitebox gate: block deployment if last whitebox has blocking findings
+      // 4. Whitebox gate: block deployment if last whitebox has blocking findings
       const lastWhitebox = state.whiteboxResults[state.whiteboxResults.length - 1];
       if (lastWhitebox && lastWhitebox.blocking_count > 0) {
         throw new Error(
@@ -265,44 +299,51 @@ export class StateManager {
         );
       }
 
-      // Audit gate: block deployment if last release audit has critical findings
+      // 5. Release audit gate: at least one release audit must exist and have no critical findings
       const releaseAudits = state.auditResults.filter((a) => a.mode === "release");
-      if (releaseAudits.length > 0) {
-        const lastRelease = releaseAudits[releaseAudits.length - 1];
-        if (lastRelease.summary.critical > 0) {
-          const criticalFindings = lastRelease.findings
-            .filter((f) => f.severity === "critical")
-            .map((f) => `[CRITICAL] ${f.message} — ${f.file}`)
-            .join("\n  ");
-          throw new Error(
-            `Cannot deploy: last release audit (${lastRelease.id}) has ${lastRelease.summary.critical} critical finding(s):\n  ${criticalFindings}\nFix critical findings and re-run a2p_run_audit mode=release.`
-          );
-        }
-      }
-
-      // Full SAST gate: at least one full SAST scan must have been run
-      if (!state.lastFullSastAt) {
+      if (releaseAudits.length === 0) {
         throw new Error(
-          "Cannot deploy without a full SAST scan. Run a2p_run_sast mode=full first."
+          "Cannot deploy without a release audit. Run a2p_run_audit mode=release first."
+        );
+      }
+      const lastRelease = releaseAudits[releaseAudits.length - 1];
+      if (lastRelease.summary.critical > 0) {
+        const criticalFindings = lastRelease.findings
+          .filter((f) => f.severity === "critical")
+          .map((f) => `[CRITICAL] ${f.message} — ${f.file}`)
+          .join("\n  ");
+        throw new Error(
+          `Cannot deploy: last release audit (${lastRelease.id}) has ${lastRelease.summary.critical} critical finding(s):\n  ${criticalFindings}\nFix critical findings and re-run a2p_run_audit mode=release.`
         );
       }
 
-      // Stale SAST check: full SAST must be after last security-relevant change
+      // 6. Active verification gate: at least one verification with no blocking findings
+      const verificationResults = state.activeVerificationResults;
+      if (verificationResults.length === 0) {
+        throw new Error(
+          "Cannot deploy without active verification. Run a2p_run_active_verification first."
+        );
+      }
+      const lastVerification = verificationResults[verificationResults.length - 1];
+      if (lastVerification.blocking_count > 0) {
+        throw new Error(
+          `Cannot deploy: last active verification (${lastVerification.id}) has ${lastVerification.blocking_count} blocking finding(s). Fix and re-verify.`
+        );
+      }
+
+      // 6b. Verification staleness: must be after last security-relevant change
       if (state.lastSecurityRelevantChangeAt &&
-          state.lastFullSastAt &&
-          state.lastFullSastAt < state.lastSecurityRelevantChangeAt) {
+          lastVerification.timestamp < state.lastSecurityRelevantChangeAt) {
         throw new Error(
-          "Full SAST scan is stale — code changed after last scan. Re-run a2p_run_sast mode=full."
+          "Active verification is stale — code changed after last verification. Re-run a2p_run_active_verification."
         );
       }
-    }
 
-    // Backup warning: warn if stateful app deploys without backup configured
-    if (state.phase === "security" && newPhase === "deployment") {
+      // 7. Backup gate: block deployment if stateful app has no backup configured
       if (state.backupConfig.required && !state.backupStatus.configured) {
-        this.addEvent(state, "security", null, "config_update",
-          "WARNING: Backup required but not configured — stateful app deploying without backup strategy",
-          { level: "warn", status: "warning" });
+        throw new Error(
+          "Cannot deploy stateful app without backup configuration. Set backupStatus.configured=true via a2p_generate_deployment backup setup, or set backupConfig.required=false if backups are not needed."
+        );
       }
     }
 

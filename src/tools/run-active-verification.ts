@@ -15,7 +15,7 @@ export const runActiveVerificationSchema = z.object({
   projectPath: z.string().describe("Absolute path to the project directory"),
   round: z.number().int().min(1).max(3).optional().default(1).describe("Verification round (1-3)"),
   categories: z.array(z.enum([
-    "workflow_gates", "state_recovery", "deployment_gates",
+    "workflow_gates", "state_recovery",
   ])).optional().describe("Categories to test (default: all)"),
 });
 
@@ -23,7 +23,7 @@ export type RunActiveVerificationInput = z.infer<typeof runActiveVerificationSch
 
 interface TestCase {
   name: string;
-  category: "workflow_gates" | "state_recovery" | "deployment_gates";
+  category: "workflow_gates" | "state_recovery";
   run: (tempDir: string) => TestOutcome;
 }
 
@@ -40,7 +40,7 @@ export function handleRunActiveVerification(input: RunActiveVerificationInput): 
   const state = sm.read();
   try { requirePhase(state.phase, ["security"], "a2p_run_active_verification"); }
   catch (err) { return JSON.stringify({ error: err instanceof Error ? err.message : String(err) }); }
-  const categoriesToTest = input.categories ?? ["workflow_gates", "state_recovery", "deployment_gates"];
+  const categoriesToTest = input.categories ?? ["workflow_gates", "state_recovery"];
 
   // Create temp copy of state for destructive tests
   const tempDir = mkdtempSync(join(tmpdir(), "a2p-verify-"));
@@ -222,107 +222,6 @@ function generateTestCases(
     });
   }
 
-  // Deployment gate with critical SAST
-  tests.push({
-    name: "setPhase(deployment) with open critical SAST must throw",
-    category: "workflow_gates",
-    run: (tempDir) => {
-      const tempSm = new StateManager(tempDir);
-      try {
-        const s = tempSm.read();
-        // Inject a critical SAST finding
-        if (s.slices.length > 0) {
-          tempSm.addSASTFinding(s.slices[0].id, {
-            id: "TEST-CRIT",
-            tool: "manual",
-            severity: "critical",
-            status: "open",
-            title: "Test critical finding",
-            file: "test.ts",
-            line: 1,
-            description: "Injected for verification",
-            fix: "N/A",
-          });
-        }
-        // Walk to security phase
-        walkToPhase(tempSm, "security");
-        tempSm.setPhase("deployment");
-        return gateShouldHaveThrown("deployment with critical SAST");
-      } catch {
-        return { passed: true };
-      }
-    },
-  });
-
-  // Deployment gate with blocking whitebox findings
-  tests.push({
-    name: "setPhase(deployment) with blocking whitebox findings must throw",
-    category: "deployment_gates",
-    run: (tempDir) => {
-      const tempSm = new StateManager(tempDir);
-      try {
-        // Add a whitebox result with blocking findings
-        tempSm.addWhiteboxResult({
-          id: "WBA-TEST",
-          mode: "full",
-          timestamp: new Date().toISOString(),
-          candidates_evaluated: 1,
-          findings: [{
-            id: "WB-TEST",
-            category: "AuthAuthz",
-            severity: "critical",
-            confirmed_exploitable: true,
-            evidence_type: "code_verified",
-            enforcement_type: "code",
-            runtime_path_reachable: true,
-            state_change_provable: true,
-            boundary_actually_bypassed: true,
-            root_cause: "test",
-            affected_files: ["test.ts"],
-            minimal_fix: "test",
-            required_regression_tests: [],
-            blocking: true,
-          }],
-          summary: { critical: 1, high: 0, medium: 0, low: 0 },
-          blocking_count: 1,
-        });
-        walkToPhase(tempSm, "security");
-        tempSm.setPhase("deployment");
-        return gateShouldHaveThrown("deployment with blocking whitebox");
-      } catch {
-        return { passed: true };
-      }
-    },
-  });
-
-  // Deployment allowed when no blocking findings
-  tests.push({
-    name: "setPhase(deployment) allowed without blocking findings",
-    category: "deployment_gates",
-    run: (tempDir) => {
-      const tempSm = new StateManager(tempDir);
-      try {
-        walkToPhase(tempSm, "security");
-        tempSm.setPhase("deployment");
-        return { passed: true };
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        if (msg.includes("whitebox") || msg.includes("CRITICAL") || msg.includes("cannot deploy")) {
-          return {
-            passed: false,
-            finding: makeGateFinding(
-              "DeploymentArtifactSafety",
-              "high",
-              `Deployment incorrectly blocked: ${msg}`,
-              "Ensure deployment is allowed when no blocking findings exist",
-            ),
-          };
-        }
-        return { passed: true }; // Other errors (e.g., missing slices) are fine
-      }
-    },
-  });
-
   // --- State Recovery Tests ---
 
   tests.push({
@@ -441,35 +340,6 @@ function walkSliceForVerification(sm: StateManager, sliceId: string, target: "sa
     if (step === "green" || step === "done") addTestEvidence(sm, sliceId);
     if (step === "sast") sm.markSastRun(sliceId);
     sm.setSliceStatus(sliceId, step);
-  }
-}
-
-function walkToPhase(sm: StateManager, target: "security" | "deployment"): void {
-  const s = sm.read();
-  const phaseOrder: import("../state/types.js").Phase[] = [
-    "onboarding", "planning", "building", "refactoring", "e2e_testing", "security", "deployment",
-  ];
-  const currentIdx = phaseOrder.indexOf(s.phase);
-  const targetIdx = phaseOrder.indexOf(target);
-
-  if (currentIdx >= targetIdx) return;
-
-  // Walk slices to done if in building
-  if (currentIdx <= 2) {
-    if (s.phase === "onboarding") sm.setPhase("planning");
-    if (sm.read().phase === "planning") sm.setPhase("building");
-
-    // Walk all slices to done
-    const state = sm.read();
-    for (const slice of state.slices) {
-      if (slice.status === "done") continue;
-      walkSliceForVerification(sm, slice.id, "done");
-    }
-    sm.setPhase("security");
-  }
-
-  if (target === "deployment" && sm.read().phase === "security") {
-    sm.setPhase("deployment");
   }
 }
 

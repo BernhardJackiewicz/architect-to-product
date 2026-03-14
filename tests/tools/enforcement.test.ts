@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { StateManager } from "../../src/state/state-manager.js";
 import { handleUpdateSlice } from "../../src/tools/update-slice.js";
-import { makeTmpDir, initWithStateManager, addPassingTests, addSastEvidence, walkSliceToStatus, forcePhase } from "../helpers/setup.js";
+import { makeTmpDir, initWithStateManager, addPassingTests, addSastEvidence, walkSliceToStatus, forcePhase, addQualityAudit } from "../helpers/setup.js";
 
 // ─── Slice Status Enforcement ────────────────────────────────────────────────
 
@@ -173,6 +173,7 @@ describe("Enforcement: building → refactoring/security requires all slices don
     walkSliceToStatus(sm, "s2", "done");
     walkSliceToStatus(sm, "s3", "done");
     sm.setBuildSignoff();
+    addQualityAudit(sm);
     const state = sm.setPhase("security");
     expect(state.phase).toBe("security");
   });
@@ -193,6 +194,7 @@ describe("Enforcement: building → refactoring/security requires all slices don
     emptySm.setPhase("planning");
     emptySm.setPhase("building");
     emptySm.setBuildSignoff();
+    addQualityAudit(emptySm);
     const state = emptySm.setPhase("security");
     expect(state.phase).toBe("security");
   });

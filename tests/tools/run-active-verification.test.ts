@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { makeTmpDir, cleanTmpDir, parse, initWithFindings, initWithStateManager, walkSliceToStatus, addPassingTests, forcePhase } from "../helpers/setup.js";
+import { makeTmpDir, cleanTmpDir, parse, initWithFindings, initWithStateManager, walkSliceToStatus, addPassingTests, forcePhase, addQualityAudit, addReleaseAudit, addPassingVerification } from "../helpers/setup.js";
 import { handleRunActiveVerification } from "../../src/tools/run-active-verification.js";
 import { StateManager } from "../../src/state/state-manager.js";
 
@@ -60,19 +60,6 @@ describe("run-active-verification", () => {
     expect(result.testsPassed).toBeGreaterThan(0);
   });
 
-  it("detects deployment gate bypass with blocking whitebox findings", () => {
-    initWithStateManager(dir);
-    forcePhase(dir, "security");
-    const result = parse(handleRunActiveVerification({
-      projectPath: dir,
-      round: 1,
-      categories: ["deployment_gates"],
-    }));
-    expect(result.success).toBe(true);
-    // The whitebox blocking gate test should pass (gate correctly blocks)
-    expect(result.testsPassed).toBeGreaterThan(0);
-  });
-
   it("passes when all gates function correctly", () => {
     initWithStateManager(dir);
     forcePhase(dir, "security");
@@ -125,7 +112,7 @@ describe("run-active-verification", () => {
     const result = parse(handleRunActiveVerification({
       projectPath: dir,
       round: 3,
-      categories: ["deployment_gates"],
+      categories: ["workflow_gates"],
     }));
     // If there are blocking findings in round 3, requires_human_review should be true
     if (result.blockingCount > 0) {
@@ -192,14 +179,13 @@ describe("run-active-verification", () => {
     const sm = initWithStateManager(dir);
     sm.setPhase("planning");
     sm.setPhase("building");
-    // Walk all slices to done
     for (const slice of sm.read().slices) {
       walkSliceToStatus(sm, slice.id, "done");
     }
     sm.setBuildSignoff();
+    addQualityAudit(sm);
     sm.setPhase("security");
 
-    // Add blocking whitebox result
     sm.addWhiteboxResult({
       id: "WBA-BLOCK",
       mode: "full",
@@ -226,6 +212,8 @@ describe("run-active-verification", () => {
     });
 
     sm.markFullSastRun(0);
+    addReleaseAudit(sm);
+    addPassingVerification(sm);
     expect(() => sm.setPhase("deployment")).toThrow(/blocking whitebox/i);
   });
 
@@ -233,14 +221,15 @@ describe("run-active-verification", () => {
     const sm = initWithStateManager(dir);
     sm.setPhase("planning");
     sm.setPhase("building");
-    // Walk all slices to done
     for (const slice of sm.read().slices) {
       walkSliceToStatus(sm, slice.id, "done");
     }
     sm.setBuildSignoff();
+    addQualityAudit(sm);
     sm.setPhase("security");
     sm.markFullSastRun(0);
-    // No whitebox results at all — should pass
+    addReleaseAudit(sm);
+    addPassingVerification(sm);
     expect(() => sm.setPhase("deployment")).not.toThrow();
   });
 });

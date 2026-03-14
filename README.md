@@ -45,7 +45,7 @@ It coordinates:
 - **Security reviews** — OWASP Top 10 review before deploy
 - **Structured build log** — every tool run tracked with log levels, duration, status, run correlation, and automatic secret redaction. Composable filters by phase, slice, level, time range, or errors
 - **Configurable human oversight** — mandatory build signoff and deploy approval, optional plan approval, slice review, UI screenshot verification, and security signoff
-- **Backup strategy** — Automatic inference of backup targets (database, uploads, artifacts) from tech stack. Stack-aware backup/restore commands, retention policies, verification scripts, offsite sync. Stateful apps get deployment gate warnings if backup is missing
+- **Backup strategy** — Automatic inference of backup targets (database, uploads, artifacts) from tech stack. Stack-aware backup/restore commands, retention policies, verification scripts, offsite sync. Stateful apps are blocked from deployment if backup is missing
 - **Deployment generation** — stack-specific Dockerfile, docker-compose, Caddyfile, backup/restore/verify scripts, hardening guides
 
 A2P is not a replacement for engineers — it is the engineering reality layer that most architectures forget.
@@ -65,7 +65,7 @@ Most AI-generated — and human-built — architectures don't fail because the m
 | Ship with TODOs, console.logs, .env in repo | Quality + release audits catch hygiene issues, block deploy on critical findings |
 | AI runs without stopping | Mandatory build signoff + deploy approval, UI screenshot review, configurable oversight at every phase |
 | AI hallucinates API signatures for unfamiliar libraries | Documentation-first: reads official docs via WebSearch + WebFetch before writing code |
-| No backup strategy, pray nothing breaks | Stack-aware backup inference with restore scripts, verification, and deployment gate warnings |
+| No backup strategy, pray nothing breaks | Stack-aware backup inference with restore scripts, verification, and deployment gate enforcement |
 | Copy-paste a Dockerfile from StackOverflow | Generated Dockerfile + docker-compose + Caddyfile + backup scripts |
 | No build history, no idea what failed when | Structured build log with levels, duration, run correlation, and secret redaction |
 | Hope for the best | Ship to production with confidence |
@@ -80,7 +80,7 @@ Most AI-generated — and human-built — architectures don't fail because the m
 - **Active verification** — Runtime gate tests prove that workflow invariants actually hold: state transitions require evidence, deployment gates block on critical findings, state survives round-trips
 - **Human oversight** — Mandatory build signoff (before wasting tokens on audit/security) and deploy approval. Configurable plan approval, slice review, UI screenshot verification, and security signoff. Two gates are always on, the rest you control
 - **Audit before release** — Quality audits catch debug artifacts, hardcoded secrets, and test coverage gaps during development. Release audits verify README, .gitignore, temp files, and aggregate findings before publish. Critical release findings block deployment (enforced in code)
-- **Automated backup strategy** — Stack-aware inference of what needs protecting (database, uploads, artifacts). Generates backup, restore, and verification scripts with stack-specific commands (`pg_dump`, `mysqldump`, `mongodump`, `sqlite3 .backup`). Retention policies, offsite sync, and deployment gate warnings for stateful apps
+- **Automated backup strategy** — Stack-aware inference of what needs protecting (database, uploads, artifacts). Generates backup, restore, and verification scripts with stack-specific commands (`pg_dump`, `mysqldump`, `mongodump`, `sqlite3 .backup`). Retention policies, offsite sync, and deployment gate enforcement for stateful apps
 - **Deploy on day one** — Stack-specific Dockerfile, docker-compose, Caddyfile, backup/restore/verify scripts, hardening guides
 - **Code quality** — Built-in code quality tool: dead code detection, redundancy analysis, coupling metrics
 - **Documentation first** — When the architecture uses unfamiliar tech (exotic auth, new ORMs, niche APIs), Claude reads the official docs via WebSearch + WebFetch instead of hallucinating API signatures. Enforced in every prompt, documented in CLAUDE.md
@@ -130,7 +130,7 @@ These cannot be bypassed — they are enforced in code, not just in prompts:
 - **Whitebox gate**: Cannot deploy with blocking whitebox findings (confirmed exploitable auth/secrets/tenant issues)
 - **Audit gate**: Cannot deploy with critical release audit findings
 - **Deploy approval gate**: Cannot generate deployment configs without human deploy approval (`a2p_deploy_approval`). Approval is invalidated by new findings, whitebox results, or audit results — must re-approve
-- **Backup gate**: Stateful apps (database or uploads) trigger a warning when deploying without configured backup — visible in deploy approval and build history
+- **Backup gate**: Stateful apps (database or uploads) are blocked from deploying without configured backup (enforced in code)
 - **Phase guards**: Tools are restricted to appropriate phases (e.g. tests only in building, SAST full only in security, deployment only in deployment phase)
 - **Test command restriction**: Test command override blocked when a test command is configured — prevents fabricated test results
 
@@ -224,14 +224,14 @@ Security Gate (SAST + OWASP) ─── [securitySignoff? → STOP]
 Whitebox Audit (exploitability analysis)
      │
      ▼
-Active Verification (recommended, not gate-enforced)
+Active Verification (gate-enforced)
      │
      ▼
 Release Audit (pre-publish checks)
      │
      ▼
 DEPLOY APPROVAL [MANDATORY] ─── "Ready to ship?" + backup status
-     │  ⚠️ Warning if stateful app has no backup configured
+     │  🛑 Blocks deployment if stateful app has no backup configured
      ▼
 Deployment (configs + backup/restore/verify scripts)
 ```
@@ -249,9 +249,9 @@ Phase 1: Plan → Build → BUILD SIGNOFF → Security → Whitebox → Release 
 3. **Build Loop**: TDD per slice: RED (write failing tests) → GREEN (minimal implementation) → REFACTOR (clean up) → SAST (lightweight AI security testing). Frontend slices with `hasUI: true` get visual verification via Playwright between GREEN and REFACTOR — when `uiVerification` is on (default for frontend projects), the human reviews screenshots before proceeding. Configurable review checkpoints (`oversight.sliceReview`: `off`, `all`, `ui-only`) pause after slices for human approval. Domain logic triggers a WebSearch step before tests to verify facts (tax rates, regulations, standards). Quality audits run every ~5-10 commits to catch TODOs, debug artifacts, hardcoded secrets, and test coverage gaps. **Mandatory build signoff** after all slices are done — you verify the product works before spending tokens on audit and security. **Structured build log** tracks every tool run with log levels, duration, status, run correlation, and secret redaction — queryable by phase, slice, level, time range, or errors.
 4. **Security Gate**: Full SAST scan (static code analysis via Semgrep + Bandit), OWASP Top 10 manual review, dependency audit. Acts as an AI code review tool and AI code scanner for your entire codebase. Fix all critical/high findings.
 5. **Whitebox Audit**: Analyzes whether SAST findings are actually exploitable — checks reachable code paths, missing guards, trust boundaries, prompt-only enforcement. Blocking findings prevent deployment (enforced in code, not just prompts).
-6. **Active Verification** (recommended): Runtime gate tests that prove workflow invariants hold — state transitions require evidence, deployment gates block correctly, state survives round-trips. Not gate-enforced; run for confidence, not as a deployment blocker.
+6. **Active Verification** (gate-enforced): Runtime gate tests that prove workflow invariants hold — state transitions require evidence, deployment gates block correctly, state survives round-trips. Deployment is blocked without a passing active verification.
 7. **Release Audit**: Pre-publish verification — README completeness, temp file cleanup, aggregated SAST/quality findings, build/test pass, .gitignore coverage. Critical findings in the release audit block deployment (enforced in code).
-8. **Deployment**: **Mandatory deploy approval** before generating configs. Stack-specific Dockerfile, docker-compose, Caddyfile, backup/restore/verify scripts, backup strategy docs, hardening guides. Stateful apps get backup warnings if no backup configured. Stack-specific launch checklist.
+8. **Deployment**: **Mandatory deploy approval** before generating configs. Stack-specific Dockerfile, docker-compose, Caddyfile, backup/restore/verify scripts, backup strategy docs, hardening guides. Stateful apps are blocked from deployment if no backup is configured. Stack-specific launch checklist.
 
 ## Client Configuration
 

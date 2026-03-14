@@ -885,8 +885,11 @@ describe("E2E Workflow: Full project lifecycle", () => {
       sm.addTestResult("s01", { timestamp: new Date().toISOString(), command: "test", exitCode: 0, passed: 1, failed: 0, skipped: 0, output: "ok" });
       sm.setSliceStatus("s01", "done");
       sm.setBuildSignoff();
+      sm.addAuditResult({ id: `AQ-${Date.now()}`, mode: "quality", timestamp: new Date().toISOString(), findings: [], summary: { critical: 0, high: 0, medium: 0, low: 0 }, buildPassed: true, testsPassed: true, aggregated: { openSastFindings: 0, openQualityIssues: 0, slicesDone: 0, slicesTotal: 0 } });
       sm.setPhase("security");
       sm.markFullSastRun(0);
+      sm.addAuditResult({ id: `AR-${Date.now()}`, mode: "release", timestamp: new Date().toISOString(), findings: [], summary: { critical: 0, high: 0, medium: 0, low: 0 }, buildPassed: true, testsPassed: true, aggregated: { openSastFindings: 0, openQualityIssues: 0, slicesDone: 0, slicesTotal: 0 } });
+      sm.addActiveVerificationResult({ id: `AV-${Date.now()}`, timestamp: new Date().toISOString(), round: 1, tests_run: 1, tests_passed: 1, tests_failed: 0, findings: [], summary: { critical: 0, high: 0, medium: 0, low: 0 }, blocking_count: 0, requires_human_review: false });
       sm.setPhase("deployment");
       handleCompletePhase({ projectPath: tmpDir });
 
@@ -942,13 +945,18 @@ describe("E2E Workflow: Full project lifecycle", () => {
 
       // Build phase 0
       const sm = new StateManager(tmpDir);
+      // Configure backup for stateful (PostgreSQL) app
+      sm.setBackupStatus({ configured: true, schedulerType: "cron" });
       sm.setPhase("building");
       completeSliceViaTool(tmpDir, sm, "s01-spike");
 
       // Security + Deployment for phase 0
       sm.setBuildSignoff();
+      sm.addAuditResult({ id: "AQ1", mode: "quality", timestamp: new Date().toISOString(), findings: [], summary: { critical: 0, high: 0, medium: 0, low: 0 }, buildPassed: true, testsPassed: true, aggregated: { openSastFindings: 0, openQualityIssues: 0, slicesDone: 0, slicesTotal: 0 } });
       sm.setPhase("security");
       sm.markFullSastRun(0);
+      sm.addAuditResult({ id: "AR1", mode: "release", timestamp: new Date().toISOString(), findings: [], summary: { critical: 0, high: 0, medium: 0, low: 0 }, buildPassed: true, testsPassed: true, aggregated: { openSastFindings: 0, openQualityIssues: 0, slicesDone: 0, slicesTotal: 0 } });
+      sm.addActiveVerificationResult({ id: "AV1", timestamp: new Date().toISOString(), round: 1, tests_run: 1, tests_passed: 1, tests_failed: 0, findings: [], summary: { critical: 0, high: 0, medium: 0, low: 0 }, blocking_count: 0, requires_human_review: false });
       sm.setPhase("deployment");
 
       // Complete phase 0 → go to phase 1
@@ -1034,8 +1042,11 @@ describe("E2E Workflow: Full project lifecycle", () => {
 
       // Security + Deployment for phase 1
       sm.setBuildSignoff();
+      sm.addAuditResult({ id: `AQ-${Date.now()}`, mode: "quality", timestamp: new Date().toISOString(), findings: [], summary: { critical: 0, high: 0, medium: 0, low: 0 }, buildPassed: true, testsPassed: true, aggregated: { openSastFindings: 0, openQualityIssues: 0, slicesDone: 0, slicesTotal: 0 } });
       sm.setPhase("security");
       sm.markFullSastRun(0);
+      sm.addAuditResult({ id: `AR-${Date.now()}`, mode: "release", timestamp: new Date().toISOString(), findings: [], summary: { critical: 0, high: 0, medium: 0, low: 0 }, buildPassed: true, testsPassed: true, aggregated: { openSastFindings: 0, openQualityIssues: 0, slicesDone: 0, slicesTotal: 0 } });
+      sm.addActiveVerificationResult({ id: `AV-${Date.now()}`, timestamp: new Date().toISOString(), round: 1, tests_run: 1, tests_passed: 1, tests_failed: 0, findings: [], summary: { critical: 0, high: 0, medium: 0, low: 0 }, blocking_count: 0, requires_human_review: false });
       sm.setPhase("deployment");
 
       // Complete phase 1 (last phase) → project complete

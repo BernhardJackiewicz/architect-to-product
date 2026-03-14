@@ -108,8 +108,11 @@ describe("StateManager", () => {
       sm.setPhase("planning");
       sm.setPhase("building");
       sm.setBuildSignoff();
+      sm.addAuditResult({ id: "AQ1", mode: "quality", timestamp: new Date().toISOString(), findings: [], summary: { critical: 0, high: 0, medium: 0, low: 0 }, buildPassed: true, testsPassed: true, aggregated: { openSastFindings: 0, openQualityIssues: 0, slicesDone: 0, slicesTotal: 0 } });
       sm.setPhase("security");
       sm.markFullSastRun(0);
+      sm.addAuditResult({ id: "AR1", mode: "release", timestamp: new Date().toISOString(), findings: [], summary: { critical: 0, high: 0, medium: 0, low: 0 }, buildPassed: true, testsPassed: true, aggregated: { openSastFindings: 0, openQualityIssues: 0, slicesDone: 0, slicesTotal: 0 } });
+      sm.addActiveVerificationResult({ id: "AV1", timestamp: new Date().toISOString(), round: 1, tests_run: 1, tests_passed: 1, tests_failed: 0, findings: [], summary: { critical: 0, high: 0, medium: 0, low: 0 }, blocking_count: 0, requires_human_review: false });
       sm.setPhase("deployment");
       sm.setPhase("complete");
       expect(() => sm.setPhase("onboarding")).toThrow("Cannot transition");
@@ -650,8 +653,11 @@ describe("StateManager", () => {
       sm.setPhase("planning");
       sm.setPhase("building");
       sm.setBuildSignoff();
+      sm.addAuditResult({ id: "AQ1", mode: "quality", timestamp: new Date().toISOString(), findings: [], summary: { critical: 0, high: 0, medium: 0, low: 0 }, buildPassed: true, testsPassed: true, aggregated: { openSastFindings: 0, openQualityIssues: 0, slicesDone: 0, slicesTotal: 0 } });
       sm.setPhase("security");
       sm.markFullSastRun(0);
+      sm.addAuditResult({ id: "AR1", mode: "release", timestamp: new Date().toISOString(), findings: [], summary: { critical: 0, high: 0, medium: 0, low: 0 }, buildPassed: true, testsPassed: true, aggregated: { openSastFindings: 0, openQualityIssues: 0, slicesDone: 0, slicesTotal: 0 } });
+      sm.addActiveVerificationResult({ id: "AV1", timestamp: new Date().toISOString(), round: 1, tests_run: 1, tests_passed: 1, tests_failed: 0, findings: [], summary: { critical: 0, high: 0, medium: 0, low: 0 }, blocking_count: 0, requires_human_review: false });
       sm.setPhase("deployment");
       const state = sm.setPhase("planning");
       expect(state.phase).toBe("planning");

@@ -1,15 +1,17 @@
 # Validation Summary
 
-> Last validated: 2026-03-14 | A2P v0.1.1 | 737 tests passing
+> Last validated: 2026-03-14 | A2P v0.1.1 | 759 tests passing
 
-## Code-Enforced (verified by 737 unit/integration tests)
+## Code-Enforced (verified by 759 unit/integration tests)
 
 All workflow gates are implemented in `state-manager.ts` and tested:
 
 - **Evidence gates**: green requires passing tests, sast requires SAST scan, done requires passing tests
 - **Build signoff**: mandatory, invalidated by slice/test changes, blocks building->security
 - **Deploy approval**: mandatory, invalidated by new findings/whitebox/audit, blocks deployment config generation
-- **Security gates**: no deploy with open CRITICAL/HIGH SAST, blocking whitebox, critical audit findings, or stale SAST
+- **Quality gate**: mandatory quality audit before building->security, stale audit blocked
+- **Security gates**: no deploy with open CRITICAL/HIGH SAST, blocking whitebox, critical audit findings, stale SAST, missing/stale active verification
+- **Backup gate**: stateful apps blocked from deployment without configured backup
 - **Phase guards**: tools restricted to their allowed phases
 - **Test command restriction**: override blocked when configured
 - **Backup inference**: database/uploads auto-detected, stack-specific commands (pg_dump, mysqldump, mongodump, sqlite3)

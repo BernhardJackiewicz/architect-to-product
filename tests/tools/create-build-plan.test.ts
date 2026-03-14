@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { handleCreateBuildPlan } from "../../src/tools/create-build-plan.js";
 import { handleInitProject } from "../../src/tools/init-project.js";
 import { StateManager } from "../../src/state/state-manager.js";
-import { makeTmpDir, cleanTmpDir, parse, initWithArch, walkSliceToStatus } from "../helpers/setup.js";
+import { makeTmpDir, cleanTmpDir, parse, initWithArch, walkSliceToStatus, addQualityAudit, addReleaseAudit, addPassingVerification } from "../helpers/setup.js";
 
 function makeSliceInput(id: string, deps: string[] = []) {
   return {
@@ -176,8 +176,11 @@ describe("handleCreateBuildPlan", () => {
     walkSliceToStatus(sm, "s01", "done");
     walkSliceToStatus(sm, "s02", "done");
     sm.setBuildSignoff();
+    addQualityAudit(sm);
     sm.setPhase("security");
     sm.markFullSastRun(0);
+    addReleaseAudit(sm);
+    addPassingVerification(sm);
     sm.setPhase("deployment");
 
     const result = parse(
@@ -211,8 +214,11 @@ describe("handleCreateBuildPlan", () => {
     sm.setPhase("building");
     walkSliceToStatus(sm, "s01", "done");
     sm.setBuildSignoff();
+    addQualityAudit(sm);
     sm.setPhase("security");
     sm.markFullSastRun(0);
+    addReleaseAudit(sm);
+    addPassingVerification(sm);
     sm.setPhase("deployment");
 
     // s03 depends on s01 (existing) — should work
@@ -237,8 +243,11 @@ describe("handleCreateBuildPlan", () => {
     sm.setPhase("building");
     walkSliceToStatus(sm, "s01", "done");
     sm.setBuildSignoff();
+    addQualityAudit(sm);
     sm.setPhase("security");
     sm.markFullSastRun(0);
+    addReleaseAudit(sm);
+    addPassingVerification(sm);
     sm.setPhase("deployment");
 
     const result = parse(
