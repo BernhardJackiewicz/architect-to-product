@@ -17,7 +17,6 @@ describe("a2p_get_build_log", () => {
 
     const result = JSON.parse(handleGetBuildLog({ projectPath: dir, filter: "all", limit: 50 }));
     expect(result.events.length).toBeGreaterThan(0);
-    // Newest first: last event should be phase_change → building
     expect(result.events[0].action).toBe("phase_change");
     expect(result.events[0].details).toContain("building");
   });
@@ -35,8 +34,7 @@ describe("a2p_get_build_log", () => {
     sm.setSliceStatus("s1", "red");
     sm.setSliceStatus("s2", "red");
 
-    const result = JSON.parse(handleGetBuildLog({ projectPath: dir, filter: "slice", sliceId: "s1", limit: 50 }));
-    // All returned events should be for s1
+    const result = JSON.parse(handleGetBuildLog({ projectPath: dir, sliceId: "s1", limit: 50 }));
     for (const e of result.events) {
       expect(e.sliceId).toBe("s1");
     }
@@ -48,7 +46,7 @@ describe("a2p_get_build_log", () => {
     sm.setPhase("planning");
     sm.setPhase("building");
 
-    const result = JSON.parse(handleGetBuildLog({ projectPath: dir, filter: "phase", phase: "planning", limit: 50 }));
+    const result = JSON.parse(handleGetBuildLog({ projectPath: dir, phase: "planning", limit: 50 }));
     for (const e of result.events) {
       expect(e.phase).toBe("planning");
     }
@@ -59,7 +57,7 @@ describe("a2p_get_build_log", () => {
     sm.setPhase("planning");
     sm.setPhase("building");
 
-    const result = JSON.parse(handleGetBuildLog({ projectPath: dir, filter: "all", limit: 2 }));
+    const result = JSON.parse(handleGetBuildLog({ projectPath: dir, limit: 2 }));
     expect(result.showing).toBeLessThanOrEqual(2);
     expect(result.totalEvents).toBeGreaterThan(2);
   });
@@ -68,45 +66,26 @@ describe("a2p_get_build_log", () => {
     const sm = new StateManager(dir);
     sm.init("empty", dir);
 
-    const result = JSON.parse(handleGetBuildLog({ projectPath: dir, filter: "all", limit: 50 }));
+    const result = JSON.parse(handleGetBuildLog({ projectPath: dir, limit: 50 }));
     expect(result.events).toHaveLength(0);
     expect(result.totalEvents).toBe(0);
   });
 
-  it("includes error events in errors filter", () => {
+  it("includes error/failure events in errorsOnly filter", () => {
     const sm = initWithStateManager(dir, 0);
-    const slices = [
-      { id: "s1", name: "S1", description: "d", acceptanceCriteria: ["AC"], testStrategy: "unit", dependencies: [], status: "pending" as const, files: [], testResults: [], sastFindings: [] },
-    ];
-    sm.setSlices(slices);
     sm.setPhase("planning");
-    sm.setPhase("building");
-    sm.setSliceStatus("s1", "red");
-    sm.addTestResult("s1", { timestamp: new Date().toISOString(), command: "test", exitCode: 0, passed: 1, failed: 0, skipped: 0, output: "ok" });
-    sm.setSliceStatus("s1", "green");
-    sm.setSliceStatus("s1", "refactor");
-    sm.markSastRun("s1");
-    sm.setSliceStatus("s1", "sast");
 
-    sm.addSASTFinding("s1", {
-      id: "F1",
-      tool: "semgrep",
-      severity: "high",
-      status: "open",
-      title: "XSS",
-      file: "app.ts",
-      line: 10,
-      description: "reflected xss",
-      fix: "escape",
-    });
+    sm.log("error", "test_fail", "Tests failed", { status: "failure" });
+    sm.log("info", "info_event", "All good", { status: "success" });
 
-    const result = JSON.parse(handleGetBuildLog({ projectPath: dir, filter: "errors", limit: 50 }));
+    const result = JSON.parse(handleGetBuildLog({ projectPath: dir, errorsOnly: true, limit: 50 }));
     expect(result.events.length).toBeGreaterThan(0);
-    expect(result.events.some((e: any) => e.action === "sast_finding")).toBe(true);
+    expect(result.events.some((e: any) => e.status === "failure")).toBe(true);
+    expect(result.events.some((e: any) => e.status === "success")).toBe(false);
   });
 
   it("returns error for non-existent project", () => {
-    const result = JSON.parse(handleGetBuildLog({ projectPath: "/tmp/nonexistent-project-xyz", filter: "all", limit: 50 }));
+    const result = JSON.parse(handleGetBuildLog({ projectPath: "/tmp/nonexistent-project-xyz", limit: 50 }));
     expect(result.error).toBeTruthy();
   });
 });

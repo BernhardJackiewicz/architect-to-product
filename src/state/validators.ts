@@ -167,6 +167,14 @@ export const BuildEventSchema = z.object({
   sliceId: z.string().nullable(),
   action: z.string(),
   details: z.string(),
+  level: z.enum(["debug", "info", "warn", "error"]).optional(),
+  status: z.enum(["success", "failure", "warning", "info"]).optional(),
+  durationMs: z.number().int().min(0).optional(),
+  runId: z.string().optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
+  outputSummary: z.string().optional(),
+  outputRef: z.string().optional(),
+  outputTruncated: z.boolean().optional(),
 });
 
 export const ProjectConfigSchema = z.object({

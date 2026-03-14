@@ -15,7 +15,11 @@ import type {
   AuditResult,
   WhiteboxAuditResult,
   ActiveVerificationResult,
+  LogLevel,
+  EventStatus,
+  EventMetadata,
 } from "./types.js";
+import { pruneEvents, sanitizeOutput, truncatePreview } from "../utils/log-sanitizer.js";
 
 const STATE_VERSION = 1;
 const STATE_DIR = ".a2p";
@@ -135,6 +139,7 @@ export class StateManager {
       copyFileSync(this.statePath, this.backupPath);
     }
 
+    state.buildHistory = pruneEvents(state.buildHistory);
     state.updatedAt = new Date().toISOString();
     const json = JSON.stringify(state, null, 2);
     writeFileSync(this.statePath, json, "utf-8");
@@ -205,7 +210,7 @@ export class StateManager {
     }
 
     state.phase = newPhase;
-    this.addEvent(state, newPhase, null, "phase_change", `Phase → ${newPhase}`);
+    this.addEvent(state, newPhase, null, "phase_change", `Phase → ${newPhase}`, { status: "success" });
     this.write(state);
     return state;
   }
@@ -271,7 +276,7 @@ export class StateManager {
     }
 
     slice.status = newStatus;
-    this.addEvent(state, state.phase, sliceId, "slice_status", `${sliceId} → ${newStatus}`);
+    this.addEvent(state, state.phase, sliceId, "slice_status", `${sliceId} → ${newStatus}`, { status: "success" });
     this.write(state);
     return state;
   }
@@ -282,7 +287,7 @@ export class StateManager {
     const slice = state.slices.find((s) => s.id === sliceId);
     if (!slice) throw new Error(`Slice "${sliceId}" not found`);
     slice.sastRanAt = new Date().toISOString();
-    this.addEvent(state, state.phase, sliceId, "sast_run", `SAST scan completed for ${sliceId}`);
+    this.addEvent(state, state.phase, sliceId, "sast_run", `SAST scan completed for ${sliceId}`, { status: "success" });
     this.write(state);
   }
 
@@ -291,7 +296,7 @@ export class StateManager {
     const state = this.read();
     state.slices = slices;
     state.currentSliceIndex = slices.length > 0 ? 0 : -1;
-    this.addEvent(state, state.phase, null, "slices_set", `${slices.length} slices created`);
+    this.addEvent(state, state.phase, null, "slices_set", `${slices.length} slices created`, { status: "success" });
     this.write(state);
     return state;
   }
@@ -307,7 +312,7 @@ export class StateManager {
 
     state.currentSliceIndex = nextIndex;
     const slice = state.slices[nextIndex];
-    this.addEvent(state, state.phase, slice.id, "slice_advance", `Now building: ${slice.name}`);
+    this.addEvent(state, state.phase, slice.id, "slice_advance", `Now building: ${slice.name}`, { status: "info" });
     this.write(state);
     return state;
   }
@@ -333,7 +338,8 @@ export class StateManager {
       state.phase,
       sliceId,
       "test_run",
-      `Tests: ${result.passed} passed, ${result.failed} failed (exit ${result.exitCode})`
+      `Tests: ${result.passed} passed, ${result.failed} failed (exit ${result.exitCode})`,
+      { status: result.exitCode === 0 ? "success" : "failure" },
     );
     this.write(state);
     return state;
@@ -354,7 +360,8 @@ export class StateManager {
       state.phase,
       sliceId,
       "sast_finding",
-      `[${finding.severity}] ${finding.title} in ${finding.file}:${finding.line}`
+      `[${finding.severity}] ${finding.title} in ${finding.file}:${finding.line}`,
+      { level: "warn", status: "warning" },
     );
     this.write(state);
     return state;
@@ -369,7 +376,8 @@ export class StateManager {
       state.phase,
       null,
       "quality_issue",
-      `[${issue.type}] ${issue.symbol} in ${issue.file}`
+      `[${issue.type}] ${issue.symbol} in ${issue.file}`,
+      { level: "warn", status: "warning" },
     );
     this.write(state);
     return state;
@@ -389,7 +397,8 @@ export class StateManager {
       state.phase,
       null,
       "companion_added",
-      `${companion.name} (${companion.type}): installed=${companion.installed}`
+      `${companion.name} (${companion.type}): installed=${companion.installed}`,
+      { status: "info" },
     );
     this.write(state);
     return state;
@@ -399,7 +408,7 @@ export class StateManager {
   setArchitecture(architecture: ProjectState["architecture"]): ProjectState {
     const state = this.read();
     state.architecture = architecture;
-    this.addEvent(state, state.phase, null, "architecture_set", `Architecture: ${architecture?.name ?? "cleared"}`);
+    this.addEvent(state, state.phase, null, "architecture_set", `Architecture: ${architecture?.name ?? "cleared"}`, { status: "success" });
     this.write(state);
     return state;
   }
@@ -408,7 +417,7 @@ export class StateManager {
   updateConfig(partial: Partial<ProjectState["config"]>): ProjectState {
     const state = this.read();
     state.config = { ...state.config, ...partial };
-    this.addEvent(state, state.phase, null, "config_update", `Config updated: ${Object.keys(partial).join(", ")}`);
+    this.addEvent(state, state.phase, null, "config_update", `Config updated: ${Object.keys(partial).join(", ")}`, { status: "info" });
     this.write(state);
     return state;
   }
@@ -461,7 +470,7 @@ export class StateManager {
     const firstNewIndex = state.slices.length;
     state.slices.push(...slices);
     state.currentSliceIndex = firstNewIndex;
-    this.addEvent(state, state.phase, null, "slices_added", `${slices.length} slices appended (total: ${state.slices.length})`);
+    this.addEvent(state, state.phase, null, "slices_added", `${slices.length} slices appended (total: ${state.slices.length})`, { status: "success" });
     this.write(state);
     return state;
   }
@@ -493,12 +502,12 @@ export class StateManager {
 
     if (isLast) {
       state.phase = "complete";
-      this.addEvent(state, "complete", null, "phase_complete", `Final product phase "${currentPhase.name}" completed → project complete`);
+      this.addEvent(state, "complete", null, "phase_complete", `Final product phase "${currentPhase.name}" completed → project complete`, { status: "success" });
     } else {
       state.currentProductPhase++;
       state.phase = "planning";
       const nextPhase = phases[state.currentProductPhase];
-      this.addEvent(state, "planning", null, "phase_complete", `Product phase "${currentPhase.name}" completed → next: "${nextPhase.name}"`);
+      this.addEvent(state, "planning", null, "phase_complete", `Product phase "${currentPhase.name}" completed → next: "${nextPhase.name}"`, { status: "success" });
     }
 
     this.write(state);
@@ -542,7 +551,7 @@ export class StateManager {
     const existing = new Set(slice.files);
     for (const f of files) existing.add(f);
     slice.files = [...existing];
-    this.addEvent(state, state.phase, sliceId, "files_updated", `${files.length} file(s) updated on ${sliceId}`);
+    this.addEvent(state, state.phase, sliceId, "files_updated", `${files.length} file(s) updated on ${sliceId}`, { status: "info" });
     this.write(state);
   }
 
@@ -565,7 +574,8 @@ export class StateManager {
       state.phase,
       null,
       "audit_run",
-      `[${result.mode}] ${result.id}: ${result.findings.length} findings (C:${result.summary.critical} H:${result.summary.high} M:${result.summary.medium} L:${result.summary.low})`
+      `[${result.mode}] ${result.id}: ${result.findings.length} findings (C:${result.summary.critical} H:${result.summary.high} M:${result.summary.medium} L:${result.summary.low})`,
+      { status: result.summary.critical > 0 ? "failure" : result.summary.high > 0 ? "warning" : "success" },
     );
     this.write(state);
     return state;
@@ -580,7 +590,8 @@ export class StateManager {
       state.phase,
       null,
       "whitebox_audit",
-      `[${result.mode}] ${result.id}: ${result.findings.length} findings (blocking: ${result.blocking_count})`
+      `[${result.mode}] ${result.id}: ${result.findings.length} findings (blocking: ${result.blocking_count})`,
+      { status: result.blocking_count > 0 ? "failure" : result.findings.length > 0 ? "warning" : "success" },
     );
     this.write(state);
     return state;
@@ -595,10 +606,41 @@ export class StateManager {
       state.phase,
       null,
       "active_verification",
-      `${result.id} round ${result.round}: ${result.tests_passed}/${result.tests_run} passed (blocking: ${result.blocking_count})`
+      `${result.id} round ${result.round}: ${result.tests_passed}/${result.tests_run} passed (blocking: ${result.blocking_count})`,
+      { status: result.blocking_count > 0 ? "failure" : result.tests_failed > 0 ? "warning" : "success" },
     );
     this.write(state);
     return state;
+  }
+
+  /** Public structured log method */
+  log(level: LogLevel, action: string, details: string, opts?: {
+    sliceId?: string | null;
+    status?: EventStatus;
+    durationMs?: number;
+    runId?: string;
+    metadata?: EventMetadata;
+    outputSummary?: string;
+    outputRef?: string;
+  }): void {
+    const state = this.read();
+    const sanitized = opts?.outputSummary
+      ? truncatePreview(sanitizeOutput(opts.outputSummary))
+      : undefined;
+    const wasTruncated = opts?.outputSummary
+      ? opts.outputSummary.length > 500
+      : undefined;
+    this.addEvent(state, state.phase, opts?.sliceId ?? null, action, details, {
+      level,
+      status: opts?.status,
+      durationMs: opts?.durationMs,
+      runId: opts?.runId,
+      metadata: opts?.metadata,
+      outputSummary: sanitized,
+      outputRef: opts?.outputRef,
+      outputTruncated: wasTruncated || undefined,
+    });
+    this.write(state);
   }
 
   private addEvent(
@@ -606,7 +648,17 @@ export class StateManager {
     phase: Phase,
     sliceId: string | null,
     action: string,
-    details: string
+    details: string,
+    opts?: {
+      level?: LogLevel;
+      status?: EventStatus;
+      durationMs?: number;
+      runId?: string;
+      metadata?: EventMetadata;
+      outputSummary?: string;
+      outputRef?: string;
+      outputTruncated?: boolean;
+    },
   ): void {
     const event: BuildEvent = {
       timestamp: new Date().toISOString(),
@@ -615,6 +667,14 @@ export class StateManager {
       action,
       details,
     };
+    if (opts?.level) event.level = opts.level;
+    if (opts?.status) event.status = opts.status;
+    if (opts?.durationMs !== undefined) event.durationMs = opts.durationMs;
+    if (opts?.runId) event.runId = opts.runId;
+    if (opts?.metadata) event.metadata = opts.metadata;
+    if (opts?.outputSummary) event.outputSummary = opts.outputSummary;
+    if (opts?.outputRef) event.outputRef = opts.outputRef;
+    if (opts?.outputTruncated) event.outputTruncated = opts.outputTruncated;
     state.buildHistory.push(event);
   }
 }

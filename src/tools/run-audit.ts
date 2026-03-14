@@ -3,6 +3,7 @@ import { existsSync, readFileSync, readdirSync, lstatSync } from "node:fs";
 import { join, extname } from "node:path";
 import { requireProject, truncate } from "../utils/tool-helpers.js";
 import { runProcess } from "../utils/process-runner.js";
+import { generateRunId } from "../utils/log-sanitizer.js";
 import type { AuditFinding, AuditResult, FindingSeverity } from "../state/types.js";
 
 export const runAuditSchema = z.object({
@@ -28,6 +29,7 @@ export function handleRunAudit(input: RunAuditInput): string {
   const { sm, error } = requireProject(input.projectPath);
   if (error) return error;
 
+  const auditStart = Date.now();
   const state = sm.read();
   const findings: AuditFinding[] = [];
 
@@ -283,6 +285,20 @@ export function handleRunAudit(input: RunAuditInput): string {
   };
 
   sm.addAuditResult(result);
+
+  const durationMs = Date.now() - auditStart;
+  const runId = generateRunId();
+  sm.log(
+    summary.critical > 0 ? "error" : summary.high > 0 ? "warn" : "info",
+    "audit_run",
+    `[${input.mode}] ${auditId}: ${findings.length} findings`,
+    {
+      status: summary.critical > 0 ? "failure" : summary.high > 0 ? "warning" : "success",
+      durationMs,
+      runId,
+      metadata: { mode: input.mode, findingCount: findings.length, toolName: "audit" },
+    },
+  );
 
   return JSON.stringify({
     success: true,

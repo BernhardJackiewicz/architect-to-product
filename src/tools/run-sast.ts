@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { requireProject, truncate } from "../utils/tool-helpers.js";
 import { runProcess } from "../utils/process-runner.js";
+import { generateRunId } from "../utils/log-sanitizer.js";
 import type { SASTFinding, FindingSeverity } from "../state/types.js";
 
 export const runSastSchema = z.object({
@@ -26,6 +27,7 @@ export function handleRunSast(input: RunSastInput): string {
     available: boolean;
     findings: SASTFinding[];
     rawOutput: string;
+    durationMs?: number;
   }[] = [];
 
   // Run Semgrep (works for all languages)
@@ -76,6 +78,24 @@ export function handleRunSast(input: RunSastInput): string {
     low: allFindings.filter((f) => f.severity === "low").length,
   };
 
+  const runId = generateRunId();
+  const totalDurationMs = results.reduce((sum, r) => sum + (r.durationMs ?? 0), 0);
+  const summaryLine = `SAST: ${allFindings.length} findings (C:${bySeverity.critical} H:${bySeverity.high} M:${bySeverity.medium} L:${bySeverity.low})`;
+
+  sm.log(
+    bySeverity.critical + bySeverity.high > 0 ? "warn" : "info",
+    "sast_run",
+    summaryLine,
+    {
+      sliceId: input.sliceId,
+      status: bySeverity.critical + bySeverity.high > 0 ? "warning" : "success",
+      durationMs: totalDurationMs,
+      runId,
+      metadata: { findingCount: allFindings.length, toolName: "sast", bySeverity },
+      outputSummary: summaryLine,
+    },
+  );
+
   return JSON.stringify({
     success: true,
     mode: input.mode,
@@ -84,6 +104,7 @@ export function handleRunSast(input: RunSastInput): string {
     newFindings: newCount,
     duplicatesSkipped: duplicateCount,
     bySeverity,
+    durationMs: totalDurationMs,
     findings: allFindings.slice(0, 20), // first 20 for readability
     hint:
       bySeverity.critical + bySeverity.high > 0
@@ -99,6 +120,7 @@ function runSemgrep(input: RunSastInput): {
   available: boolean;
   findings: SASTFinding[];
   rawOutput: string;
+  durationMs?: number;
 } {
   // Check if semgrep is available
   const check = runProcess("which semgrep", input.projectPath, 5000);
@@ -144,6 +166,7 @@ function runSemgrep(input: RunSastInput): {
     available: true,
     findings,
     rawOutput: truncate(result.stdout, 3000),
+    durationMs: result.durationMs,
   };
 }
 
@@ -152,6 +175,7 @@ function runBandit(input: RunSastInput): {
   available: boolean;
   findings: SASTFinding[];
   rawOutput: string;
+  durationMs?: number;
 } {
   const check = runProcess("which bandit", input.projectPath, 5000);
   if (check.exitCode !== 0) {
@@ -191,6 +215,7 @@ function runBandit(input: RunSastInput): {
     available: true,
     findings,
     rawOutput: truncate(result.stdout, 3000),
+    durationMs: result.durationMs,
   };
 }
 
