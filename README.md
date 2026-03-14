@@ -465,6 +465,15 @@ npm run build       # Build
 npm run dev         # Dev mode
 ```
 
+## Validation
+
+Full validation results: [`docs/validation/`](docs/validation/)
+
+- Phase A/B: Workflow, state management, and gate enforcement validation (96 QuickBill scenarios)
+- Phase C: Real UI tests via Playwright against a running Next.js app (8 browser tests, all pass)
+- Phase D/E: Deploy target reality check + companion tool count verification
+- README claim verification with gap analysis and corrections
+
 ## License
 
 MIT
