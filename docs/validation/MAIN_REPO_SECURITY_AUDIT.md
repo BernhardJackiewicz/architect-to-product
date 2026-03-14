@@ -124,8 +124,8 @@ Alle 10 Tests bestanden — das System reagiert korrekt auf kaputte Zustaende:
 
 | Risk | Severity | Mitigation |
 |------|----------|------------|
-| Connection-String-Redaction fehlt | Niedrig | Pattern-Erweiterung in log-sanitizer.ts (nice-to-have) |
-| 5 praeexistente TS-Warnungen (setup-companions, update-slice) | Niedrig | Nicht sicherheitsrelevant, aber sollten gefixt werden |
+| ~~Connection-String-Redaction fehlt~~ | ~~Niedrig~~ | Gefixt: URL-Credential-Pattern in log-sanitizer.ts + sanitizeOutput() in run-audit.ts |
+| ~~5 praeexistente TS-Warnungen (setup-companions, update-slice)~~ | ~~Niedrig~~ | Behoben in 95f510a — `tsc --noEmit` gibt 0 errors |
 | Non-Docker Deploy-Targets liefern Docker-File-Descriptions | Mittel | README-Korrektur bereits in README_GAPS.md dokumentiert |
 | Prompt-only Enforcement fuer einige Workflows | Mittel | By design, aber in README klar als "prompt-guided" kennzeichnen |
 
@@ -136,15 +136,17 @@ Alle 10 Tests bestanden — das System reagiert korrekt auf kaputte Zustaende:
 **Begruendung:**
 - Alle code-enforced Gates funktionieren korrekt (10/10 Chaos-Tests)
 - Secret-Redaction auf allen Output-Pfaden (nach Fix M1+M2)
-- 737 Tests gruen
+- 741 Tests gruen
 - Keine Blocker
 - Zwei should-fix behoben und verifiziert
 - README-Gaps sind dokumentiert und teilweise bereits korrigiert
 
 **Was noch fehlt fuer release-ready:**
-- Praeexistente TS-Warnungen fixen (5 Stellen)
-- Connection-String-Redaction (nice-to-have)
 - README-Wording fuer Non-Docker-Targets korrigieren (bereits in README_GAPS.md als Aktion gelistet)
 
+**Erledigt seit letztem Audit:**
+- ~~Praeexistente TS-Warnungen fixen (5 Stellen)~~ — behoben in 95f510a, `tsc --noEmit` gibt 0 errors
+- ~~Connection-String-Redaction (nice-to-have)~~ — behoben: URL-Credential-Pattern in log-sanitizer.ts + sanitizeOutput() in run-audit.ts
+
 **Nicht "not-ready" weil:** Alle Sicherheitsgrenzen halten, alle Gates greifen, keine offenen Blocker.
-**Nicht "release-ready" weil:** Die TS-Warnungen und README-Gaps sind bekannt aber noch offen.
+**Nicht "release-ready" weil:** README-Gaps (Deploy-Target-Wording) sind bekannt aber noch offen.

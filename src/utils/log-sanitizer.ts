@@ -16,6 +16,8 @@ const SECRET_PATTERNS = [
   /(?:Bearer|Basic)\s+[A-Za-z0-9+/=]{20,}/g,
   /ghp_[A-Za-z0-9]{36}/g,
   /sk-[A-Za-z0-9]{32,}/g,
+  // URLs with embedded credentials: scheme://[user]:pass@host (covers mongodb+srv, redis, etc.)
+  /\w[\w+.-]*:\/\/[^@\s]*:[^@\s]+@[^\s"']+/g,
 ];
 
 /** Redact secrets from a string. */

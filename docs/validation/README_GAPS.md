@@ -42,6 +42,8 @@ Claims die im README stehen aber nicht mit dem Code uebereinstimmen.
 
 **Empfehlung**: Entweder README korrigieren (klarstellen: Recs + Checklist, keine Config-Files) oder Code erweitern (platform-spezifische filesToGenerate).
 
+**Status (2026-03-14)**: README-Tabelle bereits korrigiert — PaaS-Targets sagen "Recommendations" + "Checklist items". Code-Bug (Docker-filesToGenerate fuer alle Targets) besteht weiterhin, ist aber durch README-Wording nicht mehr irreführend.
+
 ### 2.2 Cloudflare Tool Count (MITTEL)
 
 **Claim**: 85 tools
@@ -131,8 +133,9 @@ Tool-Counts die via npm-readme nicht pruefbar sind:
 
 ### Vor Release (README-Fixes)
 
-1. **Deploy-Target-Wording**: Non-Docker-Targets bekommen Recs + Checklist, keine generierten Config-Files — README anpassen
-2. **Tool-Counts**: Cloudflare 85->aktuellen Wert, Filesystem 14->13, GitHub 41->pruefen
+1. ~~**Deploy-Target-Wording**: Non-Docker-Targets bekommen Recs + Checklist, keine generierten Config-Files — README anpassen~~ — **DONE** (README-Tabelle bereits korrigiert, sagt "Recommendations" + "Checklist items")
+2. ~~**Tool-Counts**: Cloudflare 85->aktuellen Wert, Filesystem 14->13, GitHub 41->pruefen~~ — **DONE** (README zeigt 13 fuer Filesystem, Cloudflare/GitHub ohne exakte Zahl in Conditional-Tabelle)
+3. ~~**MCP Tool Count 20->21, Test Count 737->741**~~ — **DONE** (2026-03-14)
 
 ### Nach Release (Nice-to-Have)
 

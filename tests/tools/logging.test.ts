@@ -215,6 +215,31 @@ describe("log sanitizer", () => {
     expect(result).toContain("... (truncated)");
   });
 
+  it("redacts connection strings with embedded credentials", () => {
+    const inputs = [
+      "postgresql://admin:s3cret@db.host:5432/mydb",
+      "mongodb+srv://user:p%40ss@cluster.mongodb.net/db",
+      "redis://:secretpass@cache.internal:6379",
+      "mysql://root:hunter2@localhost/app",
+      "https://deploy:ghtoken@registry.example.com/v2/image",
+    ];
+    for (const input of inputs) {
+      const result = sanitizeOutput(input);
+      expect(result).toBe("[REDACTED]");
+    }
+  });
+
+  it("does NOT redact URLs without credentials", () => {
+    const safe = [
+      "https://example.com/path",
+      "http://localhost:3000",
+      "postgresql://localhost/mydb",
+    ];
+    for (const input of safe) {
+      expect(sanitizeOutput(input)).toBe(input);
+    }
+  });
+
   it("pruneEvents removes oldest debug events when >1000", () => {
     const events: BuildEvent[] = [];
     for (let i = 0; i < 500; i++) {
