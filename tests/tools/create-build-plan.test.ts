@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { handleCreateBuildPlan } from "../../src/tools/create-build-plan.js";
 import { handleInitProject } from "../../src/tools/init-project.js";
 import { StateManager } from "../../src/state/state-manager.js";
-import { makeTmpDir, cleanTmpDir, parse, initWithArch } from "../helpers/setup.js";
+import { makeTmpDir, cleanTmpDir, parse, initWithArch, walkSliceToStatus } from "../helpers/setup.js";
 
 function makeSliceInput(id: string, deps: string[] = []) {
   return {
@@ -170,9 +170,11 @@ describe("handleCreateBuildPlan", () => {
       slices: [makeSliceInput("s01"), makeSliceInput("s02")],
     });
 
-    // Append more slices
+    // Complete slices, then move through phases
     const sm = new StateManager(tmpDir);
     sm.setPhase("building");
+    walkSliceToStatus(sm, "s01", "done");
+    walkSliceToStatus(sm, "s02", "done");
     sm.setPhase("security");
     sm.setPhase("deployment");
 
@@ -205,6 +207,7 @@ describe("handleCreateBuildPlan", () => {
 
     const sm = new StateManager(tmpDir);
     sm.setPhase("building");
+    walkSliceToStatus(sm, "s01", "done");
     sm.setPhase("security");
     sm.setPhase("deployment");
 
@@ -228,6 +231,7 @@ describe("handleCreateBuildPlan", () => {
 
     const sm = new StateManager(tmpDir);
     sm.setPhase("building");
+    walkSliceToStatus(sm, "s01", "done");
     sm.setPhase("security");
     sm.setPhase("deployment");
 

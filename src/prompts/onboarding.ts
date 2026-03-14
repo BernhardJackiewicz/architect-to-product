@@ -125,23 +125,49 @@ uiDesign: {
 }
 \`\`\`
 
-### CHECKPOINT: Review-Modus festlegen — HARD STOP
+### CHECKPOINT: Human Oversight konfigurieren — HARD STOP
 Bevor du \`a2p_set_architecture\` aufrufst — überspringe diesen Schritt NICHT!
-**Du MUSST den User nach dem Review-Modus fragen BEVOR du \`a2p_set_architecture\` aufrufst.**
+**Du MUSST den User nach den Oversight-Einstellungen fragen BEVOR du \`a2p_set_architecture\` aufrufst.**
 **Auch wenn der User "mach einfach" sagt — dieser Schritt ist PFLICHT.**
 
 Frage den User EXPLIZIT:
 
-"Letzte Frage bevor ich alles speichere: Wie möchtest du zwischen den Slices reviewen?
-- **off** (Standard): Kein Stopp, Slices laufen durch. Du siehst nach jedem Slice eine Zusammenfassung.
-- **ui-only**: Stopp nach Slices mit UI — du prüfst visuell ob es gut aussieht.
-- **all**: Stopp nach jedem Slice — du prüfst alles manuell."
+"Letzte Frage bevor ich alles speichere: **Wie viel Kontrolle möchtest du über den Workflow?**
 
-→ STOP. Warte auf die Antwort des Users. Rufe KEIN Tool auf bevor der User geantwortet hat. Übergib den gewählten Wert (oder "off" als Default) als \`reviewMode\` an \`a2p_set_architecture\`.
+Immer aktiv (nicht abschaltbar):
+- ✅ **Build-Signoff**: Nach dem Bauen prüfst du ob das Produkt funktioniert — bevor Audit/Security Token verbraucht werden
+- ✅ **Deploy-Approval**: Vor dem Deployment bestätigst du explizit
+
+Konfigurierbar:
+- **Plan-Approval** (Standard: an): Slice-Plan vor dem Bauen bestätigen?
+- **Slice-Review** (Standard: off): Nach jedem Slice pausieren? Optionen: off / ui-only / all
+- **Security-Signoff** (Standard: off): Explizites Go/No-Go nach Security Gate?
+
+Empfehlung für die meisten Projekte: Defaults lassen (Plan-Approval an, Rest off).
+Für Enterprise: alles auf an."
+
+→ STOP. Warte auf die Antwort des Users. Rufe KEIN Tool auf bevor der User geantwortet hat. Übergib die Einstellungen als \`oversight\` Objekt an \`a2p_set_architecture\`:
+\`\`\`
+oversight: {
+  sliceReview: "off" | "ui-only" | "all",
+  planApproval: true | false,
+  securitySignoff: true | false
+}
+\`\`\`
+buildSignoff und deployApproval werden automatisch auf true gesetzt und können nicht deaktiviert werden.
+
+### Claude-Modell festlegen
+Frage den User NICHT explizit — setze den Default: \`claudeModel: "opus"\` (Claude Opus 4.6 mit Maximum Effort).
+Wenn der User von sich aus ein anderes Modell nennt oder wenn Budget ein Thema ist, passe an:
+- **opus** (Default): Maximale Qualität, beste Architekturentscheidungen, bester Code
+- **sonnet**: Schneller, günstiger, guter Code aber weniger tiefe Analyse
+- **haiku**: Schnellster, günstigster, für einfache Tasks
+
+Übergib den Wert als \`claudeModel\` an \`a2p_set_architecture\`.
 
 ### Architektur festhalten
 Rufe \`a2p_init_project\` auf um das Projekt zu initialisieren.
-Dann rufe \`a2p_set_architecture\` mit allen Details auf (inkl. \`reviewMode\`).
+Dann rufe \`a2p_set_architecture\` mit allen Details auf (inkl. \`oversight\` und \`claudeModel\`).
 
 ### Companions SOFORT einrichten — PFLICHT, NICHT ÜBERSPRINGEN
 **Direkt nach \`a2p_set_architecture\` MUSST du \`a2p_setup_companions\` aufrufen.**

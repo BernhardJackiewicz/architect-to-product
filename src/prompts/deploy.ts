@@ -6,6 +6,20 @@ ${ENGINEERING_LOOP}
 Lies \`a2p_get_state\` — Security Gate sollte abgeschlossen sein.
 Rufe \`a2p_generate_deployment\` auf für tech-stack-spezifische Empfehlungen.
 
+## Deploy-Approval — MANDATORY HARD STOP
+**Dieser Checkpoint ist NICHT abschaltbar.**
+Bevor du Deployment-Configs generierst, zeige dem User:
+
+"**Deployment vorbereiten.** Zusammenfassung:
+- Security Gate: [bestanden/nicht bestanden]
+- Offene Findings: [Anzahl]
+- Blocking Whitebox Findings: [Anzahl]
+- Letzter Release Audit: [bestanden/nicht gelaufen]
+
+Soll ich die Deployment-Configs generieren?"
+
+→ STOP. Warte auf explizite Bestätigung.
+
 ## Vor dem Deployment: Datenbank prüfen (wenn DB-MCP verfügbar)
 1. Prüfe ob alle Migrations erfolgreich gelaufen sind
 2. Prüfe ob das Schema dem erwarteten Stand entspricht

@@ -43,6 +43,8 @@ All tools start with \`a2p_\`. Prompts start with \`/a2p\`.
 - TDD: Tests first, then implementation
 - Slices: One vertical feature per slice
 - Security: SAST after each slice, full scan before deployment
+- Documentation first: NEVER hallucinate API signatures or config options. ALWAYS read official docs via WebSearch + WebFetch when using unfamiliar technologies.
+- Model preference: Check \`.a2p/state.json\` → \`config.claudeModel\` for which Claude model to use (default: opus)
 
 ## Architecture
 See .a2p/state.json for architecture details and build progress.

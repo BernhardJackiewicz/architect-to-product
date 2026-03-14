@@ -95,5 +95,15 @@ Zeige dem User den Plan als übersichtliche Tabelle:
 | # | Slice | Typ | Beschreibung | Abhängigkeiten | Security | Deploy-Impact |
 |---|-------|-----|-------------|----------------|----------|---------------|
 
-Wenn kein expliziter Review-Stopp konfiguriert ist, fahre direkt fort mit dem a2p_build_slice Prompt.
+### Plan-Approval Checkpoint
+Prüfe \`a2p_get_state\` → \`architecture.oversight.planApproval\` (Default: true).
+
+**Wenn planApproval=true:**
+→ STOP. Zeige den Plan und frage: "Plan steht. Passt das so, oder möchtest du etwas ändern?"
+→ Warte auf explizite Bestätigung. Starte NICHT automatisch den Build.
+
+**Wenn planApproval=false:**
+→ Starte direkt den a2p_build_slice Prompt.
+
+Das Review-Verhalten zwischen Slices wird automatisch von \`oversight.sliceReview\` gesteuert.
 `;
