@@ -54,7 +54,7 @@ export function handleRunTests(input: RunTestsInput): string {
     passed: counts.passed,
     failed: counts.failed,
     skipped: counts.skipped,
-    output: truncate(result.stdout + (result.stderr ? "\n---STDERR---\n" + result.stderr : ""), 5000),
+    output: sanitizeOutput(truncate(result.stdout + (result.stderr ? "\n---STDERR---\n" + result.stderr : ""), 5000)),
   };
 
   sm.addTestResult(input.sliceId, testResult);
