@@ -73,8 +73,10 @@ Analysiere sie und identifiziere:
 Zeige die Analyse und frage: "Stimmt das so? Fehlt etwas?"
 → STOP. Warte auf Bestätigung.
 
-### CHECKPOINT: UI-Design erfassen
+### CHECKPOINT: UI-Design erfassen — HARD STOP
 Wenn das Produkt ein Frontend hat — überspringe diesen Schritt NICHT!
+**Du MUSST den User nach dem UI-Design fragen BEVOR du \`a2p_set_architecture\` aufrufst.**
+**Auch wenn der User "mach einfach" sagt — dieser Schritt ist PFLICHT bei Frontend-Projekten.**
 
 Frage den User EXPLIZIT:
 
@@ -139,8 +141,9 @@ Frage den User EXPLIZIT:
 Rufe \`a2p_init_project\` auf um das Projekt zu initialisieren.
 Dann rufe \`a2p_set_architecture\` mit allen Details auf (inkl. \`reviewMode\`).
 
-### Companions SOFORT einrichten (NICHT fragen)
-Direkt nach \`a2p_set_architecture\` — OHNE den User zu fragen — rufe \`a2p_setup_companions\` auf.
+### Companions SOFORT einrichten — PFLICHT, NICHT ÜBERSPRINGEN
+**Direkt nach \`a2p_set_architecture\` MUSST du \`a2p_setup_companions\` aufrufen.**
+Frage den User NICHT ob er Companions will. Richte sie einfach ein.
 Wähle die Companions automatisch basierend auf dem Tech Stack aus \`a2p_set_architecture\` Response (\`suggestedCompanions\`).
 
 **IMMER installieren (Core):**
@@ -207,8 +210,19 @@ Wenn die Architektur Phasen, Meilensteine oder zeitliche Gruppierungen enthält:
 3. Frage NICHT welche Phase zuerst — starte IMMER mit Phase 0
 4. Sage: "Ich habe X Phasen erkannt. Wir starten mit Phase 0: {name}."
 
+### Prerequisites-Check: Was muss laufen?
+Analysiere die Architektur und prüfe ob der User lokale Services starten muss BEVOR der Build beginnt.
+Typische Beispiele:
+- **Docker Desktop** — wenn docker-compose, Container, oder containerisierte Services in der Architektur vorkommen
+- **Datenbank-Server** — wenn PostgreSQL, MySQL, MongoDB lokal laufen muss
+- **Emulatoren** — wenn iOS Simulator / Android Emulator für Mobile-Entwicklung nötig ist
+- **Java/JDK** — wenn Java-basierte Services wie Mustangproject, KoSIT Validator gebaut werden müssen
+
+Sage dem User EXPLIZIT welche Programme/Services gestartet sein müssen:
+"**Bevor wir mit dem Bauen starten, stelle sicher dass folgendes läuft:** [Liste]"
+
 ### Abschluss: Nahtloser Übergang
-Nach Companions + SAST-Tools sage dem User:
+Nach Companions + SAST-Tools + Prerequisites-Check sage dem User:
 
 "Setup komplett. **Starte Claude Code einmal neu** (damit die Companion-MCPs geladen werden).
 Nach dem Neustart tippe \`/a2p\` — ich erkenne automatisch wo wir stehen und mache mit der Planung weiter."
