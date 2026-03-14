@@ -27,7 +27,7 @@ npm install -g architect-to-product
 claude mcp add architect-to-product -- npx architect-to-product
 ```
 
-Then restart Claude Code and run: **`a2p`**
+Then restart Claude Code and type: **`/a2p`**
 
 The onboarding will co-develop your architecture, auto-configure companion MCP servers, and install SAST tools. One restart, then you're building.
 
@@ -36,6 +36,7 @@ The onboarding will co-develop your architecture, auto-configure companion MCP s
 A2P is an MCP server that orchestrates an AI engineering workflow. Instead of vibe coding features, A2P builds software in vertical slices with TDD and security gates.
 
 It coordinates:
+- **Up to 100x fewer exploration tokens** — codebase-memory-mcp builds a code graph instead of scanning files raw
 - **Test-driven development** — every feature has tests before implementation
 - **Static code analysis** — Semgrep + Bandit scan for vulnerabilities automatically
 - **Security reviews** — OWASP Top 10 review before deploy
@@ -55,6 +56,7 @@ A2P is not a replacement for engineers. It is an engineering safety net for AI-g
 
 ## Key Benefits
 
+- **100x fewer tokens** — Code graph intelligence via codebase-memory-mcp replaces raw file scanning — saves context window and money
 - **Develop faster** — Vertical slices with TDD, no yak shaving
 - **Fewer bugs** — AI-driven test driven development (TDD): every feature has tests before implementation (RED → GREEN → REFACTOR)
 - **Ship secure** — Static code analysis (Semgrep + Bandit) + OWASP Top 10 review built into the AI coding workflow
@@ -176,41 +178,41 @@ Add to `.vscode/mcp.json`:
 
 ## Prompts (7)
 
-Type these in Claude Code to trigger each workflow phase:
+MCP prompts are invoked with `/` in Claude Code:
 
 | Command | What it does |
 |---------|-------------|
-| `a2p` | Start onboarding — define architecture, UI design, tech stack, companions |
-| `a2p planning` | Break architecture into ordered vertical slices |
-| `a2p build` | Build the current slice with TDD (RED → GREEN → REFACTOR → SAST) |
-| `a2p refactor` | Code quality tool — analyze codebase for dead code, redundancy, coupling |
-| `a2p e2e` | AI testing tool — run visual E2E tests with Playwright |
-| `a2p security` | Full SAST scan + OWASP Top 10 review |
-| `a2p deploy` | Generate deployment configs and launch checklist |
+| `/a2p` | Start onboarding — define architecture, UI design, tech stack, companions |
+| `/a2p_planning` | Break architecture into ordered vertical slices |
+| `/a2p_build_slice` | Build the current slice with TDD (RED → GREEN → REFACTOR → SAST) |
+| `/a2p_refactor` | Code quality tool — analyze codebase for dead code, redundancy, coupling |
+| `/a2p_e2e_testing` | AI testing tool — run visual E2E tests with Playwright |
+| `/a2p_security_gate` | Full SAST scan + OWASP Top 10 review |
+| `/a2p_deploy` | Generate deployment configs and launch checklist |
 
 ### When to use which prompt
 
 You don't have to run the full pipeline. Each prompt works standalone — pick what you need:
 
 **Full project from scratch:**
-`a2p` → `a2p planning` → `a2p build` (repeat per slice) → `a2p security` → `a2p deploy`
+`/a2p` → `/a2p_planning` → `/a2p_build_slice` (repeat per slice) → `/a2p_security_gate` → `/a2p_deploy`
 
 **MVP built with vibe coding, now make it production-ready:**
-- `a2p security` — find the vulnerabilities that vibe coding missed
-- `a2p refactor` — clean up the spaghetti, remove dead code
-- `a2p deploy` — generate Dockerfile, docker-compose, Caddyfile instead of guessing
+- `/a2p_security_gate` — find the vulnerabilities that vibe coding missed
+- `/a2p_refactor` — clean up the spaghetti, remove dead code
+- `/a2p_deploy` — generate Dockerfile, docker-compose, Caddyfile instead of guessing
 
 **Added features without tests, need confidence before shipping:**
-- `a2p refactor` — identify dead code and coupling from the feature sprawl
-- `a2p e2e` — visually verify nothing is broken
-- `a2p security` — catch injection, auth holes, hardcoded secrets
+- `/a2p_refactor` — identify dead code and coupling from the feature sprawl
+- `/a2p_e2e_testing` — visually verify nothing is broken
+- `/a2p_security_gate` — catch injection, auth holes, hardcoded secrets
 
 **Existing project, just need deployment:**
-- `a2p deploy` — stack-specific configs, backup scripts, hardening guide
+- `/a2p_deploy` — stack-specific configs, backup scripts, hardening guide
 
 **Built the MVP with slices, now entering Phase 2:**
-- `a2p planning` — create new slices for the next phase
-- `a2p build` — TDD per slice as usual
+- `/a2p_planning` — create new slices for the next phase
+- `/a2p_build_slice` — TDD per slice as usual
 
 ## Supported Stacks
 
