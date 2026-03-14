@@ -754,3 +754,77 @@ describe("Anthropic engineering patterns in build-slice", () => {
     expect(section).toContain("trace_call_path");
   });
 });
+
+// ─── Enforcement rules in build-slice ───────────────────────────────────────
+// Akzeptanzkriterium: SAST, Visual Verification und Review Checkpoints
+// werden erzwungen, nicht nur vorgeschlagen.
+
+describe("Enforcement rules in build-slice", () => {
+  it("SAST phase enforces a2p_run_sast as mandatory", () => {
+    const sastSection = BUILD_SLICE_PROMPT.indexOf("Phase SAST");
+    const nextSection = BUILD_SLICE_PROMPT.indexOf("## Nach jedem", sastSection);
+    const section = BUILD_SLICE_PROMPT.slice(sastSection, nextSection);
+    expect(section).toContain("MUSST");
+    expect(section).toContain("a2p_run_sast");
+    expect(section).toMatch(/NICHT.*[Üü]berspringen|PFLICHT/);
+  });
+
+  it("Visual Verification enforces Playwright tools as mandatory for hasUI slices", () => {
+    const visualSection = BUILD_SLICE_PROMPT.indexOf("Visual Verification");
+    const refactorSection = BUILD_SLICE_PROMPT.indexOf("Phase REFACTOR");
+    const section = BUILD_SLICE_PROMPT.slice(visualSection, refactorSection);
+    expect(section).toContain("MUSST");
+    expect(section).toMatch(/NICHT.*[Üü]berspringen|PFLICHT/);
+    expect(section).toContain("browser_take_screenshot");
+    expect(section).toContain("browser_navigate");
+  });
+
+  it("review checkpoint is a hard stop — not negotiable", () => {
+    const checkpointSection = BUILD_SLICE_PROMPT.indexOf("Checkpoint nach Slice-Completion");
+    const nextSection = BUILD_SLICE_PROMPT.indexOf("## Git-Commits", checkpointSection);
+    const section = BUILD_SLICE_PROMPT.slice(checkpointSection, nextSection);
+    expect(section).toContain("HARD STOP");
+    expect(section).toContain("NICHT verhandelbar");
+    expect(section).toContain("awaitingHumanReview");
+    // Must explicitly say: don't continue even if user said "do everything"
+    expect(section).toMatch(/auch wenn.*User/i);
+  });
+});
+
+// ─── Enforcement rules in onboarding ────────────────────────────────────────
+
+describe("Enforcement rules in onboarding", () => {
+  it("UI-Design checkpoint is a hard stop for frontend projects", () => {
+    const uiSection = ONBOARDING_PROMPT.indexOf("UI-Design erfassen");
+    const nextSection = ONBOARDING_PROMPT.indexOf("Frage den User EXPLIZIT", uiSection);
+    const section = ONBOARDING_PROMPT.slice(uiSection, nextSection);
+    expect(section).toContain("HARD STOP");
+    expect(section).toContain("MUSST");
+    expect(section).toContain("PFLICHT");
+  });
+
+  it("companions setup is mandatory — not optional", () => {
+    const companionSection = ONBOARDING_PROMPT.indexOf("Companions SOFORT");
+    const nextSection = ONBOARDING_PROMPT.indexOf("**IMMER installieren", companionSection);
+    const section = ONBOARDING_PROMPT.slice(companionSection, nextSection);
+    expect(section).toContain("PFLICHT");
+    expect(section).toContain("NICHT ÜBERSPRINGEN");
+    expect(section).toContain("MUSST");
+  });
+
+  it("prerequisites check analyzes architecture for required local services", () => {
+    expect(ONBOARDING_PROMPT).toContain("Prerequisites-Check");
+    expect(ONBOARDING_PROMPT).toContain("Docker Desktop");
+    expect(ONBOARDING_PROMPT).toContain("Datenbank-Server");
+    expect(ONBOARDING_PROMPT).toContain("Emulatoren");
+    // Must tell user what to start
+    expect(ONBOARDING_PROMPT).toMatch(/stelle sicher.*läuft/i);
+  });
+
+  it("prerequisites check comes before the final handoff", () => {
+    const prereqPos = ONBOARDING_PROMPT.indexOf("Prerequisites-Check");
+    const handoffPos = ONBOARDING_PROMPT.indexOf("Abschluss: Nahtloser Übergang");
+    expect(prereqPos).toBeGreaterThan(-1);
+    expect(prereqPos).toBeLessThan(handoffPos);
+  });
+});
