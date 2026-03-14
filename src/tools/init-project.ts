@@ -12,38 +12,40 @@ export type InitProjectInput = z.infer<typeof initProjectSchema>;
 
 const CLAUDE_MD = `# {{PROJECT_NAME}}
 
-## Overview
 {{PROJECT_NAME}} — built with architect-to-product workflow.
 
-## Commands
-- Setup: (to be configured)
-- Test: (to be configured)
-- Lint: (to be configured)
-- Build: (to be configured)
+## IMPORTANT: Always check state first
+Run \`a2p_get_state\` at the start of every conversation to know where the project stands.
+The state tells you the current phase, current slice, and what to do next.
 
-## Architecture
-See .a2p/state.json for architecture details and build progress.
+## Workflow (architect-to-product)
+This project uses the architect-to-product MCP server.
+All tools start with \`a2p_\`. Prompts start with \`/a2p\`.
+
+### After restart: How to continue
+1. Run \`a2p_get_state\` — check current phase and slice
+2. Use the matching prompt:
+   - onboarding → \`/a2p\`
+   - planning → \`/a2p_planning\`
+   - building → \`/a2p_build_slice\`
+   - refactoring → \`/a2p_refactor\`
+   - security → \`/a2p_security_gate\`
+   - deployment → \`/a2p_deploy\`
+
+### Key tools
+- \`a2p_get_state\` — current progress, phase, slice status
+- \`a2p_create_build_plan\` — break architecture into vertical slices
+- \`a2p_update_slice\` — advance slice: RED → GREEN → REFACTOR → SAST → DONE
+- \`a2p_run_tests\` — execute tests and record results
+- \`a2p_run_sast\` — run security scan on changed files
 
 ## Key Patterns
 - TDD: Tests first, then implementation
 - Slices: One vertical feature per slice
 - Security: SAST after each slice, full scan before deployment
 
-## Workflow (architect-to-product)
-This project uses the architect-to-product MCP server for structured development.
-All tools start with the \`a2p_\` prefix. Key commands:
-- \`a2p_get_state\` — see current progress, phase, and slice status
-- \`a2p_create_build_plan\` — break architecture into vertical slices
-- \`a2p_update_slice\` — advance a slice through RED → GREEN → REFACTOR → SAST → DONE
-- \`a2p_run_tests\` — execute tests and record results
-- \`a2p_run_sast\` — run security scan on changed files
-
-Use the \`a2p_build_slice\` prompt to build the next slice with TDD.
-Use the \`a2p_planning\` prompt to create or extend the build plan.
-
-All tests must pass before a slice is marked done.
-Code quality checked via codebase-memory-mcp.
-Security reviewed via SAST tools.
+## Architecture
+See .a2p/state.json for architecture details and build progress.
 `;
 
 const TEST_WRITER_AGENT = `---
