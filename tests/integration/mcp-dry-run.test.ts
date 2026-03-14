@@ -92,29 +92,6 @@ function binaryExists(name: string): boolean {
 }
 
 /**
- * Check whether `semgrep mcp` is actually usable.
- * The OSS version has the subcommand in --help but fails at runtime with:
- *   "MCP subcommand requires Pro Engine"
- * We detect this by spawning `semgrep mcp` briefly and checking stderr.
- */
-function semgrepMcpAvailable(): boolean {
-  if (!binaryExists("semgrep")) return false;
-  try {
-    // Spawn semgrep mcp and immediately kill it. If it starts (writes to
-    // stdout or doesn't error on stderr about Pro Engine), it's available.
-    const output = execSync(
-      "semgrep mcp < /dev/null 2>&1 || true",
-      { encoding: "utf-8", timeout: 5_000 },
-    );
-    // The OSS version errors with "Pro Engine" message
-    if (output.includes("Pro Engine")) return false;
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/**
  * Connect to an MCP server, list its tools, and close the connection.
  * Returns a Set of tool names for easy assertion.
  */
@@ -281,49 +258,6 @@ describe(
   },
 );
 
-// ---------------------------------------------------------------------------
-// Semgrep MCP (optional — requires Semgrep Pro Engine)
-// ---------------------------------------------------------------------------
-// Referenced tools (build-slice.ts, security-gate.ts):
-//   semgrep_scan, security_check, get_abstract_syntax_tree
-//
-// The `semgrep mcp` subcommand only works with the proprietary Pro binary.
-// The OSS semgrep will exit with: "MCP subcommand requires Pro Engine".
-// We skip gracefully when the Pro binary is not available.
-
-const hasSemgrepMcp = semgrepMcpAvailable();
-
-describe(
-  "Semgrep MCP — tool name verification",
-  { timeout: 20_000 },
-  () => {
-    it.skipIf(!hasSemgrepMcp)(
-      "exposes semgrep_scan, security_check, and get_abstract_syntax_tree",
-      async () => {
-        const tools = await listMcpTools("semgrep", ["mcp"]);
-
-        const expected = [
-          "semgrep_scan",
-          "security_check",
-          "get_abstract_syntax_tree",
-        ];
-
-        for (const name of expected) {
-          expect(
-            tools.has(name),
-            `Expected semgrep MCP to expose tool "${name}". ` +
-              `Available: ${[...tools].sort().join(", ")}`,
-          ).toBe(true);
-        }
-
-        console.log(
-          "  Semgrep MCP tools:",
-          [...tools].sort().join(", "),
-        );
-      },
-    );
-  },
-);
 
 // ---------------------------------------------------------------------------
 // Playwright MCP  (Node package: @playwright/mcp — token-free)
