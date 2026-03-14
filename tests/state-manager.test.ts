@@ -152,9 +152,12 @@ describe("StateManager", () => {
 
     it("follows full TDD cycle: pending → red → green → refactor → sast → done", () => {
       sm.setSliceStatus("s1", "red");
+      sm.addTestResult("s1", { timestamp: new Date().toISOString(), command: "test", exitCode: 0, passed: 1, failed: 0, skipped: 0, output: "ok" });
       sm.setSliceStatus("s1", "green");
       sm.setSliceStatus("s1", "refactor");
+      sm.markSastRun("s1");
       sm.setSliceStatus("s1", "sast");
+      sm.addTestResult("s1", { timestamp: new Date().toISOString(), command: "test", exitCode: 0, passed: 1, failed: 0, skipped: 0, output: "ok" });
       const state = sm.setSliceStatus("s1", "done");
       expect(state.slices[0].status).toBe("done");
     });
@@ -169,8 +172,10 @@ describe("StateManager", () => {
 
     it("allows sast → red (back to fix)", () => {
       sm.setSliceStatus("s1", "red");
+      sm.addTestResult("s1", { timestamp: new Date().toISOString(), command: "test", exitCode: 0, passed: 1, failed: 0, skipped: 0, output: "ok" });
       sm.setSliceStatus("s1", "green");
       sm.setSliceStatus("s1", "refactor");
+      sm.markSastRun("s1");
       sm.setSliceStatus("s1", "sast");
       const state = sm.setSliceStatus("s1", "red");
       expect(state.slices[0].status).toBe("red");

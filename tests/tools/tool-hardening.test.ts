@@ -5,7 +5,7 @@ import { handleCreateBuildPlan } from "../../src/tools/create-build-plan.js";
 import { handleCompletePhase } from "../../src/tools/complete-phase.js";
 import { handleUpdateSlice } from "../../src/tools/update-slice.js";
 import { handleRecordFinding } from "../../src/tools/record-finding.js";
-import { makeTmpDir, initWithStateManager } from "../helpers/setup.js";
+import { makeTmpDir, initWithStateManager, addPassingTests, addSastEvidence, walkSliceToStatus } from "../helpers/setup.js";
 
 // ─── StateManager new methods ───────────────────────────────────────────────
 
@@ -394,11 +394,7 @@ describe("complete-phase: blocks on open high/critical findings", () => {
       ],
     });
 
-    sm.setSliceStatus("s1", "red");
-    sm.setSliceStatus("s1", "green");
-    sm.setSliceStatus("s1", "refactor");
-    sm.setSliceStatus("s1", "sast");
-    sm.setSliceStatus("s1", "done");
+    walkSliceToStatus(sm, "s1", "done");
   });
 
   it("blocks when open critical findings exist", () => {
@@ -451,11 +447,7 @@ describe("Security gate: setPhase(deployment) blocks on open CRITICAL/HIGH", () 
     // Move through phases to security
     sm.setPhase("planning");
     sm.setPhase("building");
-    sm.setSliceStatus("s1", "red");
-    sm.setSliceStatus("s1", "green");
-    sm.setSliceStatus("s1", "refactor");
-    sm.setSliceStatus("s1", "sast");
-    sm.setSliceStatus("s1", "done");
+    walkSliceToStatus(sm, "s1", "done");
     sm.setPhase("security");
   });
 
@@ -549,8 +541,9 @@ describe("update-slice: file tracking persistence", () => {
   it("persists files across multiple updates", () => {
     const sm = new StateManager(dir);
 
-    // Move through phases with files
+    // Move through phases with files (with proper evidence)
     handleUpdateSlice({ projectPath: dir, sliceId: "s1", status: "red", files: ["test.ts"] });
+    addPassingTests(sm, "s1");
     handleUpdateSlice({ projectPath: dir, sliceId: "s1", status: "green", files: ["src.ts", "test.ts"] });
 
     const state = sm.read();

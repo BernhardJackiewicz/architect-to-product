@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { requireProject } from "../utils/tool-helpers.js";
-import type { Architecture, TechStack, ProductPhase, ReviewMode, UIDesign } from "../state/types.js";
+import type { Architecture, TechStack, ProductPhase, ReviewMode, UIDesign, OversightConfig } from "../state/types.js";
 
 export const setArchitectureSchema = z.object({
   projectPath: z.string().describe("Absolute path to the project directory"),
@@ -38,6 +38,21 @@ export const setArchitectureSchema = z.object({
     })
     .optional()
     .describe("UI design spec: text description, style, and references to wireframes/mockups/images"),
+  claudeModel: z
+    .enum(["opus", "sonnet", "haiku"])
+    .optional()
+    .default("opus")
+    .describe("Which Claude model does the programming. Default: opus (Claude Opus 4.6 with maximum effort)"),
+  oversight: z
+    .object({
+      sliceReview: z.enum(["off", "all", "ui-only"]).optional().default("off").describe("Pause after slice completion: 'off', 'all', or 'ui-only'"),
+      planApproval: z.boolean().optional().default(true).describe("Must approve slice plan before building (default: true)"),
+      buildSignoff: z.boolean().optional().default(true).describe("Must confirm product works after building (MANDATORY, always true)"),
+      deployApproval: z.boolean().optional().default(true).describe("Must confirm before deploy (MANDATORY, always true)"),
+      securitySignoff: z.boolean().optional().default(false).describe("Explicit go/no-go after security gate (default: false)"),
+    })
+    .optional()
+    .describe("Human oversight configuration — controls where the workflow pauses for human review"),
   phases: z
     .array(
       z.object({
@@ -85,10 +100,25 @@ export function handleSetArchitecture(input: SetArchitectureInput): string {
     raw: input.rawArchitecture ?? "",
     ...(phases ? { phases } : {}),
     ...(input.reviewMode ? { reviewMode: input.reviewMode } : {}),
+    ...(input.oversight ? {
+      oversight: {
+        sliceReview: input.oversight.sliceReview ?? input.reviewMode ?? "off",
+        planApproval: input.oversight.planApproval ?? true,
+        buildSignoff: true,    // MANDATORY — always true, cannot be disabled
+        deployApproval: true,  // MANDATORY — always true, cannot be disabled
+        securitySignoff: input.oversight.securitySignoff ?? false,
+      } satisfies OversightConfig,
+      reviewMode: input.oversight.sliceReview ?? input.reviewMode ?? "off", // sync for backward compat
+    } : {}),
     ...(input.uiDesign ? { uiDesign: input.uiDesign } : {}),
   };
 
   sm.setArchitecture(architecture);
+
+  // Store model preference in config
+  if (input.claudeModel) {
+    sm.updateConfig({ claudeModel: input.claudeModel });
+  }
 
   // Detect what companions are needed
   const suggestedCompanions: string[] = ["codebase-memory-mcp"];
@@ -158,6 +188,8 @@ export function handleSetArchitecture(input: SetArchitectureInput): string {
       techStack,
       featureCount: architecture.features.length,
       ...(architecture.reviewMode ? { reviewMode: architecture.reviewMode } : {}),
+      claudeModel: input.claudeModel ?? "opus",
+      ...(architecture.oversight ? { oversight: architecture.oversight } : {}),
       ...(architecture.uiDesign ? { hasUIDesign: true, uiStyle: architecture.uiDesign.style, uiReferenceCount: architecture.uiDesign.references.length } : {}),
     },
     ...(phases

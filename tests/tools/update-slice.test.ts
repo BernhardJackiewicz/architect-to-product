@@ -5,7 +5,7 @@ import { handleSetArchitecture } from "../../src/tools/set-architecture.js";
 import { handleCreateBuildPlan } from "../../src/tools/create-build-plan.js";
 import { StateManager } from "../../src/state/state-manager.js";
 import type { ReviewMode } from "../../src/state/types.js";
-import { makeTmpDir, cleanTmpDir, parse } from "../helpers/setup.js";
+import { makeTmpDir, cleanTmpDir, parse, addPassingTests, addSastEvidence } from "../helpers/setup.js";
 
 const baseArchInput = {
   name: "Test App",
@@ -44,12 +44,15 @@ function setupProject(tmpDir: string, reviewMode?: ReviewMode, hasUI = false) {
   const sm = new StateManager(tmpDir);
   sm.setPhase("building");
 
-  // Walk the slice through to sast so we can mark done
+  // Walk the slice through to sast so we can mark done (with proper evidence)
   const sliceId = "slice-1";
   handleUpdateSlice({ projectPath: tmpDir, sliceId, status: "red" });
+  addPassingTests(sm, sliceId);
   handleUpdateSlice({ projectPath: tmpDir, sliceId, status: "green" });
   handleUpdateSlice({ projectPath: tmpDir, sliceId, status: "refactor" });
+  addSastEvidence(sm, sliceId);
   handleUpdateSlice({ projectPath: tmpDir, sliceId, status: "sast" });
+  addPassingTests(sm, sliceId);
 
   return sliceId;
 }

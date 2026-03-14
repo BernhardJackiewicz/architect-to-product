@@ -10,4 +10,5 @@ export const ENGINEERING_LOOP = `
 3. **One unit of work**: Genau ein Slice / eine Aufgabe. Keine Scope-Erweiterung ohne expliziten Grund.
 4. **Context isolation**: Nutze spezialisierte Subagenten (test-writer, security-reviewer) für Rollen-Trennung.
 5. **Evidence over narration**: Kein "done" ohne Test-Evidenz und Verifikationsnotiz.
+6. **Documentation first**: Bei unbekannten Technologien, Libraries oder APIs IMMER die offizielle Dokumentation lesen (WebSearch + WebFetch). NIEMALS API-Signaturen, Config-Optionen oder Verhaltensweisen halluzinieren oder vermuten.
 `;

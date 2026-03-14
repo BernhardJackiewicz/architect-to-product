@@ -81,7 +81,8 @@ function getNextStepHint(
         awaitingHumanReview: false,
       };
     case "done": {
-      const reviewMode = state?.architecture?.reviewMode ?? "off";
+      const oversight = state?.architecture?.oversight;
+      const reviewMode = oversight?.sliceReview ?? state?.architecture?.reviewMode ?? "off";
       const slice = sliceId ? state?.slices.find((s) => s.id === sliceId) : undefined;
       const needsReview =
         reviewMode === "all" ||

@@ -4,7 +4,7 @@ import { handleInitProject } from "../../src/tools/init-project.js";
 import { handleSetArchitecture } from "../../src/tools/set-architecture.js";
 import { handleCreateBuildPlan } from "../../src/tools/create-build-plan.js";
 import { StateManager } from "../../src/state/state-manager.js";
-import { makeTmpDir, cleanTmpDir, parse } from "../helpers/setup.js";
+import { makeTmpDir, cleanTmpDir, parse, addPassingTests, addSastEvidence } from "../helpers/setup.js";
 
 const twoPhases = [
   {
@@ -54,9 +54,12 @@ function setupMultiPhaseProject(dir: string) {
 
 function completeSlice(sm: StateManager, sliceId: string) {
   sm.setSliceStatus(sliceId, "red");
+  addPassingTests(sm, sliceId);
   sm.setSliceStatus(sliceId, "green");
   sm.setSliceStatus(sliceId, "refactor");
+  addSastEvidence(sm, sliceId);
   sm.setSliceStatus(sliceId, "sast");
+  addPassingTests(sm, sliceId);
   sm.setSliceStatus(sliceId, "done");
 }
 
@@ -96,13 +99,8 @@ describe("handleCompletePhase", () => {
     setupMultiPhaseProject(tmpDir);
     const sm = new StateManager(tmpDir);
     sm.setPhase("building");
-    // Don't complete the slice
-    sm.setPhase("security");
-    sm.setPhase("deployment");
-
-    const result = parse(handleCompletePhase({ projectPath: tmpDir }));
-    expect(result.error).toContain("not done");
-    expect(result.error).toContain("s01");
+    // Cannot leave building with incomplete slices
+    expect(() => sm.setPhase("security")).toThrow("not done");
   });
 
   it("returns nextPhase with all fields (deliverables, timeline)", () => {

@@ -5,6 +5,11 @@ ${ENGINEERING_LOOP}
 ## Kontext
 Lies \`a2p_get_state\` — die gesamte Codebase sollte fertig gebaut sein (alle Slices "done").
 
+## Dokumentation LESEN bei unbekannten Security-Patterns
+Wenn die Codebase Auth-Lösungen, Crypto-Libraries, oder Security-Frameworks verwendet die dir nicht 100% vertraut sind:
+**Du MUSST deren offizielle Security-Dokumentation lesen (WebSearch + WebFetch) BEVOR du ihre Konfiguration als sicher oder unsicher bewertest.**
+Beispiel: Clerk, Lucia, Better-Auth — jede hat eigene Session-Handling-Patterns. Nicht raten, Doku lesen.
+
 ## Phase 0: Attack Surface + Codebase-Analyse
 
 ### Attack Surface Mapping (ZUERST)
@@ -123,6 +128,14 @@ Normalisiere Findings auf: **Surface** → **Exploit-Pfad** → **Impact** → *
 - LOW: Dokumentieren
 - Nach jedem Fix: Tests laufen lassen
 
-## Weiter
-Wenn alle CRITICAL/HIGH gefixt → Weiter zum Deployment (a2p_deploy Prompt)
+## Security Signoff Checkpoint
+Prüfe \`a2p_get_state\` → \`architecture.oversight.securitySignoff\` (Default: false).
+
+**Wenn securitySignoff=true:**
+→ STOP. Zeige Zusammenfassung aller Findings (gefixt, akzeptiert, offen) und frage:
+"Security Gate abgeschlossen. Alle CRITICAL/HIGH sind gefixt. Soll ich mit dem Deployment fortfahren?"
+→ Warte auf explizite Bestätigung.
+
+**Wenn securitySignoff=false:**
+→ Weiter zum Deployment (a2p_deploy Prompt) wenn alle CRITICAL/HIGH gefixt sind.
 `;
