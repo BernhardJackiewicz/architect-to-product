@@ -1,49 +1,11 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { mkdirSync, rmSync, existsSync } from "node:fs";
-import { join } from "node:path";
-import { tmpdir } from "node:os";
 import { StateManager } from "../../src/state/state-manager.js";
 import { handleAddSlice } from "../../src/tools/add-slice.js";
 import { handleCreateBuildPlan } from "../../src/tools/create-build-plan.js";
 import { handleCompletePhase } from "../../src/tools/complete-phase.js";
 import { handleUpdateSlice } from "../../src/tools/update-slice.js";
 import { handleRecordFinding } from "../../src/tools/record-finding.js";
-
-function createTestProject(): string {
-  const dir = join(tmpdir(), `a2p-hardening-${Date.now()}-${Math.random().toString(36).slice(2)}`);
-  mkdirSync(dir, { recursive: true });
-  return dir;
-}
-
-function setupProjectWithSlices(dir: string, sliceCount = 3): StateManager {
-  const sm = new StateManager(dir);
-  sm.init("test-project", dir);
-  sm.setArchitecture({
-    name: "Test",
-    description: "Test project",
-    techStack: { language: "TypeScript", framework: "Express", database: null, frontend: null, hosting: null, other: [] },
-    features: ["f1"],
-    dataModel: "none",
-    apiDesign: "REST",
-    raw: "",
-  });
-
-  const slices = Array.from({ length: sliceCount }, (_, i) => ({
-    id: `s${i + 1}`,
-    name: `Slice ${i + 1}`,
-    description: `Test slice ${i + 1}`,
-    acceptanceCriteria: [`AC${i + 1}`],
-    testStrategy: "unit",
-    dependencies: i > 0 ? [`s${i}`] : [],
-    status: "pending" as const,
-    files: [],
-    testResults: [],
-    sastFindings: [],
-  }));
-
-  sm.setSlices(slices);
-  return sm;
-}
+import { makeTmpDir, initWithStateManager } from "../helpers/setup.js";
 
 // ─── StateManager new methods ───────────────────────────────────────────────
 
@@ -51,7 +13,7 @@ describe("StateManager: addBuildEvents", () => {
   let dir: string;
 
   beforeEach(() => {
-    dir = createTestProject();
+    dir = makeTmpDir("a2p-hardening");
     const sm = new StateManager(dir);
     sm.init("test", dir);
   });
@@ -77,8 +39,8 @@ describe("StateManager: updateSliceFiles", () => {
   let dir: string;
 
   beforeEach(() => {
-    dir = createTestProject();
-    setupProjectWithSlices(dir, 2);
+    dir = makeTmpDir("a2p-hardening");
+    initWithStateManager(dir, 2);
   });
 
   it("merges files into slice", () => {
@@ -104,8 +66,8 @@ describe("StateManager: setCurrentSliceIndex", () => {
   let dir: string;
 
   beforeEach(() => {
-    dir = createTestProject();
-    setupProjectWithSlices(dir, 3);
+    dir = makeTmpDir("a2p-hardening");
+    initWithStateManager(dir, 3);
   });
 
   it("sets index correctly", () => {
@@ -133,8 +95,8 @@ describe("add-slice: currentSliceIndex preservation", () => {
   let dir: string;
 
   beforeEach(() => {
-    dir = createTestProject();
-    setupProjectWithSlices(dir, 3);
+    dir = makeTmpDir("a2p-hardening");
+    initWithStateManager(dir, 3);
   });
 
   it("preserves index when appending to end", () => {
@@ -228,7 +190,7 @@ describe("create-build-plan: combined graph cycle detection", () => {
   let dir: string;
 
   beforeEach(() => {
-    dir = createTestProject();
+    dir = makeTmpDir("a2p-hardening");
     const sm = new StateManager(dir);
     sm.init("test", dir);
     sm.setArchitecture({
@@ -399,7 +361,7 @@ describe("complete-phase: blocks on open high/critical findings", () => {
   let dir: string;
 
   beforeEach(() => {
-    dir = createTestProject();
+    dir = makeTmpDir("a2p-hardening");
     const sm = new StateManager(dir);
     sm.init("test", dir);
     sm.setArchitecture({
@@ -484,8 +446,8 @@ describe("Security gate: setPhase(deployment) blocks on open CRITICAL/HIGH", () 
   let dir: string;
 
   beforeEach(() => {
-    dir = createTestProject();
-    const sm = setupProjectWithSlices(dir, 1);
+    dir = makeTmpDir("a2p-hardening");
+    const sm = initWithStateManager(dir, 1);
     // Move through phases to security
     sm.setPhase("planning");
     sm.setPhase("building");
@@ -580,8 +542,8 @@ describe("update-slice: file tracking persistence", () => {
   let dir: string;
 
   beforeEach(() => {
-    dir = createTestProject();
-    setupProjectWithSlices(dir, 1);
+    dir = makeTmpDir("a2p-hardening");
+    initWithStateManager(dir, 1);
   });
 
   it("persists files across multiple updates", () => {
@@ -605,8 +567,8 @@ describe("record-finding: hardening", () => {
   let dir: string;
 
   beforeEach(() => {
-    dir = createTestProject();
-    setupProjectWithSlices(dir, 1);
+    dir = makeTmpDir("a2p-hardening");
+    initWithStateManager(dir, 1);
   });
 
   it("rejects duplicate finding ID", () => {

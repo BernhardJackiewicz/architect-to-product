@@ -1,33 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { mkdtempSync, rmSync } from "node:fs";
-import { join } from "node:path";
-import { tmpdir } from "node:os";
 import { handleCreateBuildPlan } from "../../src/tools/create-build-plan.js";
 import { handleInitProject } from "../../src/tools/init-project.js";
-import { handleSetArchitecture } from "../../src/tools/set-architecture.js";
 import { StateManager } from "../../src/state/state-manager.js";
-
-function makeTmpDir(): string {
-  return mkdtempSync(join(tmpdir(), "a2p-plan-"));
-}
-
-function parse(json: string) {
-  return JSON.parse(json);
-}
-
-function initWithArch(dir: string) {
-  handleInitProject({ projectPath: dir, projectName: "test" });
-  handleSetArchitecture({
-    projectPath: dir,
-    name: "Test",
-    description: "Test",
-    language: "Python",
-    framework: "FastAPI",
-    features: ["CRUD"],
-    dataModel: "items",
-    apiDesign: "REST",
-  });
-}
+import { makeTmpDir, cleanTmpDir, parse, initWithArch } from "../helpers/setup.js";
 
 function makeSliceInput(id: string, deps: string[] = []) {
   return {
@@ -44,11 +19,11 @@ describe("handleCreateBuildPlan", () => {
   let tmpDir: string;
 
   beforeEach(() => {
-    tmpDir = makeTmpDir();
+    tmpDir = makeTmpDir("a2p-plan");
   });
 
   afterEach(() => {
-    rmSync(tmpDir, { recursive: true, force: true });
+    cleanTmpDir(tmpDir);
   });
 
   it("creates slices with correct defaults", () => {

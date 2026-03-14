@@ -1,23 +1,13 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { mkdtempSync, rmSync } from "node:fs";
-import { join } from "node:path";
-import { tmpdir } from "node:os";
 import { handleGenerateDeployment } from "../../src/tools/generate-deployment.js";
 import { handleGetChecklist } from "../../src/tools/get-checklist.js";
 import { handleInitProject } from "../../src/tools/init-project.js";
 import { handleSetArchitecture } from "../../src/tools/set-architecture.js";
 import { handleCreateBuildPlan } from "../../src/tools/create-build-plan.js";
 import { StateManager } from "../../src/state/state-manager.js";
+import { makeTmpDir, cleanTmpDir, parse } from "../helpers/setup.js";
 
-function makeTmpDir(): string {
-  return mkdtempSync(join(tmpdir(), "a2p-deploy-"));
-}
-
-function parse(json: string) {
-  return JSON.parse(json);
-}
-
-function initWithArch(
+function initWithArchOverrides(
   dir: string,
   overrides: Record<string, unknown> = {}
 ) {
@@ -39,141 +29,141 @@ describe("handleGenerateDeployment", () => {
   let tmpDir: string;
 
   beforeEach(() => {
-    tmpDir = makeTmpDir();
+    tmpDir = makeTmpDir("a2p-deploy");
   });
 
   afterEach(() => {
-    rmSync(tmpDir, { recursive: true, force: true });
+    cleanTmpDir(tmpDir);
   });
 
   it("Python stack -> Python-specific recommendations", () => {
-    initWithArch(tmpDir, { language: "Python" });
+    initWithArchOverrides(tmpDir, { language: "Python" });
     const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
     const recs = result.deploymentGuide.recommendations.join(" ").toLowerCase();
     expect(recs).toContain("python");
   });
 
   it("TypeScript stack -> Node-specific recommendations", () => {
-    initWithArch(tmpDir, { language: "TypeScript", framework: "Express" });
+    initWithArchOverrides(tmpDir, { language: "TypeScript", framework: "Express" });
     const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
     const recs = result.deploymentGuide.recommendations.join(" ").toLowerCase();
     expect(recs).toContain("node");
   });
 
   it("SQLite -> WAL recommendation", () => {
-    initWithArch(tmpDir, { database: "SQLite" });
+    initWithArchOverrides(tmpDir, { database: "SQLite" });
     const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
     const recs = result.deploymentGuide.recommendations.join(" ");
     expect(recs).toContain("WAL");
   });
 
   it("Hetzner -> Hetzner recommendation", () => {
-    initWithArch(tmpDir, { hosting: "Hetzner" });
+    initWithArchOverrides(tmpDir, { hosting: "Hetzner" });
     const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
     const recs = result.deploymentGuide.recommendations.join(" ");
     expect(recs).toContain("Hetzner");
   });
 
   it("Frontend -> static assets recommendation", () => {
-    initWithArch(tmpDir, { frontend: "React" });
+    initWithArchOverrides(tmpDir, { frontend: "React" });
     const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
     const recs = result.deploymentGuide.recommendations.join(" ").toLowerCase();
     expect(recs).toContain("static");
   });
 
   it("Go stack -> Go-specific recommendations", () => {
-    initWithArch(tmpDir, { language: "Go", framework: "Gin" });
+    initWithArchOverrides(tmpDir, { language: "Go", framework: "Gin" });
     const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
     const recs = result.deploymentGuide.recommendations.join(" ").toLowerCase();
     expect(recs).toContain("static");
   });
 
   it("Rust stack -> Rust-specific recommendations", () => {
-    initWithArch(tmpDir, { language: "Rust", framework: "Actix" });
+    initWithArchOverrides(tmpDir, { language: "Rust", framework: "Actix" });
     const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
     const recs = result.deploymentGuide.recommendations.join(" ").toLowerCase();
     expect(recs).toContain("release");
   });
 
   it("Java stack -> Java-specific recommendations", () => {
-    initWithArch(tmpDir, { language: "Java", framework: "Spring Boot" });
+    initWithArchOverrides(tmpDir, { language: "Java", framework: "Spring Boot" });
     const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
     const recs = result.deploymentGuide.recommendations.join(" ").toLowerCase();
     expect(recs).toContain("temurin");
   });
 
   it("Ruby stack -> Ruby-specific recommendations", () => {
-    initWithArch(tmpDir, { language: "Ruby", framework: "Rails" });
+    initWithArchOverrides(tmpDir, { language: "Ruby", framework: "Rails" });
     const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
     const recs = result.deploymentGuide.recommendations.join(" ").toLowerCase();
     expect(recs).toContain("puma");
   });
 
   it("PHP stack -> PHP-specific recommendations", () => {
-    initWithArch(tmpDir, { language: "PHP", framework: "Laravel" });
+    initWithArchOverrides(tmpDir, { language: "PHP", framework: "Laravel" });
     const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
     const recs = result.deploymentGuide.recommendations.join(" ").toLowerCase();
     expect(recs).toContain("fpm");
   });
 
   it("PostgreSQL -> PostgreSQL recommendations", () => {
-    initWithArch(tmpDir, { database: "PostgreSQL" });
+    initWithArchOverrides(tmpDir, { database: "PostgreSQL" });
     const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
     const recs = result.deploymentGuide.recommendations.join(" ").toLowerCase();
     expect(recs).toContain("pg_dump");
   });
 
   it("MySQL -> MySQL recommendations", () => {
-    initWithArch(tmpDir, { database: "MySQL" });
+    initWithArchOverrides(tmpDir, { database: "MySQL" });
     const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
     const recs = result.deploymentGuide.recommendations.join(" ").toLowerCase();
     expect(recs).toContain("mysqldump");
   });
 
   it("MongoDB -> MongoDB recommendations", () => {
-    initWithArch(tmpDir, { database: "MongoDB" });
+    initWithArchOverrides(tmpDir, { database: "MongoDB" });
     const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
     const recs = result.deploymentGuide.recommendations.join(" ").toLowerCase();
     expect(recs).toContain("replica");
   });
 
   it("Redis -> Redis recommendations", () => {
-    initWithArch(tmpDir, { database: "Redis" });
+    initWithArchOverrides(tmpDir, { database: "Redis" });
     const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
     const recs = result.deploymentGuide.recommendations.join(" ").toLowerCase();
     expect(recs).toContain("maxmemory");
   });
 
   it("DigitalOcean -> DO recommendations", () => {
-    initWithArch(tmpDir, { hosting: "DigitalOcean" });
+    initWithArchOverrides(tmpDir, { hosting: "DigitalOcean" });
     const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
     const recs = result.deploymentGuide.recommendations.join(" ");
     expect(recs).toContain("Droplet");
   });
 
   it("AWS -> AWS recommendations", () => {
-    initWithArch(tmpDir, { hosting: "AWS" });
+    initWithArchOverrides(tmpDir, { hosting: "AWS" });
     const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
     const recs = result.deploymentGuide.recommendations.join(" ");
     expect(recs).toMatch(/EC2|ECS/);
   });
 
   it("Fly.io -> Fly recommendations", () => {
-    initWithArch(tmpDir, { hosting: "Fly.io" });
+    initWithArchOverrides(tmpDir, { hosting: "Fly.io" });
     const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
     const recs = result.deploymentGuide.recommendations.join(" ").toLowerCase();
     expect(recs).toContain("fly");
   });
 
   it("Railway -> Railway recommendations", () => {
-    initWithArch(tmpDir, { hosting: "Railway" });
+    initWithArchOverrides(tmpDir, { hosting: "Railway" });
     const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
     const recs = result.deploymentGuide.recommendations.join(" ").toLowerCase();
     expect(recs).toContain("railway");
   });
 
   it("Debian VPS -> Linux recommendations", () => {
-    initWithArch(tmpDir, { hosting: "Debian VPS" });
+    initWithArchOverrides(tmpDir, { hosting: "Debian VPS" });
     const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
     const recs = result.deploymentGuide.recommendations.join(" ").toLowerCase();
     expect(recs).toContain("unattended");
@@ -191,15 +181,15 @@ describe("handleGetChecklist", () => {
   let tmpDir: string;
 
   beforeEach(() => {
-    tmpDir = makeTmpDir();
+    tmpDir = makeTmpDir("a2p-deploy");
   });
 
   afterEach(() => {
-    rmSync(tmpDir, { recursive: true, force: true });
+    cleanTmpDir(tmpDir);
   });
 
   it("SQLite -> WAL-related items in checklist", () => {
-    initWithArch(tmpDir, { database: "SQLite" });
+    initWithArchOverrides(tmpDir, { database: "SQLite" });
     const result = parse(handleGetChecklist({ projectPath: tmpDir }));
     const allItems = [
       ...result.checklist.preDeployment,
@@ -209,21 +199,21 @@ describe("handleGetChecklist", () => {
   });
 
   it("Stripe -> Stripe-specific items", () => {
-    initWithArch(tmpDir, { otherTech: ["Stripe"] });
+    initWithArchOverrides(tmpDir, { otherTech: ["Stripe"] });
     const result = parse(handleGetChecklist({ projectPath: tmpDir }));
     const preItems = result.checklist.preDeployment;
     expect(preItems.some((i: any) => i.item.includes("Stripe"))).toBe(true);
   });
 
   it("Firebase -> Firebase-specific items", () => {
-    initWithArch(tmpDir, { otherTech: ["Firebase Auth"] });
+    initWithArchOverrides(tmpDir, { otherTech: ["Firebase Auth"] });
     const result = parse(handleGetChecklist({ projectPath: tmpDir }));
     const preItems = result.checklist.preDeployment;
     expect(preItems.some((i: any) => i.item.includes("Firebase"))).toBe(true);
   });
 
   it("base items always present with minimum counts", () => {
-    initWithArch(tmpDir);
+    initWithArchOverrides(tmpDir);
     const result = parse(handleGetChecklist({ projectPath: tmpDir }));
     expect(result.checklist.preDeployment.length).toBeGreaterThanOrEqual(8);
     expect(result.checklist.infrastructure.length).toBeGreaterThanOrEqual(6);
@@ -231,7 +221,7 @@ describe("handleGetChecklist", () => {
   });
 
   it("done flags correct when all slices completed and 0 findings", () => {
-    initWithArch(tmpDir);
+    initWithArchOverrides(tmpDir);
     handleCreateBuildPlan({
       projectPath: tmpDir,
       slices: [
@@ -270,28 +260,28 @@ describe("handleGetChecklist", () => {
   });
 
   it("PostgreSQL -> PostgreSQL checklist items", () => {
-    initWithArch(tmpDir, { database: "PostgreSQL" });
+    initWithArchOverrides(tmpDir, { database: "PostgreSQL" });
     const result = parse(handleGetChecklist({ projectPath: tmpDir }));
     const allItems = result.checklist.postDeployment.map((i: any) => i.item).join(" ");
     expect(allItems).toContain("pg_dump");
   });
 
   it("Redis in other -> Redis checklist items", () => {
-    initWithArch(tmpDir, { otherTech: ["Redis"] });
+    initWithArchOverrides(tmpDir, { otherTech: ["Redis"] });
     const result = parse(handleGetChecklist({ projectPath: tmpDir }));
     const allItems = result.checklist.postDeployment.map((i: any) => i.item).join(" ");
     expect(allItems).toContain("maxmemory");
   });
 
   it("Debian VPS -> Linux checklist items", () => {
-    initWithArch(tmpDir, { hosting: "Debian VPS" });
+    initWithArchOverrides(tmpDir, { hosting: "Debian VPS" });
     const result = parse(handleGetChecklist({ projectPath: tmpDir }));
     const infraItems = result.checklist.infrastructure.map((i: any) => i.item).join(" ");
     expect(infraItems).toContain("unattended-upgrades");
   });
 
   it("Clerk -> Clerk checklist items", () => {
-    initWithArch(tmpDir, { otherTech: ["Clerk"] });
+    initWithArchOverrides(tmpDir, { otherTech: ["Clerk"] });
     const result = parse(handleGetChecklist({ projectPath: tmpDir }));
     const preItems = result.checklist.preDeployment.map((i: any) => i.item).join(" ");
     expect(preItems).toContain("Clerk");
@@ -299,7 +289,7 @@ describe("handleGetChecklist", () => {
   });
 
   it("Resend -> Resend checklist items", () => {
-    initWithArch(tmpDir, { otherTech: ["Resend"] });
+    initWithArchOverrides(tmpDir, { otherTech: ["Resend"] });
     const result = parse(handleGetChecklist({ projectPath: tmpDir }));
     const preItems = result.checklist.preDeployment.map((i: any) => i.item).join(" ");
     expect(preItems).toContain("Resend");
@@ -307,14 +297,14 @@ describe("handleGetChecklist", () => {
   });
 
   it("Upstash -> Upstash checklist items", () => {
-    initWithArch(tmpDir, { otherTech: ["Upstash"] });
+    initWithArchOverrides(tmpDir, { otherTech: ["Upstash"] });
     const result = parse(handleGetChecklist({ projectPath: tmpDir }));
     const preItems = result.checklist.preDeployment.map((i: any) => i.item).join(" ");
     expect(preItems).toContain("Upstash");
   });
 
   it("Sentry -> Sentry checklist items", () => {
-    initWithArch(tmpDir, { otherTech: ["Sentry"] });
+    initWithArchOverrides(tmpDir, { otherTech: ["Sentry"] });
     const result = parse(handleGetChecklist({ projectPath: tmpDir }));
     const preItems = result.checklist.preDeployment.map((i: any) => i.item).join(" ");
     expect(preItems).toContain("Sentry");
@@ -322,7 +312,7 @@ describe("handleGetChecklist", () => {
   });
 
   it("Render hosting -> Render checklist items", () => {
-    initWithArch(tmpDir, { hosting: "Render" });
+    initWithArchOverrides(tmpDir, { hosting: "Render" });
     const result = parse(handleGetChecklist({ projectPath: tmpDir }));
     const infraItems = result.checklist.infrastructure.map((i: any) => i.item).join(" ");
     expect(infraItems).toContain("Render");
@@ -330,14 +320,14 @@ describe("handleGetChecklist", () => {
   });
 
   it("Vercel hosting -> Vercel checklist items", () => {
-    initWithArch(tmpDir, { hosting: "Vercel" });
+    initWithArchOverrides(tmpDir, { hosting: "Vercel" });
     const result = parse(handleGetChecklist({ projectPath: tmpDir }));
     const infraItems = result.checklist.infrastructure.map((i: any) => i.item).join(" ");
     expect(infraItems).toContain("Vercel");
   });
 
   it("Cloudflare hosting -> Cloudflare checklist items", () => {
-    initWithArch(tmpDir, { hosting: "Cloudflare" });
+    initWithArchOverrides(tmpDir, { hosting: "Cloudflare" });
     const result = parse(handleGetChecklist({ projectPath: tmpDir }));
     const infraItems = result.checklist.infrastructure.map((i: any) => i.item).join(" ");
     expect(infraItems).toContain("Cloudflare");
@@ -345,21 +335,21 @@ describe("handleGetChecklist", () => {
   });
 
   it("Fly.io hosting -> Fly checklist items", () => {
-    initWithArch(tmpDir, { hosting: "Fly.io" });
+    initWithArchOverrides(tmpDir, { hosting: "Fly.io" });
     const result = parse(handleGetChecklist({ projectPath: tmpDir }));
     const infraItems = result.checklist.infrastructure.map((i: any) => i.item).join(" ");
     expect(infraItems).toContain("Fly");
   });
 
   it("Railway hosting -> Railway checklist items", () => {
-    initWithArch(tmpDir, { hosting: "Railway" });
+    initWithArchOverrides(tmpDir, { hosting: "Railway" });
     const result = parse(handleGetChecklist({ projectPath: tmpDir }));
     const infraItems = result.checklist.infrastructure.map((i: any) => i.item).join(" ");
     expect(infraItems).toContain("Railway");
   });
 
   it("Render hosting -> Render recommendations in deployment", () => {
-    initWithArch(tmpDir, { hosting: "Render" });
+    initWithArchOverrides(tmpDir, { hosting: "Render" });
     const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
     const recs = result.deploymentGuide.recommendations.join(" ").toLowerCase();
     expect(recs).toContain("render");
@@ -367,7 +357,7 @@ describe("handleGetChecklist", () => {
   });
 
   it("Cloudflare hosting -> Cloudflare recommendations in deployment", () => {
-    initWithArch(tmpDir, { hosting: "Cloudflare" });
+    initWithArchOverrides(tmpDir, { hosting: "Cloudflare" });
     const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
     const recs = result.deploymentGuide.recommendations.join(" ").toLowerCase();
     expect(recs).toContain("cloudflare");
@@ -375,9 +365,9 @@ describe("handleGetChecklist", () => {
   });
 
   it("returns error without project", () => {
-    const otherDir = makeTmpDir();
+    const otherDir = makeTmpDir("a2p-deploy");
     const result = parse(handleGetChecklist({ projectPath: otherDir }));
     expect(result.error).toBeTruthy();
-    rmSync(otherDir, { recursive: true, force: true });
+    cleanTmpDir(otherDir);
   });
 });

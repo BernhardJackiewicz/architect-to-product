@@ -1,58 +1,18 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { mkdtempSync, rmSync } from "node:fs";
-import { join } from "node:path";
-import { tmpdir } from "node:os";
 import { handleRunTests } from "../../src/tools/run-tests.js";
-import { handleInitProject } from "../../src/tools/init-project.js";
-import { handleSetArchitecture } from "../../src/tools/set-architecture.js";
-import { handleCreateBuildPlan } from "../../src/tools/create-build-plan.js";
 import { StateManager } from "../../src/state/state-manager.js";
-
-function makeTmpDir(): string {
-  return mkdtempSync(join(tmpdir(), "a2p-runtests-"));
-}
-
-function parse(json: string) {
-  return JSON.parse(json);
-}
-
-function setupProject(dir: string) {
-  handleInitProject({ projectPath: dir, projectName: "test" });
-  handleSetArchitecture({
-    projectPath: dir,
-    name: "Test",
-    description: "Test",
-    language: "Python",
-    framework: "FastAPI",
-    features: ["CRUD"],
-    dataModel: "items",
-    apiDesign: "REST",
-  });
-  handleCreateBuildPlan({
-    projectPath: dir,
-    slices: [
-      {
-        id: "s01",
-        name: "Setup",
-        description: "Setup",
-        acceptanceCriteria: ["works"],
-        testStrategy: "pytest",
-        dependencies: [],
-      },
-    ],
-  });
-}
+import { makeTmpDir, cleanTmpDir, parse, initWithSlices } from "../helpers/setup.js";
 
 describe("handleRunTests", () => {
   let tmpDir: string;
 
   beforeEach(() => {
-    tmpDir = makeTmpDir();
-    setupProject(tmpDir);
+    tmpDir = makeTmpDir("a2p-runtests");
+    initWithSlices(tmpDir, 1, { language: "Python", framework: "FastAPI", testStrategy: "pytest" });
   });
 
   afterEach(() => {
-    rmSync(tmpDir, { recursive: true, force: true });
+    cleanTmpDir(tmpDir);
   });
 
   it("parses pytest-style output", () => {

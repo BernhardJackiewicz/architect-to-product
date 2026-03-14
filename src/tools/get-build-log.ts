@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { StateManager } from "../state/state-manager.js";
+import { requireProject } from "../utils/tool-helpers.js";
 
 export const getBuildLogSchema = z.object({
   projectPath: z.string().describe("Absolute path to the project directory"),
@@ -20,14 +20,8 @@ const ERROR_ACTIONS = new Set([
 ]);
 
 export function handleGetBuildLog(input: GetBuildLogInput): string {
-  const sm = new StateManager(input.projectPath);
-
-  if (!sm.exists()) {
-    return JSON.stringify({
-      error: "No project found",
-      hint: "Use a2p_init_project to initialize a new project first.",
-    });
-  }
+  const { sm, error } = requireProject(input.projectPath);
+  if (error) return error;
 
   const state = sm.read();
   let events = [...state.buildHistory];

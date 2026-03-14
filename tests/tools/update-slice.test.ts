@@ -1,21 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { mkdtempSync, rmSync } from "node:fs";
-import { join } from "node:path";
-import { tmpdir } from "node:os";
 import { handleUpdateSlice } from "../../src/tools/update-slice.js";
 import { handleInitProject } from "../../src/tools/init-project.js";
 import { handleSetArchitecture } from "../../src/tools/set-architecture.js";
 import { handleCreateBuildPlan } from "../../src/tools/create-build-plan.js";
 import { StateManager } from "../../src/state/state-manager.js";
 import type { ReviewMode } from "../../src/state/types.js";
-
-function makeTmpDir(): string {
-  return mkdtempSync(join(tmpdir(), "a2p-update-"));
-}
-
-function parse(json: string) {
-  return JSON.parse(json);
-}
+import { makeTmpDir, cleanTmpDir, parse } from "../helpers/setup.js";
 
 const baseArchInput = {
   name: "Test App",
@@ -68,11 +58,11 @@ describe("handleUpdateSlice checkpoint logic", () => {
   let tmpDir: string;
 
   beforeEach(() => {
-    tmpDir = makeTmpDir();
+    tmpDir = makeTmpDir("a2p-update");
   });
 
   afterEach(() => {
-    rmSync(tmpDir, { recursive: true, force: true });
+    cleanTmpDir(tmpDir);
   });
 
   it("reviewMode 'all' + done → awaitingHumanReview: true", () => {

@@ -1,40 +1,17 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { mkdirSync } from "node:fs";
-import { join } from "node:path";
-import { tmpdir } from "node:os";
 import { StateManager } from "../../src/state/state-manager.js";
 import { handleGetBuildLog } from "../../src/tools/get-build-log.js";
-
-function createTestProject(): string {
-  const dir = join(tmpdir(), `a2p-buildlog-${Date.now()}-${Math.random().toString(36).slice(2)}`);
-  mkdirSync(dir, { recursive: true });
-  return dir;
-}
-
-function setupProject(dir: string): StateManager {
-  const sm = new StateManager(dir);
-  sm.init("test-project", dir);
-  sm.setArchitecture({
-    name: "Test",
-    description: "Test project",
-    techStack: { language: "TypeScript", framework: "Express", database: null, frontend: null, hosting: null, other: [] },
-    features: ["f1"],
-    dataModel: "none",
-    apiDesign: "REST",
-    raw: "",
-  });
-  return sm;
-}
+import { makeTmpDir, initWithStateManager } from "../helpers/setup.js";
 
 describe("a2p_get_build_log", () => {
   let dir: string;
 
   beforeEach(() => {
-    dir = createTestProject();
+    dir = makeTmpDir("a2p-buildlog");
   });
 
   it("returns events chronologically (newest first)", () => {
-    const sm = setupProject(dir);
+    const sm = initWithStateManager(dir, 0);
     sm.setPhase("planning");
     sm.setPhase("building");
 
@@ -46,7 +23,7 @@ describe("a2p_get_build_log", () => {
   });
 
   it("filters by sliceId", () => {
-    const sm = setupProject(dir);
+    const sm = initWithStateManager(dir, 0);
 
     const slices = [
       { id: "s1", name: "S1", description: "d", acceptanceCriteria: ["AC"], testStrategy: "unit", dependencies: [], status: "pending" as const, files: [], testResults: [], sastFindings: [] },
@@ -67,7 +44,7 @@ describe("a2p_get_build_log", () => {
   });
 
   it("filters by phase", () => {
-    const sm = setupProject(dir);
+    const sm = initWithStateManager(dir, 0);
     sm.setPhase("planning");
     sm.setPhase("building");
 
@@ -78,7 +55,7 @@ describe("a2p_get_build_log", () => {
   });
 
   it("respects limit", () => {
-    const sm = setupProject(dir);
+    const sm = initWithStateManager(dir, 0);
     sm.setPhase("planning");
     sm.setPhase("building");
 
@@ -97,7 +74,7 @@ describe("a2p_get_build_log", () => {
   });
 
   it("includes error events in errors filter", () => {
-    const sm = setupProject(dir);
+    const sm = initWithStateManager(dir, 0);
     const slices = [
       { id: "s1", name: "S1", description: "d", acceptanceCriteria: ["AC"], testStrategy: "unit", dependencies: [], status: "pending" as const, files: [], testResults: [], sastFindings: [] },
     ];

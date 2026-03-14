@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { StateManager } from "../state/state-manager.js";
+import { requireProject } from "../utils/tool-helpers.js";
 
 export const getChecklistSchema = z.object({
   projectPath: z.string().describe("Absolute path to the project directory"),
@@ -8,11 +8,8 @@ export const getChecklistSchema = z.object({
 export type GetChecklistInput = z.infer<typeof getChecklistSchema>;
 
 export function handleGetChecklist(input: GetChecklistInput): string {
-  const sm = new StateManager(input.projectPath);
-
-  if (!sm.exists()) {
-    return JSON.stringify({ error: "No project found." });
-  }
+  const { sm, error } = requireProject(input.projectPath);
+  if (error) return error;
 
   const state = sm.read();
   const progress = sm.getProgress();

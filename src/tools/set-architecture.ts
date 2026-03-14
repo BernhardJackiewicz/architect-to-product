@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { StateManager } from "../state/state-manager.js";
+import { requireProject } from "../utils/tool-helpers.js";
 import type { Architecture, TechStack, ProductPhase, ReviewMode, UIDesign } from "../state/types.js";
 
 export const setArchitectureSchema = z.object({
@@ -55,13 +55,8 @@ export const setArchitectureSchema = z.object({
 export type SetArchitectureInput = z.infer<typeof setArchitectureSchema>;
 
 export function handleSetArchitecture(input: SetArchitectureInput): string {
-  const sm = new StateManager(input.projectPath);
-
-  if (!sm.exists()) {
-    return JSON.stringify({
-      error: "No project found. Run a2p_init_project first.",
-    });
-  }
+  const { sm, error } = requireProject(input.projectPath);
+  if (error) return error;
 
   const techStack: TechStack = {
     language: input.language,

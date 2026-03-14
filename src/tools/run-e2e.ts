@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { StateManager } from "../state/state-manager.js";
+import { requireProject } from "../utils/tool-helpers.js";
 
 export const runE2eSchema = z.object({
   projectPath: z.string().describe("Absolute path to the project directory"),
@@ -32,11 +32,8 @@ export type RunE2eInput = z.infer<typeof runE2eSchema>;
  * This tool records the results in project state.
  */
 export function handleRunE2e(input: RunE2eInput): string {
-  const sm = new StateManager(input.projectPath);
-
-  if (!sm.exists()) {
-    return JSON.stringify({ error: "No project found." });
-  }
+  const { sm, error } = requireProject(input.projectPath);
+  if (error) return error;
 
   const passed = input.scenarios.filter((s) => s.passed).length;
   const failed = input.scenarios.filter((s) => !s.passed).length;

@@ -1,65 +1,20 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { mkdtempSync, rmSync } from "node:fs";
-import { join } from "node:path";
-import { tmpdir } from "node:os";
 import { handleAddSlice } from "../../src/tools/add-slice.js";
 import { handleInitProject } from "../../src/tools/init-project.js";
 import { handleSetArchitecture } from "../../src/tools/set-architecture.js";
 import { handleCreateBuildPlan } from "../../src/tools/create-build-plan.js";
 import { StateManager } from "../../src/state/state-manager.js";
-
-function makeTmpDir(): string {
-  return mkdtempSync(join(tmpdir(), "a2p-addslice-"));
-}
-
-function parse(json: string) {
-  return JSON.parse(json);
-}
-
-function setupProject(dir: string) {
-  handleInitProject({ projectPath: dir, projectName: "test" });
-  handleSetArchitecture({
-    projectPath: dir,
-    name: "Test",
-    description: "Test",
-    language: "TypeScript",
-    framework: "Express",
-    features: ["CRUD"],
-    dataModel: "items",
-    apiDesign: "REST",
-  });
-  handleCreateBuildPlan({
-    projectPath: dir,
-    slices: [
-      {
-        id: "s01",
-        name: "Setup",
-        description: "Setup",
-        acceptanceCriteria: ["works"],
-        testStrategy: "jest",
-        dependencies: [],
-      },
-      {
-        id: "s02",
-        name: "CRUD",
-        description: "CRUD",
-        acceptanceCriteria: ["works"],
-        testStrategy: "jest",
-        dependencies: ["s01"],
-      },
-    ],
-  });
-}
+import { makeTmpDir, cleanTmpDir, parse, initWithSlices } from "../helpers/setup.js";
 
 describe("handleAddSlice", () => {
   let tmpDir: string;
 
   beforeEach(() => {
-    tmpDir = makeTmpDir();
+    tmpDir = makeTmpDir("a2p-addslice");
   });
 
   afterEach(() => {
-    rmSync(tmpDir, { recursive: true, force: true });
+    cleanTmpDir(tmpDir);
   });
 
   it("returns error without project", () => {
@@ -80,7 +35,7 @@ describe("handleAddSlice", () => {
   });
 
   it("appends slice to end of plan", () => {
-    setupProject(tmpDir);
+    initWithSlices(tmpDir);
     const result = parse(
       handleAddSlice({
         projectPath: tmpDir,
@@ -104,7 +59,7 @@ describe("handleAddSlice", () => {
   });
 
   it("inserts slice after specific slice", () => {
-    setupProject(tmpDir);
+    initWithSlices(tmpDir);
     const result = parse(
       handleAddSlice({
         projectPath: tmpDir,
@@ -134,7 +89,7 @@ describe("handleAddSlice", () => {
   });
 
   it("rejects duplicate slice ID", () => {
-    setupProject(tmpDir);
+    initWithSlices(tmpDir);
     const result = parse(
       handleAddSlice({
         projectPath: tmpDir,
@@ -152,7 +107,7 @@ describe("handleAddSlice", () => {
   });
 
   it("rejects invalid dependency", () => {
-    setupProject(tmpDir);
+    initWithSlices(tmpDir);
     const result = parse(
       handleAddSlice({
         projectPath: tmpDir,
@@ -170,7 +125,7 @@ describe("handleAddSlice", () => {
   });
 
   it("rejects invalid insertAfterSliceId", () => {
-    setupProject(tmpDir);
+    initWithSlices(tmpDir);
     const result = parse(
       handleAddSlice({
         projectPath: tmpDir,
@@ -218,7 +173,7 @@ describe("handleAddSlice", () => {
   });
 
   it("passes hasUI through to created slice", () => {
-    setupProject(tmpDir);
+    initWithSlices(tmpDir);
     const result = parse(
       handleAddSlice({
         projectPath: tmpDir,
