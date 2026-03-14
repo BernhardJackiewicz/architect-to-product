@@ -13,6 +13,8 @@ import type {
   TestResult,
   ProductPhase,
   AuditResult,
+  WhiteboxAuditResult,
+  ActiveVerificationResult,
 } from "./types.js";
 
 const STATE_VERSION = 1;
@@ -85,10 +87,13 @@ export class StateManager {
         lintCommand: "",
         buildCommand: "",
         formatCommand: "",
+        claudeModel: "opus",
       },
       companions: [],
       qualityIssues: [],
       auditResults: [],
+      whiteboxResults: [],
+      activeVerificationResults: [],
       buildHistory: [],
       currentProductPhase: 0,
       createdAt: now,
@@ -172,6 +177,14 @@ export class StateManager {
           .join("\n  ");
         throw new Error(
           `Cannot deploy with ${openBlockers.length} open CRITICAL/HIGH finding(s):\n  ${blockerList}\nFix or accept all CRITICAL/HIGH findings before deploying.`
+        );
+      }
+
+      // Whitebox gate: block deployment if last whitebox has blocking findings
+      const lastWhitebox = state.whiteboxResults[state.whiteboxResults.length - 1];
+      if (lastWhitebox && lastWhitebox.blocking_count > 0) {
+        throw new Error(
+          `Cannot deploy with ${lastWhitebox.blocking_count} blocking whitebox finding(s). Fix all blocking findings before deploying.`
         );
       }
 
@@ -553,6 +566,36 @@ export class StateManager {
       null,
       "audit_run",
       `[${result.mode}] ${result.id}: ${result.findings.length} findings (C:${result.summary.critical} H:${result.summary.high} M:${result.summary.medium} L:${result.summary.low})`
+    );
+    this.write(state);
+    return state;
+  }
+
+  /** Record a whitebox audit result */
+  addWhiteboxResult(result: WhiteboxAuditResult): ProjectState {
+    const state = this.read();
+    state.whiteboxResults.push(result);
+    this.addEvent(
+      state,
+      state.phase,
+      null,
+      "whitebox_audit",
+      `[${result.mode}] ${result.id}: ${result.findings.length} findings (blocking: ${result.blocking_count})`
+    );
+    this.write(state);
+    return state;
+  }
+
+  /** Record an active verification result */
+  addActiveVerificationResult(result: ActiveVerificationResult): ProjectState {
+    const state = this.read();
+    state.activeVerificationResults.push(result);
+    this.addEvent(
+      state,
+      state.phase,
+      null,
+      "active_verification",
+      `${result.id} round ${result.round}: ${result.tests_passed}/${result.tests_run} passed (blocking: ${result.blocking_count})`
     );
     this.write(state);
     return state;

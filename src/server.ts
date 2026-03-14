@@ -19,6 +19,8 @@ import { completePhaseSchema, handleCompletePhase } from "./tools/complete-phase
 import { addSliceSchema, handleAddSlice } from "./tools/add-slice.js";
 import { getBuildLogSchema, handleGetBuildLog } from "./tools/get-build-log.js";
 import { runAuditSchema, handleRunAudit } from "./tools/run-audit.js";
+import { runWhiteboxAuditSchema, handleRunWhiteboxAudit } from "./tools/run-whitebox-audit.js";
+import { runActiveVerificationSchema, handleRunActiveVerification } from "./tools/run-active-verification.js";
 
 // Prompts
 import { ONBOARDING_PROMPT } from "./prompts/onboarding.js";
@@ -29,6 +31,7 @@ import { E2E_TESTING_PROMPT } from "./prompts/e2e-testing.js";
 import { SECURITY_GATE_PROMPT } from "./prompts/security-gate.js";
 import { DEPLOY_PROMPT } from "./prompts/deploy.js";
 import { AUDIT_PROMPT } from "./prompts/audit.js";
+import { WHITEBOX_PROMPT } from "./prompts/whitebox.js";
 
 // Resources
 import { StateManager } from "./state/state-manager.js";
@@ -92,7 +95,9 @@ export function createServer(): McpServer {
       dataModel: setArchitectureSchema.shape.dataModel,
       apiDesign: setArchitectureSchema.shape.apiDesign,
       rawArchitecture: setArchitectureSchema.shape.rawArchitecture,
+      claudeModel: setArchitectureSchema.shape.claudeModel,
       reviewMode: setArchitectureSchema.shape.reviewMode,
+      oversight: setArchitectureSchema.shape.oversight,
       uiDesign: setArchitectureSchema.shape.uiDesign,
       phases: setArchitectureSchema.shape.phases,
     },
@@ -255,6 +260,28 @@ export function createServer(): McpServer {
     wrapTool(handleRunAudit as ToolHandler)
   );
 
+  server.tool(
+    "a2p_run_whitebox_audit",
+    "Run whitebox security audit: analyze whether SAST findings are actually exploitable (reachable paths, guards, trust boundaries)",
+    {
+      projectPath: runWhiteboxAuditSchema.shape.projectPath,
+      mode: runWhiteboxAuditSchema.shape.mode,
+      files: runWhiteboxAuditSchema.shape.files,
+    },
+    wrapTool(handleRunWhiteboxAudit as ToolHandler)
+  );
+
+  server.tool(
+    "a2p_run_active_verification",
+    "Run active verification: test runtime-enforced invariants (workflow gates, state recovery, deployment gates)",
+    {
+      projectPath: runActiveVerificationSchema.shape.projectPath,
+      round: runActiveVerificationSchema.shape.round,
+      categories: runActiveVerificationSchema.shape.categories,
+    },
+    wrapTool(handleRunActiveVerification as ToolHandler)
+  );
+
   // ===== PROMPTS =====
 
   server.prompt("a2p", "architect-to-product onboarding: When the user says 'a2p', 'onboarding', 'start project', or 'new project' — use THIS prompt to guide them through architecture definition, tech stack selection, UI design, and project setup. This is the entry point for architect-to-product.", () => ({
@@ -283,6 +310,10 @@ export function createServer(): McpServer {
 
   server.prompt("a2p_deploy", "architect-to-product deploy: When the user says 'a2p deploy' or 'deployment' — use THIS prompt to generate production deployment configs and deployment guide.", () => ({
     messages: [{ role: "user", content: { type: "text", text: DEPLOY_PROMPT } }],
+  }));
+
+  server.prompt("a2p_whitebox", "architect-to-product whitebox: When the user says 'a2p whitebox', 'whitebox audit', or 'active verification' — use THIS prompt for exploitability analysis of SAST findings + runtime gate verification.", () => ({
+    messages: [{ role: "user", content: { type: "text", text: WHITEBOX_PROMPT } }],
   }));
 
   server.prompt("a2p_audit", "architect-to-product audit: When the user says 'a2p audit', 'quality audit', or 'release audit' — use THIS prompt for code hygiene checks (quality mode) or pre-release verification (release mode).", () => ({

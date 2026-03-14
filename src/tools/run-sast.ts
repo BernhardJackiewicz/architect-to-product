@@ -51,6 +51,11 @@ export function handleRunSast(input: RunSastInput): string {
       .map((f) => `${f.tool}:${f.file}:${f.line}:${f.title}`)
   );
 
+  // Mark SAST as run for this slice (evidence for status transition guard)
+  if (input.sliceId) {
+    sm.markSastRun(input.sliceId);
+  }
+
   let newCount = 0;
   let duplicateCount = 0;
   for (const finding of allFindings) {
