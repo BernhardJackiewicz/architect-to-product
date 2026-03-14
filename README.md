@@ -2,11 +2,11 @@
 
 MCP server that turns AI-generated code into production-ready software with TDD, security scanning, and deployment automation. Up to 100 times fewer exploration tokens for claude code.
 
-**16 MCP tools** · **587 tests** · **Architecture → Plan → Build → Audit → Security → Deploy**
+**18 MCP tools** · **633 tests** · **Architecture → Plan → Build → Audit → Security → Whitebox → Deploy**
 
 [![npm version](https://img.shields.io/npm/v/architect-to-product)](https://www.npmjs.com/package/architect-to-product)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Tests: 587 passing](https://img.shields.io/badge/tests-587%20passing-brightgreen)]()
+[![Tests: 633 passing](https://img.shields.io/badge/tests-633%20passing-brightgreen)]()
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue)]()
 
 ---
@@ -39,8 +39,11 @@ It coordinates:
 - **Up to 100x fewer exploration tokens** — codebase-memory-mcp builds a code graph instead of scanning files raw
 - **Test-driven development** — every feature has tests before implementation
 - **Static code analysis** — Semgrep + Bandit scan for vulnerabilities automatically
+- **Whitebox security audit** — verifies whether SAST findings are actually exploitable (reachable paths, guards, trust boundaries)
+- **Active verification** — runtime gate tests that prove workflow invariants hold (state transitions, deployment gates, recovery)
 - **Code audits** — Quality audits during development, release audits before publish (TODOs, debug artifacts, secrets, .gitignore, test coverage, README)
 - **Security reviews** — OWASP Top 10 review before deploy
+- **Configurable human oversight** — mandatory build signoff and deploy approval, optional plan approval, slice review, and security signoff
 - **Deployment generation** — stack-specific Dockerfile, docker-compose, Caddyfile, backup scripts
 
 A2P is not a replacement for engineers. It is an engineering safety net for AI-generated code.
@@ -51,8 +54,11 @@ A2P is not a replacement for engineers. It is an engineering safety net for AI-g
 |---|---|
 | Vibe code a feature | Architecture-driven vertical slices |
 | Manually write some tests (maybe) | TDD per slice: RED → GREEN → REFACTOR |
-| Miss security vulnerabilities | Automated SAST + OWASP Top 10 review |
+| Miss security vulnerabilities | Automated SAST + OWASP Top 10 review + whitebox exploitability analysis |
+| SAST reports 50 findings, most are noise | Whitebox audit confirms which findings are actually exploitable |
 | Ship with TODOs, console.logs, .env in repo | Quality + release audits catch hygiene issues, block deploy on critical findings |
+| AI runs without stopping | Mandatory build signoff + deploy approval, configurable oversight at every phase |
+| AI hallucinates API signatures for unfamiliar libraries | Documentation-first: reads official docs via WebSearch + WebFetch before writing code |
 | Copy-paste a Dockerfile from StackOverflow | Generated Dockerfile + docker-compose + Caddyfile + backup scripts |
 | Hope for the best | Ship to production with confidence |
 
@@ -61,11 +67,84 @@ A2P is not a replacement for engineers. It is an engineering safety net for AI-g
 - **100x fewer tokens** — Code graph intelligence via codebase-memory-mcp replaces raw file scanning — saves context window and money
 - **Develop faster** — Vertical slices with TDD, no yak shaving
 - **Fewer bugs** — AI-driven test driven development (TDD): every feature has tests before implementation (RED → GREEN → REFACTOR)
-- **Ship secure** — Static code analysis (Semgrep + Bandit) + OWASP Top 10 review built into the AI coding workflow
+- **Ship secure** — Static code analysis (Semgrep + Bandit) + OWASP Top 10 review + whitebox exploitability analysis built into the AI coding workflow
+- **Whitebox audit** — SAST finds patterns, whitebox proves exploitability: reachable code paths, missing guards, prompt-only enforcement. Blocking findings prevent deployment (enforced in code)
+- **Active verification** — Runtime gate tests prove that workflow invariants actually hold: state transitions require evidence, deployment gates block on critical findings, state survives round-trips
+- **Human oversight** — Mandatory build signoff (before wasting tokens on audit/security) and deploy approval. Configurable plan approval, slice review, and security signoff. Two gates are always on, the rest you control
 - **Audit before release** — Quality audits catch debug artifacts, hardcoded secrets, and test coverage gaps during development. Release audits verify README, .gitignore, temp files, and aggregate findings before publish. Critical release findings block deployment (enforced in code)
 - **Deploy on day one** — Stack-specific Dockerfile, docker-compose, Caddyfile, backup scripts
 - **Code quality** — Built-in code quality tool: dead code detection, redundancy analysis, coupling metrics
+- **Documentation first** — When the architecture uses unfamiliar tech (exotic auth, new ORMs, niche APIs), Claude reads the official docs via WebSearch + WebFetch instead of hallucinating API signatures. Enforced in every prompt, documented in CLAUDE.md
+- **Model preference** — Configure which Claude model does the programming (`opus`, `sonnet`, `haiku`). Default: opus (Claude Opus 4.6 with maximum effort). Stored in project config, referenced by all prompts
 - **Any stack** — Python, TypeScript, Go, Rust, Java, Ruby, PHP, C#, PostgreSQL, MySQL, MongoDB, Redis
+
+## Human Oversight
+
+A2P gives you granular control over where the AI pauses for human review. Two gates are always on (non-negotiable), the rest you configure during onboarding.
+
+### Oversight Configuration
+
+Set during onboarding via `a2p_set_architecture`:
+
+```json
+{
+  "oversight": {
+    "sliceReview": "off",
+    "planApproval": true,
+    "buildSignoff": true,
+    "deployApproval": true,
+    "securitySignoff": false
+  }
+}
+```
+
+| Setting | Default | Mandatory? | What it does |
+|---------|---------|------------|-------------|
+| `buildSignoff` | `true` | **Yes, always on** | After all slices are built: "Does the product work?" — prevents wasting tokens on audit/security for broken code |
+| `deployApproval` | `true` | **Yes, always on** | Before deployment: explicit go/no-go with finding summary |
+| `planApproval` | `true` | No | Must approve slice plan before building starts |
+| `sliceReview` | `"off"` | No | `"off"` = auto-proceed, `"ui-only"` = pause after UI slices, `"all"` = pause after every slice |
+| `securitySignoff` | `false` | No | Explicit go/no-go after security gate (in addition to code-enforced gates) |
+
+### Always-On Gates (Code-Enforced)
+
+These cannot be bypassed — they are enforced in code, not just in prompts:
+
+- **Build gate**: Cannot leave building phase until all slices are `done`
+- **Evidence gates**: Cannot mark slice as `green` without passing tests, `sast` without SAST scan, `done` without passing tests
+- **Security gate**: Cannot deploy with open CRITICAL/HIGH SAST findings
+- **Whitebox gate**: Cannot deploy with blocking whitebox findings (confirmed exploitable auth/secrets/tenant issues)
+- **Audit gate**: Cannot deploy with critical release audit findings
+
+### Model Preference
+
+Configure which Claude model does the programming via `claudeModel` in `a2p_set_architecture`:
+
+| Model | Best for | Trade-off |
+|-------|----------|-----------|
+| **`opus`** (default) | Production code, complex architectures | Maximum quality, slower, most expensive |
+| `sonnet` | Standard features, good-enough code | Fast, cheaper, less deep analysis |
+| `haiku` | Simple tasks, scaffolding | Fastest, cheapest, basic quality |
+
+Stored in `.a2p/state.json` → `config.claudeModel`. Referenced in CLAUDE.md and all prompts.
+
+### Documentation-First Principle
+
+When the architecture uses unfamiliar technologies (exotic auth, new ORMs, niche APIs), Claude is instructed to:
+1. **WebSearch** for the official documentation URL
+2. **WebFetch** to read the relevant docs (Getting Started, API Reference, Configuration)
+3. Document the source URL as a comment in the code
+4. **Never** hallucinate API signatures, config options, or behavior
+
+This rule is enforced in the shared Engineering Loop (all prompts), the build-slice prompt (detailed section), the security-gate prompt, and the generated CLAUDE.md.
+
+### Recommended Configurations
+
+**Solo developer (default):** Plan approval on, everything else off. Build signoff and deploy approval are always on. Model: opus.
+
+**Team / enterprise:** All oversight on — every phase gets human review. Model: opus.
+
+**Rapid prototyping:** Plan approval off, slice review off. You still get mandatory build signoff and deploy approval. Model: sonnet for speed.
 
 ## How it works
 
@@ -75,19 +154,31 @@ The full AI workflow automation pipeline:
 AI Assistant
      │
      ▼
-Architecture
+Architecture + Oversight Config
      │
      ▼
-Planning (vertical slices)
+Planning (vertical slices) ─── [planApproval? → STOP]
      │
      ▼
-Build (TDD loop per slice)
+Build (TDD loop per slice) ─── [sliceReview? → STOP after each slice]
      │  ← Quality Audit (every ~5-10 commits)
      ▼
-Security Gate (SAST + OWASP)
+BUILD SIGNOFF [MANDATORY] ─── "Does the product actually work?"
+     │
+     ▼
+Security Gate (SAST + OWASP) ─── [securitySignoff? → STOP]
+     │
+     ▼
+Whitebox Audit (exploitability analysis)
+     │
+     ▼
+Active Verification (runtime gate tests)
      │
      ▼
 Release Audit (pre-publish checks)
+     │
+     ▼
+DEPLOY APPROVAL [MANDATORY] ─── "Ready to ship?"
      │
      ▼
 Deployment
@@ -96,17 +187,19 @@ Deployment
 For multi-phase projects (e.g. Phase 0: Spikes, Phase 1: MVP, Phase 2: Scale), this loop repeats per phase automatically.
 
 ```
-Phase 0: Plan → Build → Quality Audit → Security → Release Audit → Deploy → complete_phase
-Phase 1: Plan → Build → Quality Audit → Security → Release Audit → Deploy → complete_phase
+Phase 0: Plan → Build → BUILD SIGNOFF → Security → Whitebox → Release Audit → DEPLOY APPROVAL → Deploy → complete_phase
+Phase 1: Plan → Build → BUILD SIGNOFF → Security → Whitebox → Release Audit → DEPLOY APPROVAL → Deploy → complete_phase
 ...
 ```
 
 1. **Onboarding**: Capture or co-develop the AI software architecture. Detect database and frontend tech. Describe UI via text, upload wireframes/mockups/screenshots, or let AI generate a design concept. Set up companion MCP servers via the MCP protocol. If the architecture defines phases, they get extracted automatically.
 2. **Planning**: Break the architecture into ordered vertical slices, each a deployable feature unit with acceptance criteria. Three slice types: `feature` (default), `integration` (library/API adapters with TDD), `infrastructure` (CI, auth, monitoring).
-3. **Build Loop**: TDD per slice: RED (write failing tests) → GREEN (minimal implementation) → REFACTOR (clean up) → SAST (lightweight AI security testing). Frontend slices with `hasUI: true` get visual verification via Playwright between GREEN and REFACTOR. Configurable review checkpoints (`reviewMode`: `off`, `all`, `ui-only`) pause after slices for human approval. Domain logic triggers a WebSearch step before tests to verify facts (tax rates, regulations, standards). Quality audits run every ~5-10 commits to catch TODOs, debug artifacts, hardcoded secrets, and test coverage gaps.
+3. **Build Loop**: TDD per slice: RED (write failing tests) → GREEN (minimal implementation) → REFACTOR (clean up) → SAST (lightweight AI security testing). Frontend slices with `hasUI: true` get visual verification via Playwright between GREEN and REFACTOR. Configurable review checkpoints (`oversight.sliceReview`: `off`, `all`, `ui-only`) pause after slices for human approval. Domain logic triggers a WebSearch step before tests to verify facts (tax rates, regulations, standards). Quality audits run every ~5-10 commits to catch TODOs, debug artifacts, hardcoded secrets, and test coverage gaps. **Mandatory build signoff** after all slices are done — you verify the product works before spending tokens on audit and security.
 4. **Security Gate**: Full SAST scan (static code analysis via Semgrep + Bandit), OWASP Top 10 manual review, dependency audit. Acts as an AI code review tool and AI code scanner for your entire codebase. Fix all critical/high findings.
-5. **Release Audit**: Pre-publish verification — README completeness, temp file cleanup, aggregated SAST/quality findings, build/test pass, .gitignore coverage. Critical findings in the release audit block deployment (enforced in code).
-6. **Deployment**: Generate Dockerfile, docker-compose, Caddyfile, backup scripts, hardening guides. Stack-specific launch checklist.
+5. **Whitebox Audit**: Analyzes whether SAST findings are actually exploitable — checks reachable code paths, missing guards, trust boundaries, prompt-only enforcement. Blocking findings prevent deployment (enforced in code, not just prompts).
+6. **Active Verification**: Runtime gate tests that prove workflow invariants hold — state transitions require evidence, deployment gates block correctly, state survives round-trips.
+7. **Release Audit**: Pre-publish verification — README completeness, temp file cleanup, aggregated SAST/quality findings, build/test pass, .gitignore coverage. Critical findings in the release audit block deployment (enforced in code).
+8. **Deployment**: **Mandatory deploy approval** before generating configs. Stack-specific Dockerfile, docker-compose, Caddyfile, backup scripts, hardening guides. Stack-specific launch checklist.
 
 ## Client Configuration
 
@@ -163,16 +256,16 @@ Add to `.vscode/mcp.json`:
 }
 ```
 
-## MCP Tools (16)
+## MCP Tools (18)
 
 | Tool | Phase | Description |
 |------|-------|-------------|
 | `a2p_init_project` | 0 | Scaffold project with CLAUDE.md, hooks, agents, state |
-| `a2p_set_architecture` | 0 | Parse architecture, detect DB/frontend, extract phases, set review mode, capture UI design |
+| `a2p_set_architecture` | 0 | Parse architecture, detect DB/frontend, extract phases, configure oversight, capture UI design |
 | `a2p_setup_companions` | 0 | Register companion MCP servers |
 | `a2p_create_build_plan` | 1 | Architecture → ordered vertical slices (supports `append` for multi-phase) |
 | `a2p_add_slice` | 1,2 | Insert a single slice mid-project (e.g. integration discovered during build) |
-| `a2p_complete_phase` | 5 | Complete current product phase, advance to next |
+| `a2p_complete_phase` | 7 | Complete current product phase, advance to next |
 | `a2p_get_state` | * | Read current project state (includes phase info) |
 | `a2p_update_slice` | 2 | Update slice status with review checkpoints and slice summaries |
 | `a2p_run_tests` | 2 | Execute test command, parse results (pytest/vitest/jest/go) |
@@ -180,36 +273,43 @@ Add to `.vscode/mcp.json`:
 | `a2p_run_e2e` | 2.6 | Record Playwright E2E test results |
 | `a2p_run_sast` | 2,3 | Static code analysis with Semgrep/Bandit, deduplicated findings |
 | `a2p_record_finding` | 3 | Manually record a security finding |
-| `a2p_run_audit` | 2,4 | Quality audit (dev hygiene) or release audit (pre-publish). Critical release findings block deployment |
-| `a2p_generate_deployment` | 5 | Stack-specific deployment guidance |
-| `a2p_get_checklist` | 5 | Pre/post-deployment verification checklist |
+| `a2p_run_audit` | 2,6 | Quality audit (dev hygiene) or release audit (pre-publish). Critical release findings block deployment |
+| `a2p_run_whitebox_audit` | 4 | Whitebox security audit — exploitability analysis of SAST findings (reachable paths, guards, trust boundaries). Blocking findings prevent deployment |
+| `a2p_run_active_verification` | 5 | Active verification — runtime gate tests (workflow gates, state recovery, deployment gates) |
+| `a2p_generate_deployment` | 7 | Stack-specific deployment guidance |
+| `a2p_get_checklist` | 7 | Pre/post-deployment verification checklist |
 
-## Prompts (8)
+## Prompts (9)
 
 MCP prompts are invoked with `/` in Claude Code:
 
 | Command | What it does |
 |---------|-------------|
-| `/a2p` | Start onboarding — define architecture, UI design, tech stack, companions |
+| `/a2p` | Start onboarding — define architecture, UI design, tech stack, oversight config, companions |
 | `/a2p_planning` | Break architecture into ordered vertical slices |
-| `/a2p_build_slice` | Build the current slice with TDD (RED → GREEN → REFACTOR → SAST) |
+| `/a2p_build_slice` | Build the current slice with TDD (RED → GREEN → REFACTOR → SAST) + mandatory build signoff |
 | `/a2p_refactor` | Code quality tool — analyze codebase for dead code, redundancy, coupling |
 | `/a2p_e2e_testing` | AI testing tool — run visual E2E tests with Playwright |
 | `/a2p_security_gate` | Full SAST scan + OWASP Top 10 review |
+| `/a2p_whitebox` | Whitebox security audit + active verification — exploitability analysis + runtime gate tests |
 | `/a2p_audit` | Quality audit (dev hygiene every ~5-10 commits) or release audit (pre-publish verification) |
-| `/a2p_deploy` | Generate deployment configs and launch checklist |
+| `/a2p_deploy` | Generate deployment configs and launch checklist + mandatory deploy approval |
 
 ### When to use which prompt
 
 You don't have to run the full pipeline. Each prompt works standalone — pick what you need:
 
 **Full project from scratch:**
-`/a2p` → `/a2p_planning` → `/a2p_build_slice` (repeat per slice) → `/a2p_audit` (quality) → `/a2p_security_gate` → `/a2p_audit` (release) → `/a2p_deploy`
+`/a2p` → `/a2p_planning` → `/a2p_build_slice` (repeat per slice) → `/a2p_audit` (quality) → `/a2p_security_gate` → `/a2p_whitebox` → `/a2p_audit` (release) → `/a2p_deploy`
 
 **MVP built with vibe coding, now make it production-ready:**
 - `/a2p_security_gate` — find the vulnerabilities that vibe coding missed
+- `/a2p_whitebox` — verify which findings are actually exploitable vs. noise
 - `/a2p_refactor` — clean up the spaghetti, remove dead code
 - `/a2p_deploy` — generate Dockerfile, docker-compose, Caddyfile instead of guessing
+
+**SAST reports too many findings, need to triage:**
+- `/a2p_whitebox` — whitebox audit confirms exploitability, active verification tests that gates hold
 
 **Added features without tests, need confidence before shipping:**
 - `/a2p_audit` — catch TODOs, debug artifacts, hardcoded secrets, missing .gitignore entries, low test coverage
@@ -306,7 +406,7 @@ git clone https://github.com/BernhardJackiewicz/architect-to-product.git
 cd architect-to-product
 npm install
 npm run typecheck   # Type checking
-npm test            # 587 tests
+npm test            # 633 tests
 npm run build       # Build
 npm run dev         # Dev mode
 ```

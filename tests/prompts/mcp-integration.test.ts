@@ -828,8 +828,8 @@ describe("Enforcement rules in onboarding", () => {
     expect(prereqPos).toBeLessThan(handoffPos);
   });
 
-  it("ReviewMode checkpoint is a hard stop — not negotiable", () => {
-    const reviewSection = ONBOARDING_PROMPT.indexOf("Review-Modus festlegen");
+  it("Oversight checkpoint is a hard stop — not negotiable", () => {
+    const reviewSection = ONBOARDING_PROMPT.indexOf("Human Oversight konfigurieren");
     expect(reviewSection).toBeGreaterThan(-1);
     const sectionEnd = ONBOARDING_PROMPT.indexOf("### Architektur festhalten", reviewSection);
     const section = ONBOARDING_PROMPT.slice(reviewSection, sectionEnd);

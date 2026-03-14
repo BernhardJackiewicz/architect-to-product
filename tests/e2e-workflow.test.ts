@@ -20,6 +20,18 @@ import { handleCompletePhase } from "../src/tools/complete-phase.js";
 import { handleAddSlice } from "../src/tools/add-slice.js";
 import { StateManager } from "../src/state/state-manager.js";
 
+/** Add evidence and walk a slice through TDD cycle via tool handlers */
+function completeSliceViaTool(tmpDir: string, sm: StateManager, sliceId: string) {
+  handleUpdateSlice({ projectPath: tmpDir, sliceId, status: "red" });
+  sm.addTestResult(sliceId, { timestamp: new Date().toISOString(), command: "test", exitCode: 0, passed: 1, failed: 0, skipped: 0, output: "ok" });
+  handleUpdateSlice({ projectPath: tmpDir, sliceId, status: "green" });
+  handleUpdateSlice({ projectPath: tmpDir, sliceId, status: "refactor" });
+  sm.markSastRun(sliceId);
+  handleUpdateSlice({ projectPath: tmpDir, sliceId, status: "sast" });
+  sm.addTestResult(sliceId, { timestamp: new Date().toISOString(), command: "test", exitCode: 0, passed: 1, failed: 0, skipped: 0, output: "ok" });
+  handleUpdateSlice({ projectPath: tmpDir, sliceId, status: "done" });
+}
+
 function makeTmpDir(): string {
   return mkdtempSync(join(tmpdir(), "a2p-e2e-"));
 }
@@ -362,13 +374,17 @@ describe("E2E Workflow: Full project lifecycle", () => {
     });
 
     it("a2p_update_slice follows TDD cycle: pending → red → green → refactor → sast → done", () => {
+      const sm = new StateManager(tmpDir);
+      sm.setPhase("building");
+
       // RED
       let result = parse(handleUpdateSlice({ projectPath: tmpDir, sliceId: "s01", status: "red" }));
       expect(result.success).toBe(true);
       expect(result.newStatus).toBe("red");
       expect(result.nextStep).toContain("implementation");
 
-      // GREEN
+      // GREEN (requires passing tests)
+      sm.addTestResult("s01", { timestamp: new Date().toISOString(), command: "test", exitCode: 0, passed: 1, failed: 0, skipped: 0, output: "ok" });
       result = parse(handleUpdateSlice({ projectPath: tmpDir, sliceId: "s01", status: "green" }));
       expect(result.newStatus).toBe("green");
       expect(result.nextStep).toContain("refactor");
@@ -378,11 +394,13 @@ describe("E2E Workflow: Full project lifecycle", () => {
       expect(result.newStatus).toBe("refactor");
       expect(result.nextStep).toContain("SAST");
 
-      // SAST
+      // SAST (requires SAST run)
+      sm.markSastRun("s01");
       result = parse(handleUpdateSlice({ projectPath: tmpDir, sliceId: "s01", status: "sast" }));
       expect(result.newStatus).toBe("sast");
 
-      // DONE
+      // DONE (requires passing tests)
+      sm.addTestResult("s01", { timestamp: new Date().toISOString(), command: "test", exitCode: 0, passed: 1, failed: 0, skipped: 0, output: "ok" });
       result = parse(handleUpdateSlice({ projectPath: tmpDir, sliceId: "s01", status: "done" }));
       expect(result.newStatus).toBe("done");
       expect(result.nextStep).toContain("complete");
@@ -397,12 +415,16 @@ describe("E2E Workflow: Full project lifecycle", () => {
     });
 
     it("a2p_update_slice tracks files", () => {
+      const sm = new StateManager(tmpDir);
+      sm.setPhase("building");
+
       handleUpdateSlice({
         projectPath: tmpDir,
         sliceId: "s01",
         status: "red",
         files: ["tests/test_main.py"],
       });
+      sm.addTestResult("s01", { timestamp: new Date().toISOString(), command: "test", exitCode: 0, passed: 1, failed: 0, skipped: 0, output: "ok" });
       const result = parse(
         handleUpdateSlice({
           projectPath: tmpDir,
@@ -659,12 +681,15 @@ describe("E2E Workflow: Full project lifecycle", () => {
         ],
       });
 
-      // Complete the slice
+      // Complete the slice with evidence
       const sm = new StateManager(tmpDir);
       sm.setSliceStatus("s01", "red");
+      sm.addTestResult("s01", { timestamp: new Date().toISOString(), command: "test", exitCode: 0, passed: 1, failed: 0, skipped: 0, output: "ok" });
       sm.setSliceStatus("s01", "green");
       sm.setSliceStatus("s01", "refactor");
+      sm.markSastRun("s01");
       sm.setSliceStatus("s01", "sast");
+      sm.addTestResult("s01", { timestamp: new Date().toISOString(), command: "test", exitCode: 0, passed: 1, failed: 0, skipped: 0, output: "ok" });
       sm.setSliceStatus("s01", "done");
 
       const result = parse(handleGetChecklist({ projectPath: tmpDir }));
@@ -706,19 +731,11 @@ describe("E2E Workflow: Full project lifecycle", () => {
       // Phase 2: Build slice 1 (TDD)
       const sm = new StateManager(tmpDir);
       sm.setPhase("building");
-      handleUpdateSlice({ projectPath: tmpDir, sliceId: "s01", status: "red", files: ["tests/test_health.py"] });
-      handleUpdateSlice({ projectPath: tmpDir, sliceId: "s01", status: "green", files: ["src/main.py"] });
-      handleUpdateSlice({ projectPath: tmpDir, sliceId: "s01", status: "refactor" });
-      handleUpdateSlice({ projectPath: tmpDir, sliceId: "s01", status: "sast" });
-      handleUpdateSlice({ projectPath: tmpDir, sliceId: "s01", status: "done" });
+      completeSliceViaTool(tmpDir, sm, "s01");
 
       // Build slice 2
       sm.advanceSlice();
-      handleUpdateSlice({ projectPath: tmpDir, sliceId: "s02", status: "red" });
-      handleUpdateSlice({ projectPath: tmpDir, sliceId: "s02", status: "green" });
-      handleUpdateSlice({ projectPath: tmpDir, sliceId: "s02", status: "refactor" });
-      handleUpdateSlice({ projectPath: tmpDir, sliceId: "s02", status: "sast" });
-      handleUpdateSlice({ projectPath: tmpDir, sliceId: "s02", status: "done" });
+      completeSliceViaTool(tmpDir, sm, "s02");
 
       // Phase 2.5: Quality
       handleRunQuality({
@@ -833,9 +850,12 @@ describe("E2E Workflow: Full project lifecycle", () => {
       const sm = new StateManager(tmpDir);
       sm.setPhase("building");
       sm.setSliceStatus("s01", "red");
+      sm.addTestResult("s01", { timestamp: new Date().toISOString(), command: "test", exitCode: 0, passed: 1, failed: 0, skipped: 0, output: "ok" });
       sm.setSliceStatus("s01", "green");
       sm.setSliceStatus("s01", "refactor");
+      sm.markSastRun("s01");
       sm.setSliceStatus("s01", "sast");
+      sm.addTestResult("s01", { timestamp: new Date().toISOString(), command: "test", exitCode: 0, passed: 1, failed: 0, skipped: 0, output: "ok" });
       sm.setSliceStatus("s01", "done");
       sm.setPhase("security");
       sm.setPhase("deployment");
@@ -894,11 +914,7 @@ describe("E2E Workflow: Full project lifecycle", () => {
       // Build phase 0
       const sm = new StateManager(tmpDir);
       sm.setPhase("building");
-      handleUpdateSlice({ projectPath: tmpDir, sliceId: "s01-spike", status: "red" });
-      handleUpdateSlice({ projectPath: tmpDir, sliceId: "s01-spike", status: "green" });
-      handleUpdateSlice({ projectPath: tmpDir, sliceId: "s01-spike", status: "refactor" });
-      handleUpdateSlice({ projectPath: tmpDir, sliceId: "s01-spike", status: "sast" });
-      handleUpdateSlice({ projectPath: tmpDir, sliceId: "s01-spike", status: "done" });
+      completeSliceViaTool(tmpDir, sm, "s01-spike");
 
       // Security + Deployment for phase 0
       sm.setPhase("security");
@@ -949,6 +965,7 @@ describe("E2E Workflow: Full project lifecycle", () => {
       // Build phase 1: start building s02
       sm.setPhase("building");
       handleUpdateSlice({ projectPath: tmpDir, sliceId: "s02-crud", status: "red" });
+      sm.addTestResult("s02-crud", { timestamp: new Date().toISOString(), command: "test", exitCode: 0, passed: 1, failed: 0, skipped: 0, output: "ok" });
       handleUpdateSlice({ projectPath: tmpDir, sliceId: "s02-crud", status: "green" });
 
       // Mid-build: add integration slice
@@ -973,22 +990,16 @@ describe("E2E Workflow: Full project lifecycle", () => {
 
       // Continue building
       handleUpdateSlice({ projectPath: tmpDir, sliceId: "s02-crud", status: "refactor" });
+      sm.markSastRun("s02-crud");
       handleUpdateSlice({ projectPath: tmpDir, sliceId: "s02-crud", status: "sast" });
+      sm.addTestResult("s02-crud", { timestamp: new Date().toISOString(), command: "test", exitCode: 0, passed: 1, failed: 0, skipped: 0, output: "ok" });
       handleUpdateSlice({ projectPath: tmpDir, sliceId: "s02-crud", status: "done" });
 
       // Build the inserted adapter slice
-      handleUpdateSlice({ projectPath: tmpDir, sliceId: "s02b-adapter", status: "red" });
-      handleUpdateSlice({ projectPath: tmpDir, sliceId: "s02b-adapter", status: "green" });
-      handleUpdateSlice({ projectPath: tmpDir, sliceId: "s02b-adapter", status: "refactor" });
-      handleUpdateSlice({ projectPath: tmpDir, sliceId: "s02b-adapter", status: "sast" });
-      handleUpdateSlice({ projectPath: tmpDir, sliceId: "s02b-adapter", status: "done" });
+      completeSliceViaTool(tmpDir, sm, "s02b-adapter");
 
       // Build PDF generation slice
-      handleUpdateSlice({ projectPath: tmpDir, sliceId: "s03-pdf", status: "red" });
-      handleUpdateSlice({ projectPath: tmpDir, sliceId: "s03-pdf", status: "green" });
-      handleUpdateSlice({ projectPath: tmpDir, sliceId: "s03-pdf", status: "refactor" });
-      handleUpdateSlice({ projectPath: tmpDir, sliceId: "s03-pdf", status: "sast" });
-      handleUpdateSlice({ projectPath: tmpDir, sliceId: "s03-pdf", status: "done" });
+      completeSliceViaTool(tmpDir, sm, "s03-pdf");
 
       // Security + Deployment for phase 1
       sm.setPhase("security");

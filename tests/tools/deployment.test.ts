@@ -5,7 +5,7 @@ import { handleInitProject } from "../../src/tools/init-project.js";
 import { handleSetArchitecture } from "../../src/tools/set-architecture.js";
 import { handleCreateBuildPlan } from "../../src/tools/create-build-plan.js";
 import { StateManager } from "../../src/state/state-manager.js";
-import { makeTmpDir, cleanTmpDir, parse } from "../helpers/setup.js";
+import { makeTmpDir, cleanTmpDir, parse, walkSliceToStatus } from "../helpers/setup.js";
 
 function initWithArchOverrides(
   dir: string,
@@ -236,13 +236,9 @@ describe("handleGetChecklist", () => {
       ],
     });
 
-    // Complete the slice through TDD cycle
+    // Complete the slice through TDD cycle with proper evidence
     const sm = new StateManager(tmpDir);
-    sm.setSliceStatus("s01", "red");
-    sm.setSliceStatus("s01", "green");
-    sm.setSliceStatus("s01", "refactor");
-    sm.setSliceStatus("s01", "sast");
-    sm.setSliceStatus("s01", "done");
+    walkSliceToStatus(sm, "s01", "done");
 
     const result = parse(handleGetChecklist({ projectPath: tmpDir }));
 

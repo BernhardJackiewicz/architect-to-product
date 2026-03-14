@@ -82,8 +82,10 @@ describe("a2p_get_build_log", () => {
     sm.setPhase("planning");
     sm.setPhase("building");
     sm.setSliceStatus("s1", "red");
+    sm.addTestResult("s1", { timestamp: new Date().toISOString(), command: "test", exitCode: 0, passed: 1, failed: 0, skipped: 0, output: "ok" });
     sm.setSliceStatus("s1", "green");
     sm.setSliceStatus("s1", "refactor");
+    sm.markSastRun("s1");
     sm.setSliceStatus("s1", "sast");
 
     sm.addSASTFinding("s1", {
