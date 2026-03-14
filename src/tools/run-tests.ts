@@ -1,6 +1,8 @@
 import { z } from "zod";
 import { requireProject, truncate } from "../utils/tool-helpers.js";
 import { runProcess } from "../utils/process-runner.js";
+import { generateRunId, sanitizeOutput, truncatePreview } from "../utils/log-sanitizer.js";
+import type { EventMetadata } from "../state/types.js";
 import type { TestResult } from "../state/types.js";
 
 export const runTestsSchema = z.object({
@@ -48,6 +50,18 @@ export function handleRunTests(input: RunTestsInput): string {
 
   sm.addTestResult(input.sliceId, testResult);
 
+  const runId = generateRunId();
+  const preview = truncatePreview(sanitizeOutput(result.stdout + (result.stderr ? "\n" + result.stderr : "")));
+
+  sm.log(result.exitCode === 0 ? "info" : "error", "test_run", `Tests: ${counts.passed} passed, ${counts.failed} failed`, {
+    sliceId: input.sliceId,
+    status: result.exitCode === 0 ? "success" : "failure",
+    durationMs: result.durationMs,
+    runId,
+    metadata: { passed: counts.passed, failed: counts.failed, skipped: counts.skipped, exitCode: result.exitCode, command: testCommand } as EventMetadata,
+    outputSummary: preview,
+  });
+
   const countsParsed = counts.passed > 0 || counts.failed > 0 || counts.skipped > 0;
 
   return JSON.stringify({
@@ -57,6 +71,7 @@ export function handleRunTests(input: RunTestsInput): string {
     failed: counts.failed,
     skipped: counts.skipped,
     countsParsed,
+    durationMs: result.durationMs,
     output: testResult.output,
     hint: result.exitCode === 0
       ? "All tests passed!"

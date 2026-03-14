@@ -114,6 +114,34 @@ Wenn Playwright MCP nicht verfügbar ist, sage dem User dass er es starten soll.
 **Wenn visuell nicht ok:** Fix in GREEN Phase, erneut prüfen.
 **Wenn kein Frontend (\`hasUI\` nicht gesetzt):** direkt zu REFACTOR.
 
+### Strukturiertes Logging (Empfehlung)
+Wenn das Projekt eine API, einen Server oder einen Background-Service enthält — richte strukturiertes Logging ein.
+Bei kleinen Prototypen oder reinen Frontend-Projekten: spätestens vor Deploy.
+Idealerweise als eigener Infrastructure-Slice, nicht im ersten Feature-Slice.
+
+**Wann einführen:**
+- APIs / Server: früh (erster oder zweiter Slice)
+- Reine Prototypen: spätestens vor Deploy
+- Frontend-only: Error Boundary reicht zunächst
+
+**Backend (API/Server):**
+- Request-Logging: Method, URL, Status, Duration (ms)
+- Error-Logging: Stack Traces mit Request Context
+- Strukturiertes Format: JSON-Logs (nicht console.log)
+
+**Frontend:**
+- Error Boundary mit Logging
+- API-Call-Fehler loggen (Status, URL, Response)
+
+**Empfohlene Libraries nach Stack:**
+- Node.js/Express: \`pino\` (schnell, JSON-native) oder \`winston\`
+- Python/FastAPI: \`structlog\` oder \`logging\` mit JSON-Formatter
+- Go: \`slog\` (stdlib ab Go 1.21)
+- Rust: \`tracing\` mit \`tracing-subscriber\`
+- Java: \`logback\` mit JSON-Encoder
+
+**Nicht verwenden:** console.log/print für Production-Logging.
+
 ### Phase REFACTOR: Code aufräumen
 **Ziel**: Code-Qualität verbessern ohne Verhalten zu ändern.
 

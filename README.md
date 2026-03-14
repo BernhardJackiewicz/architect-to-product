@@ -2,11 +2,11 @@
 
 MCP server that turns AI-generated code into production-ready software with TDD, security scanning, and deployment automation. Up to 100 times fewer exploration tokens for claude code.
 
-**18 MCP tools** · **633 tests** · **Architecture → Plan → Build → Audit → Security → Whitebox → Deploy**
+**18 MCP tools** · **666 tests** · **Architecture → Plan → Build → Audit → Security → Whitebox → Deploy**
 
 [![npm version](https://img.shields.io/npm/v/architect-to-product)](https://www.npmjs.com/package/architect-to-product)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Tests: 633 passing](https://img.shields.io/badge/tests-633%20passing-brightgreen)]()
+[![Tests: 658 passing](https://img.shields.io/badge/tests-666%20passing-brightgreen)]()
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue)]()
 
 ---
@@ -43,6 +43,7 @@ It coordinates:
 - **Active verification** — runtime gate tests that prove workflow invariants hold (state transitions, deployment gates, recovery)
 - **Code audits** — Quality audits during development, release audits before publish (TODOs, debug artifacts, secrets, .gitignore, test coverage, README)
 - **Security reviews** — OWASP Top 10 review before deploy
+- **Structured build log** — every tool run tracked with log levels, duration, status, run correlation, and automatic secret redaction. Composable filters by phase, slice, level, time range, or errors
 - **Configurable human oversight** — mandatory build signoff and deploy approval, optional plan approval, slice review, and security signoff
 - **Deployment generation** — stack-specific Dockerfile, docker-compose, Caddyfile, backup scripts
 
@@ -60,6 +61,7 @@ A2P is not a replacement for engineers. It is an engineering safety net for AI-g
 | AI runs without stopping | Mandatory build signoff + deploy approval, configurable oversight at every phase |
 | AI hallucinates API signatures for unfamiliar libraries | Documentation-first: reads official docs via WebSearch + WebFetch before writing code |
 | Copy-paste a Dockerfile from StackOverflow | Generated Dockerfile + docker-compose + Caddyfile + backup scripts |
+| No build history, no idea what failed when | Structured build log with levels, duration, run correlation, and secret redaction |
 | Hope for the best | Ship to production with confidence |
 
 ## Key Benefits
@@ -76,6 +78,7 @@ A2P is not a replacement for engineers. It is an engineering safety net for AI-g
 - **Code quality** — Built-in code quality tool: dead code detection, redundancy analysis, coupling metrics
 - **Documentation first** — When the architecture uses unfamiliar tech (exotic auth, new ORMs, niche APIs), Claude reads the official docs via WebSearch + WebFetch instead of hallucinating API signatures. Enforced in every prompt, documented in CLAUDE.md
 - **Model preference** — Configure which Claude model does the programming (`opus`, `sonnet`, `haiku`). Default: opus (Claude Opus 4.6 with maximum effort). Stored in project config, referenced by all prompts
+- **Structured logging** — Build events with log levels, status, duration tracking, run correlation, secret redaction, and output previews. Filter build logs by level, run, phase, or errors
 - **Any stack** — Python, TypeScript, Go, Rust, Java, Ruby, PHP, C#, PostgreSQL, MySQL, MongoDB, Redis
 
 ## Human Oversight
@@ -194,7 +197,7 @@ Phase 1: Plan → Build → BUILD SIGNOFF → Security → Whitebox → Release 
 
 1. **Onboarding**: Capture or co-develop the AI software architecture. Detect database and frontend tech. Describe UI via text, upload wireframes/mockups/screenshots, or let AI generate a design concept. Set up companion MCP servers via the MCP protocol. If the architecture defines phases, they get extracted automatically.
 2. **Planning**: Break the architecture into ordered vertical slices, each a deployable feature unit with acceptance criteria. Three slice types: `feature` (default), `integration` (library/API adapters with TDD), `infrastructure` (CI, auth, monitoring).
-3. **Build Loop**: TDD per slice: RED (write failing tests) → GREEN (minimal implementation) → REFACTOR (clean up) → SAST (lightweight AI security testing). Frontend slices with `hasUI: true` get visual verification via Playwright between GREEN and REFACTOR. Configurable review checkpoints (`oversight.sliceReview`: `off`, `all`, `ui-only`) pause after slices for human approval. Domain logic triggers a WebSearch step before tests to verify facts (tax rates, regulations, standards). Quality audits run every ~5-10 commits to catch TODOs, debug artifacts, hardcoded secrets, and test coverage gaps. **Mandatory build signoff** after all slices are done — you verify the product works before spending tokens on audit and security.
+3. **Build Loop**: TDD per slice: RED (write failing tests) → GREEN (minimal implementation) → REFACTOR (clean up) → SAST (lightweight AI security testing). Frontend slices with `hasUI: true` get visual verification via Playwright between GREEN and REFACTOR. Configurable review checkpoints (`oversight.sliceReview`: `off`, `all`, `ui-only`) pause after slices for human approval. Domain logic triggers a WebSearch step before tests to verify facts (tax rates, regulations, standards). Quality audits run every ~5-10 commits to catch TODOs, debug artifacts, hardcoded secrets, and test coverage gaps. **Mandatory build signoff** after all slices are done — you verify the product works before spending tokens on audit and security. **Structured build log** tracks every tool run with log levels, duration, status, run correlation, and secret redaction — queryable by phase, slice, level, time range, or errors.
 4. **Security Gate**: Full SAST scan (static code analysis via Semgrep + Bandit), OWASP Top 10 manual review, dependency audit. Acts as an AI code review tool and AI code scanner for your entire codebase. Fix all critical/high findings.
 5. **Whitebox Audit**: Analyzes whether SAST findings are actually exploitable — checks reachable code paths, missing guards, trust boundaries, prompt-only enforcement. Blocking findings prevent deployment (enforced in code, not just prompts).
 6. **Active Verification**: Runtime gate tests that prove workflow invariants hold — state transitions require evidence, deployment gates block correctly, state survives round-trips.
@@ -406,7 +409,7 @@ git clone https://github.com/BernhardJackiewicz/architect-to-product.git
 cd architect-to-product
 npm install
 npm run typecheck   # Type checking
-npm test            # 633 tests
+npm test            # 666 tests
 npm run build       # Build
 npm run dev         # Dev mode
 ```

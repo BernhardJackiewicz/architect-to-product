@@ -3,6 +3,7 @@ import { mkdtempSync, cpSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { requireProject } from "../utils/tool-helpers.js";
+import { generateRunId } from "../utils/log-sanitizer.js";
 import { StateManager } from "../state/state-manager.js";
 import { isBlockingWhiteboxFinding } from "./run-whitebox-audit.js";
 import type {
@@ -35,6 +36,7 @@ export function handleRunActiveVerification(input: RunActiveVerificationInput): 
   const { sm, error } = requireProject(input.projectPath);
   if (error) return error;
 
+  const verifyStart = Date.now();
   const state = sm.read();
   const categoriesToTest = input.categories ?? ["workflow_gates", "state_recovery", "deployment_gates"];
 
@@ -98,6 +100,19 @@ export function handleRunActiveVerification(input: RunActiveVerificationInput): 
     };
 
     sm.addActiveVerificationResult(result);
+
+    const durationMs = Date.now() - verifyStart;
+    sm.log(
+      blockingCount > 0 ? "error" : failed > 0 ? "warn" : "info",
+      "active_verification",
+      `${resultId} round ${input.round}: ${passed}/${testsToRun.length} passed`,
+      {
+        status: blockingCount > 0 ? "failure" : failed > 0 ? "warning" : "success",
+        durationMs,
+        runId: generateRunId(),
+        metadata: { passed, failed, toolName: "active_verification" },
+      },
+    );
 
     return JSON.stringify({
       success: true,

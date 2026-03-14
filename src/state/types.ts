@@ -179,12 +179,56 @@ export interface CompanionServer {
   config: Record<string, string>;
 }
 
+export type LogLevel = "debug" | "info" | "warn" | "error";
+
+export type BuildAction =
+  | "phase_change"
+  | "slice_status"
+  | "test_run"
+  | "sast_run"
+  | "sast_finding"
+  | "quality_issue"
+  | "audit_run"
+  | "whitebox_audit"
+  | "active_verification"
+  | "companion_added"
+  | "config_update"
+  | "architecture_set"
+  | "slices_set"
+  | "slices_added"
+  | "slice_advance"
+  | "files_updated"
+  | "phase_complete";
+
+export type EventStatus = "success" | "failure" | "warning" | "info";
+
+export interface EventMetadata {
+  exitCode?: number;
+  command?: string;
+  toolName?: string;
+  findingCount?: number;
+  passed?: number;
+  failed?: number;
+  skipped?: number;
+  truncated?: boolean;
+  mode?: string;
+  [key: string]: unknown;
+}
+
 export interface BuildEvent {
   timestamp: string;
   phase: Phase;
   sliceId: string | null;
   action: string;
   details: string;
+  level?: LogLevel;
+  status?: EventStatus;
+  durationMs?: number;
+  runId?: string;
+  metadata?: EventMetadata;
+  outputSummary?: string;
+  outputRef?: string;
+  outputTruncated?: boolean;
 }
 
 export type ClaudeModel = "opus" | "sonnet" | "haiku";

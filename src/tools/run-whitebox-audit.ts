@@ -2,6 +2,7 @@ import { z } from "zod";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { requireProject } from "../utils/tool-helpers.js";
+import { generateRunId } from "../utils/log-sanitizer.js";
 import type {
   WhiteboxFinding,
   WhiteboxAuditResult,
@@ -33,6 +34,7 @@ export function handleRunWhiteboxAudit(input: RunWhiteboxAuditInput): string {
   const { sm, error } = requireProject(input.projectPath);
   if (error) return error;
 
+  const whiteboxStart = Date.now();
   const state = sm.read();
 
   // Collect candidates: open SAST findings + critical/high audit findings
@@ -131,6 +133,19 @@ export function handleRunWhiteboxAudit(input: RunWhiteboxAuditInput): string {
   };
 
   sm.addWhiteboxResult(result);
+
+  const durationMs = Date.now() - whiteboxStart;
+  sm.log(
+    result.blocking_count > 0 ? "error" : findings.length > 0 ? "warn" : "info",
+    "whitebox_audit",
+    `[${input.mode}] ${resultId}: ${findings.length} findings (blocking: ${result.blocking_count})`,
+    {
+      status: result.blocking_count > 0 ? "failure" : findings.length > 0 ? "warning" : "success",
+      durationMs,
+      runId: generateRunId(),
+      metadata: { findingCount: findings.length, toolName: "whitebox", candidatesEvaluated: unique.length, blockingCount: result.blocking_count },
+    },
+  );
 
   return JSON.stringify({
     success: true,
