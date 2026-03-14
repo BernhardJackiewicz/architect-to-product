@@ -50,6 +50,7 @@ export const setArchitectureSchema = z.object({
       buildSignoff: z.boolean().optional().default(true).describe("Must confirm product works after building (MANDATORY, always true)"),
       deployApproval: z.boolean().optional().default(true).describe("Must confirm before deploy (MANDATORY, always true)"),
       securitySignoff: z.boolean().optional().default(false).describe("Explicit go/no-go after security gate (default: false)"),
+      uiVerification: z.boolean().optional().describe("Human reviews Playwright screenshots for UI slices (default: true when frontend detected)"),
     })
     .optional()
     .describe("Human oversight configuration — controls where the workflow pauses for human review"),
@@ -107,6 +108,7 @@ export function handleSetArchitecture(input: SetArchitectureInput): string {
         buildSignoff: true,    // MANDATORY — always true, cannot be disabled
         deployApproval: true,  // MANDATORY — always true, cannot be disabled
         securitySignoff: input.oversight.securitySignoff ?? false,
+        uiVerification: input.oversight.uiVerification ?? !!techStack.frontend, // default: true when frontend detected
       } satisfies OversightConfig,
       reviewMode: input.oversight.sliceReview ?? input.reviewMode ?? "off", // sync for backward compat
     } : {}),

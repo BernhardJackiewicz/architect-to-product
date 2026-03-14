@@ -141,9 +141,10 @@ Immer aktiv (nicht abschaltbar):
 Konfigurierbar:
 - **Plan-Approval** (Standard: an): Slice-Plan vor dem Bauen bestätigen?
 - **Slice-Review** (Standard: off): Nach jedem Slice pausieren? Optionen: off / ui-only / all
+- **UI-Verification** (Standard: an wenn Frontend erkannt): Du reviewst Playwright-Screenshots bei UI-Slices bevor es weitergeht
 - **Security-Signoff** (Standard: off): Explizites Go/No-Go nach Security Gate?
 
-Empfehlung für die meisten Projekte: Defaults lassen (Plan-Approval an, Rest off).
+Empfehlung für die meisten Projekte: Defaults lassen (Plan-Approval an, UI-Verification an, Rest off).
 Für Enterprise: alles auf an."
 
 → STOP. Warte auf die Antwort des Users. Rufe KEIN Tool auf bevor der User geantwortet hat. Übergib die Einstellungen als \`oversight\` Objekt an \`a2p_set_architecture\`:
@@ -151,6 +152,7 @@ Für Enterprise: alles auf an."
 oversight: {
   sliceReview: "off" | "ui-only" | "all",
   planApproval: true | false,
+  uiVerification: true | false,
   securitySignoff: true | false
 }
 \`\`\`

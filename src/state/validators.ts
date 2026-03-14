@@ -35,6 +35,7 @@ export const OversightConfigSchema = z.object({
   buildSignoff: z.boolean().default(true),
   deployApproval: z.boolean().default(true),
   securitySignoff: z.boolean().default(false),
+  uiVerification: z.boolean().default(true),
 });
 
 export const ArchitectureSchema = z.object({
