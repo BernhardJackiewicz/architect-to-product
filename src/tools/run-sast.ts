@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { requireProject, requirePhaseAndMode, truncate } from "../utils/tool-helpers.js";
 import { runProcess } from "../utils/process-runner.js";
-import { generateRunId } from "../utils/log-sanitizer.js";
+import { generateRunId, sanitizeOutput } from "../utils/log-sanitizer.js";
 import type { SASTFinding, FindingSeverity } from "../state/types.js";
 
 export const runSastSchema = z.object({
@@ -179,7 +179,7 @@ function runSemgrep(input: RunSastInput): {
     tool: "semgrep",
     available: true,
     findings,
-    rawOutput: truncate(result.stdout, 3000),
+    rawOutput: sanitizeOutput(truncate(result.stdout, 3000)),
     durationMs: result.durationMs,
   };
 }
@@ -228,7 +228,7 @@ function runBandit(input: RunSastInput): {
     tool: "bandit",
     available: true,
     findings,
-    rawOutput: truncate(result.stdout, 3000),
+    rawOutput: sanitizeOutput(truncate(result.stdout, 3000)),
     durationMs: result.durationMs,
   };
 }
