@@ -3,6 +3,33 @@
  * All project state flows through these interfaces.
  */
 
+export type AuditMode = "quality" | "release";
+
+export interface AuditFinding {
+  category: string;
+  severity: FindingSeverity;
+  file: string;
+  line: number;
+  message: string;
+  fix: string;
+}
+
+export interface AuditResult {
+  id: string;
+  mode: AuditMode;
+  timestamp: string;
+  findings: AuditFinding[];
+  summary: { critical: number; high: number; medium: number; low: number };
+  buildPassed: boolean | null;
+  testsPassed: boolean | null;
+  aggregated: {
+    openSastFindings: number;
+    openQualityIssues: number;
+    slicesDone: number;
+    slicesTotal: number;
+  };
+}
+
 export type Phase =
   | "onboarding"
   | "planning"
@@ -84,6 +111,7 @@ export interface Slice {
   files: string[];
   testResults: TestResult[];
   sastFindings: SASTFinding[];
+  sastRanAt?: string; // ISO timestamp of last SAST run (set by a2p_run_sast)
   productPhaseId?: string; // Which phase this slice belongs to
   type?: SliceType; // default "feature"
   hasUI?: boolean; // Does this slice have frontend changes?
@@ -168,6 +196,7 @@ export interface ProjectState {
   config: ProjectConfig;
   companions: CompanionServer[];
   qualityIssues: QualityIssue[];
+  auditResults: AuditResult[];
   buildHistory: BuildEvent[];
   currentProductPhase: number; // Index in architecture.phases[], default 0
   createdAt: string;

@@ -12,6 +12,7 @@ import type {
   CompanionServer,
   TestResult,
   ProductPhase,
+  AuditResult,
 } from "./types.js";
 
 const STATE_VERSION = 1;
@@ -87,6 +88,7 @@ export class StateManager {
       },
       companions: [],
       qualityIssues: [],
+      auditResults: [],
       buildHistory: [],
       currentProductPhase: 0,
       createdAt: now,
@@ -144,6 +146,16 @@ export class StateManager {
       );
     }
 
+    // Building gate: block leaving building unless all slices are done
+    if (state.phase === "building" && (newPhase === "refactoring" || newPhase === "security")) {
+      const notDone = state.slices.filter((s) => s.status !== "done");
+      if (notDone.length > 0) {
+        throw new Error(
+          `Cannot leave building phase: ${notDone.length} slice(s) not done: ${notDone.map((s) => s.id).join(", ")}. Complete all slices first.`
+        );
+      }
+    }
+
     // Security gate: block deployment if open CRITICAL/HIGH findings exist
     if (state.phase === "security" && newPhase === "deployment") {
       const openBlockers = state.slices
@@ -162,6 +174,21 @@ export class StateManager {
           `Cannot deploy with ${openBlockers.length} open CRITICAL/HIGH finding(s):\n  ${blockerList}\nFix or accept all CRITICAL/HIGH findings before deploying.`
         );
       }
+
+      // Audit gate: block deployment if last release audit has critical findings
+      const releaseAudits = state.auditResults.filter((a) => a.mode === "release");
+      if (releaseAudits.length > 0) {
+        const lastRelease = releaseAudits[releaseAudits.length - 1];
+        if (lastRelease.summary.critical > 0) {
+          const criticalFindings = lastRelease.findings
+            .filter((f) => f.severity === "critical")
+            .map((f) => `[CRITICAL] ${f.message} — ${f.file}`)
+            .join("\n  ");
+          throw new Error(
+            `Cannot deploy: last release audit (${lastRelease.id}) has ${lastRelease.summary.critical} critical finding(s):\n  ${criticalFindings}\nFix critical findings and re-run a2p_run_audit mode=release.`
+          );
+        }
+      }
     }
 
     state.phase = newPhase;
@@ -170,7 +197,7 @@ export class StateManager {
     return state;
   }
 
-  /** Update a slice's status with transition validation */
+  /** Update a slice's status with transition validation and evidence checks */
   setSliceStatus(sliceId: string, newStatus: SliceStatus): ProjectState {
     const state = this.read();
     const slice = state.slices.find((s) => s.id === sliceId);
@@ -186,10 +213,64 @@ export class StateManager {
       );
     }
 
+    // Evidence guard: green requires passing tests
+    if (newStatus === "green") {
+      if (slice.testResults.length === 0) {
+        throw new Error(
+          `Slice "${sliceId}": cannot transition to "green" without test results. Run a2p_run_tests first.`
+        );
+      }
+      const lastTest = slice.testResults[slice.testResults.length - 1];
+      if (lastTest.exitCode !== 0) {
+        throw new Error(
+          `Slice "${sliceId}": cannot transition to "green" — last test run failed (exit code ${lastTest.exitCode}). Tests must pass first.`
+        );
+      }
+    }
+
+    // Evidence guard: sast requires SAST scan
+    if (newStatus === "sast") {
+      if (!slice.sastRanAt) {
+        throw new Error(
+          `Slice "${sliceId}": cannot transition to "sast" without running SAST. Call a2p_run_sast first.`
+        );
+      }
+    }
+
+    // Evidence guard: done requires passing tests
+    if (newStatus === "done") {
+      if (slice.testResults.length === 0) {
+        throw new Error(
+          `Slice "${sliceId}": cannot mark as "done" without test results. Run a2p_run_tests first.`
+        );
+      }
+      const lastTest = slice.testResults[slice.testResults.length - 1];
+      if (lastTest.exitCode !== 0) {
+        throw new Error(
+          `Slice "${sliceId}": cannot mark as "done" — last test run failed (exit code ${lastTest.exitCode}). Tests must pass first.`
+        );
+      }
+    }
+
+    // Reset SAST evidence when going back to red (forces re-run after fixes)
+    if (newStatus === "red" && slice.status === "sast") {
+      slice.sastRanAt = undefined;
+    }
+
     slice.status = newStatus;
     this.addEvent(state, state.phase, sliceId, "slice_status", `${sliceId} → ${newStatus}`);
     this.write(state);
     return state;
+  }
+
+  /** Mark that SAST has been run for a slice */
+  markSastRun(sliceId: string): void {
+    const state = this.read();
+    const slice = state.slices.find((s) => s.id === sliceId);
+    if (!slice) throw new Error(`Slice "${sliceId}" not found`);
+    slice.sastRanAt = new Date().toISOString();
+    this.addEvent(state, state.phase, sliceId, "sast_run", `SAST scan completed for ${sliceId}`);
+    this.write(state);
   }
 
   /** Add slices to the build plan */
@@ -460,6 +541,21 @@ export class StateManager {
     }
     state.currentSliceIndex = index;
     this.write(state);
+  }
+
+  /** Record an audit result */
+  addAuditResult(result: AuditResult): ProjectState {
+    const state = this.read();
+    state.auditResults.push(result);
+    this.addEvent(
+      state,
+      state.phase,
+      null,
+      "audit_run",
+      `[${result.mode}] ${result.id}: ${result.findings.length} findings (C:${result.summary.critical} H:${result.summary.high} M:${result.summary.medium} L:${result.summary.low})`
+    );
+    this.write(state);
+    return state;
   }
 
   private addEvent(

@@ -2,11 +2,11 @@
 
 MCP server that turns AI-generated code into production-ready software with TDD, security scanning, and deployment automation. Up to 100 times fewer exploration tokens for claude code.
 
-**15 MCP tools** · **527 tests** · **Architecture → Plan → Build → Security → Deploy**
+**16 MCP tools** · **587 tests** · **Architecture → Plan → Build → Audit → Security → Deploy**
 
 [![npm version](https://img.shields.io/npm/v/architect-to-product)](https://www.npmjs.com/package/architect-to-product)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Tests: 527 passing](https://img.shields.io/badge/tests-527%20passing-brightgreen)]()
+[![Tests: 587 passing](https://img.shields.io/badge/tests-587%20passing-brightgreen)]()
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue)]()
 
 ---
@@ -39,6 +39,7 @@ It coordinates:
 - **Up to 100x fewer exploration tokens** — codebase-memory-mcp builds a code graph instead of scanning files raw
 - **Test-driven development** — every feature has tests before implementation
 - **Static code analysis** — Semgrep + Bandit scan for vulnerabilities automatically
+- **Code audits** — Quality audits during development, release audits before publish (TODOs, debug artifacts, secrets, .gitignore, test coverage, README)
 - **Security reviews** — OWASP Top 10 review before deploy
 - **Deployment generation** — stack-specific Dockerfile, docker-compose, Caddyfile, backup scripts
 
@@ -51,6 +52,7 @@ A2P is not a replacement for engineers. It is an engineering safety net for AI-g
 | Vibe code a feature | Architecture-driven vertical slices |
 | Manually write some tests (maybe) | TDD per slice: RED → GREEN → REFACTOR |
 | Miss security vulnerabilities | Automated SAST + OWASP Top 10 review |
+| Ship with TODOs, console.logs, .env in repo | Quality + release audits catch hygiene issues, block deploy on critical findings |
 | Copy-paste a Dockerfile from StackOverflow | Generated Dockerfile + docker-compose + Caddyfile + backup scripts |
 | Hope for the best | Ship to production with confidence |
 
@@ -60,6 +62,7 @@ A2P is not a replacement for engineers. It is an engineering safety net for AI-g
 - **Develop faster** — Vertical slices with TDD, no yak shaving
 - **Fewer bugs** — AI-driven test driven development (TDD): every feature has tests before implementation (RED → GREEN → REFACTOR)
 - **Ship secure** — Static code analysis (Semgrep + Bandit) + OWASP Top 10 review built into the AI coding workflow
+- **Audit before release** — Quality audits catch debug artifacts, hardcoded secrets, and test coverage gaps during development. Release audits verify README, .gitignore, temp files, and aggregate findings before publish. Critical release findings block deployment (enforced in code)
 - **Deploy on day one** — Stack-specific Dockerfile, docker-compose, Caddyfile, backup scripts
 - **Code quality** — Built-in code quality tool: dead code detection, redundancy analysis, coupling metrics
 - **Any stack** — Python, TypeScript, Go, Rust, Java, Ruby, PHP, C#, PostgreSQL, MySQL, MongoDB, Redis
@@ -79,9 +82,12 @@ Planning (vertical slices)
      │
      ▼
 Build (TDD loop per slice)
-     │
+     │  ← Quality Audit (every ~5-10 commits)
      ▼
 Security Gate (SAST + OWASP)
+     │
+     ▼
+Release Audit (pre-publish checks)
      │
      ▼
 Deployment
@@ -90,16 +96,17 @@ Deployment
 For multi-phase projects (e.g. Phase 0: Spikes, Phase 1: MVP, Phase 2: Scale), this loop repeats per phase automatically.
 
 ```
-Phase 0: Plan → Build → Security → Deploy → complete_phase
-Phase 1: Plan → Build → Security → Deploy → complete_phase
+Phase 0: Plan → Build → Quality Audit → Security → Release Audit → Deploy → complete_phase
+Phase 1: Plan → Build → Quality Audit → Security → Release Audit → Deploy → complete_phase
 ...
 ```
 
 1. **Onboarding**: Capture or co-develop the AI software architecture. Detect database and frontend tech. Describe UI via text, upload wireframes/mockups/screenshots, or let AI generate a design concept. Set up companion MCP servers via the MCP protocol. If the architecture defines phases, they get extracted automatically.
 2. **Planning**: Break the architecture into ordered vertical slices, each a deployable feature unit with acceptance criteria. Three slice types: `feature` (default), `integration` (library/API adapters with TDD), `infrastructure` (CI, auth, monitoring).
-3. **Build Loop**: TDD per slice: RED (write failing tests) → GREEN (minimal implementation) → REFACTOR (clean up) → SAST (lightweight AI security testing). Frontend slices with `hasUI: true` get visual verification via Playwright between GREEN and REFACTOR. Configurable review checkpoints (`reviewMode`: `off`, `all`, `ui-only`) pause after slices for human approval. Domain logic triggers a WebSearch step before tests to verify facts (tax rates, regulations, standards).
+3. **Build Loop**: TDD per slice: RED (write failing tests) → GREEN (minimal implementation) → REFACTOR (clean up) → SAST (lightweight AI security testing). Frontend slices with `hasUI: true` get visual verification via Playwright between GREEN and REFACTOR. Configurable review checkpoints (`reviewMode`: `off`, `all`, `ui-only`) pause after slices for human approval. Domain logic triggers a WebSearch step before tests to verify facts (tax rates, regulations, standards). Quality audits run every ~5-10 commits to catch TODOs, debug artifacts, hardcoded secrets, and test coverage gaps.
 4. **Security Gate**: Full SAST scan (static code analysis via Semgrep + Bandit), OWASP Top 10 manual review, dependency audit. Acts as an AI code review tool and AI code scanner for your entire codebase. Fix all critical/high findings.
-5. **Deployment**: Generate Dockerfile, docker-compose, Caddyfile, backup scripts, hardening guides. Stack-specific launch checklist.
+5. **Release Audit**: Pre-publish verification — README completeness, temp file cleanup, aggregated SAST/quality findings, build/test pass, .gitignore coverage. Critical findings in the release audit block deployment (enforced in code).
+6. **Deployment**: Generate Dockerfile, docker-compose, Caddyfile, backup scripts, hardening guides. Stack-specific launch checklist.
 
 ## Client Configuration
 
@@ -156,7 +163,7 @@ Add to `.vscode/mcp.json`:
 }
 ```
 
-## MCP Tools (15)
+## MCP Tools (16)
 
 | Tool | Phase | Description |
 |------|-------|-------------|
@@ -165,7 +172,7 @@ Add to `.vscode/mcp.json`:
 | `a2p_setup_companions` | 0 | Register companion MCP servers |
 | `a2p_create_build_plan` | 1 | Architecture → ordered vertical slices (supports `append` for multi-phase) |
 | `a2p_add_slice` | 1,2 | Insert a single slice mid-project (e.g. integration discovered during build) |
-| `a2p_complete_phase` | 4 | Complete current product phase, advance to next |
+| `a2p_complete_phase` | 5 | Complete current product phase, advance to next |
 | `a2p_get_state` | * | Read current project state (includes phase info) |
 | `a2p_update_slice` | 2 | Update slice status with review checkpoints and slice summaries |
 | `a2p_run_tests` | 2 | Execute test command, parse results (pytest/vitest/jest/go) |
@@ -173,10 +180,11 @@ Add to `.vscode/mcp.json`:
 | `a2p_run_e2e` | 2.6 | Record Playwright E2E test results |
 | `a2p_run_sast` | 2,3 | Static code analysis with Semgrep/Bandit, deduplicated findings |
 | `a2p_record_finding` | 3 | Manually record a security finding |
-| `a2p_generate_deployment` | 4 | Stack-specific deployment guidance |
-| `a2p_get_checklist` | 4 | Pre/post-deployment verification checklist |
+| `a2p_run_audit` | 2,4 | Quality audit (dev hygiene) or release audit (pre-publish). Critical release findings block deployment |
+| `a2p_generate_deployment` | 5 | Stack-specific deployment guidance |
+| `a2p_get_checklist` | 5 | Pre/post-deployment verification checklist |
 
-## Prompts (7)
+## Prompts (8)
 
 MCP prompts are invoked with `/` in Claude Code:
 
@@ -188,6 +196,7 @@ MCP prompts are invoked with `/` in Claude Code:
 | `/a2p_refactor` | Code quality tool — analyze codebase for dead code, redundancy, coupling |
 | `/a2p_e2e_testing` | AI testing tool — run visual E2E tests with Playwright |
 | `/a2p_security_gate` | Full SAST scan + OWASP Top 10 review |
+| `/a2p_audit` | Quality audit (dev hygiene every ~5-10 commits) or release audit (pre-publish verification) |
 | `/a2p_deploy` | Generate deployment configs and launch checklist |
 
 ### When to use which prompt
@@ -195,7 +204,7 @@ MCP prompts are invoked with `/` in Claude Code:
 You don't have to run the full pipeline. Each prompt works standalone — pick what you need:
 
 **Full project from scratch:**
-`/a2p` → `/a2p_planning` → `/a2p_build_slice` (repeat per slice) → `/a2p_security_gate` → `/a2p_deploy`
+`/a2p` → `/a2p_planning` → `/a2p_build_slice` (repeat per slice) → `/a2p_audit` (quality) → `/a2p_security_gate` → `/a2p_audit` (release) → `/a2p_deploy`
 
 **MVP built with vibe coding, now make it production-ready:**
 - `/a2p_security_gate` — find the vulnerabilities that vibe coding missed
@@ -203,6 +212,7 @@ You don't have to run the full pipeline. Each prompt works standalone — pick w
 - `/a2p_deploy` — generate Dockerfile, docker-compose, Caddyfile instead of guessing
 
 **Added features without tests, need confidence before shipping:**
+- `/a2p_audit` — catch TODOs, debug artifacts, hardcoded secrets, missing .gitignore entries, low test coverage
 - `/a2p_refactor` — identify dead code and coupling from the feature sprawl
 - `/a2p_e2e_testing` — visually verify nothing is broken
 - `/a2p_security_gate` — catch injection, auth holes, hardcoded secrets
@@ -296,7 +306,7 @@ git clone https://github.com/BernhardJackiewicz/architect-to-product.git
 cd architect-to-product
 npm install
 npm run typecheck   # Type checking
-npm test            # 527 tests
+npm test            # 587 tests
 npm run build       # Build
 npm run dev         # Dev mode
 ```
