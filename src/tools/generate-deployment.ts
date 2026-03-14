@@ -22,6 +22,26 @@ export function handleGenerateDeployment(input: GenerateDeploymentInput): string
 
   const tech = state.architecture.techStack;
   const progress = sm.getProgress();
+  const backupConfig = state.backupConfig;
+  const hasDbTarget = backupConfig.targets.includes("database");
+
+  const filesToGenerate = [
+    "Dockerfile (multi-stage, non-root user)",
+    "docker-compose.prod.yml (app + reverse proxy, named volumes, log rotation, security_opt)",
+    "Caddyfile (HTTPS, security headers, path blocking for .env/.git/.db)",
+    ".env.production.example (all required env vars with placeholders)",
+    `scripts/backup.sh (${hasDbTarget ? "database + " : ""}deployment artifact backup with retention + manifest)`,
+    "scripts/restore.sh (restore from backup with verification)",
+    "scripts/backup-verify.sh (verify backup integrity + freshness)",
+    "ops/backup.env.example (backup config: paths, retention, offsite)",
+    "docs/BACKUP.md (strategy, schedule, restore, verification)",
+    "docs/DEPLOYMENT.md (step-by-step deployment guide)",
+    "docs/LAUNCH_CHECKLIST.md (pre-launch verification checklist)",
+  ];
+
+  if (backupConfig.offsiteProvider !== "none") {
+    filesToGenerate.push(`scripts/backup-offsite.sh (sync to ${backupConfig.offsiteProvider})`);
+  }
 
   return JSON.stringify({
     projectName: state.projectName,
@@ -32,15 +52,7 @@ export function handleGenerateDeployment(input: GenerateDeploymentInput): string
       openFindings: progress.openFindings,
     },
     deploymentGuide: {
-      filesToGenerate: [
-        "Dockerfile (multi-stage, non-root user)",
-        "docker-compose.prod.yml (app + reverse proxy, named volumes, log rotation, security_opt)",
-        "Caddyfile (HTTPS, security headers, path blocking for .env/.git/.db)",
-        ".env.production.example (all required env vars with placeholders)",
-        "scripts/backup.sh (database backup with retention)",
-        "docs/DEPLOYMENT.md (step-by-step deployment guide)",
-        "docs/LAUNCH_CHECKLIST.md (pre-launch verification checklist)",
-      ],
+      filesToGenerate,
       securityHardening: [
         "Docker: read_only filesystem, no-new-privileges, cap_drop ALL",
         "UFW/Docker patch: add iptables rules to /etc/ufw/after.rules",
@@ -50,6 +62,25 @@ export function handleGenerateDeployment(input: GenerateDeploymentInput): string
         "Secrets: Docker secrets or .env (never in image)",
       ],
       recommendations: buildRecommendations(tech),
+      backupGuide: {
+        config: backupConfig,
+        ...(hasDbTarget ? {
+          dbCommand: getBackupCommand(tech.database),
+          restoreCommand: getRestoreCommand(tech.database),
+        } : {}),
+        schedulerHint: getSchedulerHint(tech.hosting),
+        verifyHint: backupConfig.verifyAfterBackup
+          ? "After each backup: restore to temp, verify integrity."
+          : "Manual verification recommended.",
+        offsiteHint: getOffsiteHint(backupConfig.offsiteProvider),
+      },
+      ...(backupConfig.required && !state.backupStatus.configured ? {
+        backupWarning: {
+          message: "BACKUP REQUIRED but not configured. Stateful app — data loss risk.",
+          stateful: true,
+          missingTargets: backupConfig.targets,
+        },
+      } : {}),
     },
     hint: "Generate these files dynamically based on the tech stack. Do NOT use templates — adapt to the specific project.",
   });
@@ -161,4 +192,48 @@ function buildRecommendations(tech: {
   recs.push("Use Sentry (free tier) for error tracking");
 
   return recs;
+}
+
+function getBackupCommand(database: string | null): string {
+  const db = (database ?? "").toLowerCase();
+  if (db.includes("postgres") || db.includes("supabase"))
+    return "pg_dump -Fc -f $BACKUP_FILE $DATABASE_URL";
+  if (db.includes("mysql") || db.includes("mariadb"))
+    return "mysqldump --single-transaction --defaults-file=$MYSQL_DEFAULTS_FILE $DB_NAME > $BACKUP_FILE";
+  if (db.includes("mongo"))
+    return "mongodump --uri=$MONGO_URI --archive=$BACKUP_FILE --gzip";
+  if (db.includes("sqlite"))
+    return "sqlite3 $DB_PATH '.backup $BACKUP_FILE' && sqlite3 $BACKUP_FILE 'PRAGMA integrity_check;'";
+  return "# No database-specific backup — customize for your data store";
+}
+
+function getRestoreCommand(database: string | null): string {
+  const db = (database ?? "").toLowerCase();
+  if (db.includes("postgres") || db.includes("supabase"))
+    return "pg_restore -d $DATABASE_URL $BACKUP_FILE";
+  if (db.includes("mysql") || db.includes("mariadb"))
+    return "mysql --defaults-file=$MYSQL_DEFAULTS_FILE $DB_NAME < $BACKUP_FILE";
+  if (db.includes("mongo"))
+    return "mongorestore --uri=$MONGO_URI --archive=$BACKUP_FILE --gzip";
+  if (db.includes("sqlite"))
+    return "# Stop application first, then: cp $BACKUP_FILE $DB_PATH && sqlite3 $DB_PATH 'PRAGMA integrity_check;'";
+  return "# No database-specific restore — customize for your data store";
+}
+
+function getSchedulerHint(hosting: string | null): string {
+  const h = (hosting ?? "").toLowerCase();
+  if (h.includes("hetzner") || h.includes("digitalocean") || h.includes("vps") ||
+      h.includes("debian") || h.includes("ubuntu") || h.includes("linux"))
+    return "systemd timer preferred (logging + failure notification). Cron as fallback.";
+  return "Configure backup scheduling per your hosting provider's capabilities.";
+}
+
+function getOffsiteHint(provider: string): string {
+  switch (provider) {
+    case "s3": return "aws s3 cp or rclone sync. Configure lifecycle rules for retention.";
+    case "b2": return "b2 upload-file or rclone sync. Cost-effective for backups.";
+    case "spaces": return "s3cmd or rclone. DigitalOcean Spaces is S3-compatible.";
+    case "hetzner_storage": return "rclone with Hetzner Storage Box (SFTP) or Object Storage (S3-compatible).";
+    default: return "No offsite configured. Consider S3, B2, or hosting provider's object storage.";
+  }
 }

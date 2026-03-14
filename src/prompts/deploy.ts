@@ -15,6 +15,10 @@ Bevor du Deployment-Configs generierst, zeige dem User:
 - Offene Findings: [Anzahl]
 - Blocking Whitebox Findings: [Anzahl]
 - Letzter Release Audit: [bestanden/nicht gelaufen]
+- Backup: Lies \`backupConfig.required\` und \`backupStatus.configured\` aus dem State.
+  Wenn required=true und configured=false → '⚠️ Backup NICHT konfiguriert — Stateful App'
+  Wenn required=true und configured=true → '✓ Backup konfiguriert'
+  Wenn required=false → 'Backup optional (stateless App)'
 
 Soll ich die Deployment-Configs generieren?"
 

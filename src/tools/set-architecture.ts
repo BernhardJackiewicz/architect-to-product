@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { requireProject } from "../utils/tool-helpers.js";
-import type { Architecture, TechStack, ProductPhase, ReviewMode, UIDesign, OversightConfig } from "../state/types.js";
+import type { Architecture, TechStack, ProductPhase, ReviewMode, UIDesign, OversightConfig, BackupTarget, BackupOffsiteProvider } from "../state/types.js";
 
 export const setArchitectureSchema = z.object({
   projectPath: z.string().describe("Absolute path to the project directory"),
@@ -120,6 +120,40 @@ export function handleSetArchitecture(input: SetArchitectureInput): string {
     sm.updateConfig({ claudeModel: input.claudeModel });
   }
 
+  // Backup inference
+  const hasDatabase = !!techStack.database;
+  const allFeaturesLower = [...(input.otherTech ?? []), ...input.features]
+    .map(f => f.toLowerCase()).join(" ");
+  const hasUploads = /upload|file.?storage|media|image|blob/.test(allFeaturesLower);
+  const isStateful = hasDatabase || hasUploads;
+
+  const backupTargets: BackupTarget[] = ["deploy_artifacts"];
+  if (hasDatabase) backupTargets.push("database");
+  if (hasUploads) {
+    backupTargets.push("uploads");
+    backupTargets.push("local_media");
+  }
+
+  let offsiteProvider: BackupOffsiteProvider = "none";
+  if (input.hosting) {
+    const hostingLower = input.hosting.toLowerCase();
+    if (hostingLower.includes("hetzner")) offsiteProvider = "hetzner_storage";
+    else if (hostingLower.includes("aws")) offsiteProvider = "s3";
+    else if (hostingLower.includes("digitalocean")) offsiteProvider = "spaces";
+  }
+
+  sm.setBackupConfig({
+    enabled: true,
+    required: isStateful,
+    schedule: "daily",
+    time: "02:00",
+    retentionDays: 14,
+    targets: backupTargets,
+    offsiteProvider,
+    verifyAfterBackup: isStateful,
+    preDeploySnapshot: isStateful,
+  });
+
   // Detect what companions are needed
   const suggestedCompanions: string[] = ["codebase-memory-mcp"];
 
@@ -198,6 +232,12 @@ export function handleSetArchitecture(input: SetArchitectureInput): string {
           phaseNames: phases.map((p) => p.name),
         }
       : {}),
+    backupConfig: {
+      enabled: true,
+      required: isStateful,
+      targets: backupTargets,
+      offsiteProvider,
+    },
     suggestedCompanions,
     nextStep: phases
       ? `${phases.length} product phases detected. Run a2p_setup_companions, then a2p_create_build_plan for Phase 0: "${phases[0].name}".`

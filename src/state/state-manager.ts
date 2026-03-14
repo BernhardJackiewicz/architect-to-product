@@ -15,6 +15,8 @@ import type {
   AuditResult,
   WhiteboxAuditResult,
   ActiveVerificationResult,
+  BackupConfig,
+  BackupStatus,
   LogLevel,
   EventStatus,
   EventMetadata,
@@ -100,6 +102,12 @@ export class StateManager {
       activeVerificationResults: [],
       buildHistory: [],
       currentProductPhase: 0,
+      backupConfig: {
+        enabled: true, required: false, schedule: "daily", time: "02:00",
+        retentionDays: 14, targets: ["deploy_artifacts"],
+        offsiteProvider: "none", verifyAfterBackup: false, preDeploySnapshot: false,
+      },
+      backupStatus: { configured: false },
       createdAt: now,
       updatedAt: now,
     };
@@ -206,6 +214,15 @@ export class StateManager {
             `Cannot deploy: last release audit (${lastRelease.id}) has ${lastRelease.summary.critical} critical finding(s):\n  ${criticalFindings}\nFix critical findings and re-run a2p_run_audit mode=release.`
           );
         }
+      }
+    }
+
+    // Backup warning: warn if stateful app deploys without backup configured
+    if (state.phase === "security" && newPhase === "deployment") {
+      if (state.backupConfig.required && !state.backupStatus.configured) {
+        this.addEvent(state, "security", null, "config_update",
+          "WARNING: Backup required but not configured — stateful app deploying without backup strategy",
+          { level: "warn", status: "warning" });
       }
     }
 
@@ -418,6 +435,28 @@ export class StateManager {
     const state = this.read();
     state.config = { ...state.config, ...partial };
     this.addEvent(state, state.phase, null, "config_update", `Config updated: ${Object.keys(partial).join(", ")}`, { status: "info" });
+    this.write(state);
+    return state;
+  }
+
+  /** Set backup configuration */
+  setBackupConfig(config: BackupConfig): ProjectState {
+    const state = this.read();
+    state.backupConfig = config;
+    this.addEvent(state, state.phase, null, "config_update",
+      `Backup: required=${config.required}, targets=${config.targets.join(",")}`,
+      { level: "info", status: "info" });
+    this.write(state);
+    return state;
+  }
+
+  /** Set backup status */
+  setBackupStatus(status: BackupStatus): ProjectState {
+    const state = this.read();
+    state.backupStatus = status;
+    this.addEvent(state, state.phase, null, "config_update",
+      `Backup status: configured=${status.configured}`,
+      { level: "info", status: "info" });
     this.write(state);
     return state;
   }
