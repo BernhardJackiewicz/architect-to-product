@@ -111,7 +111,7 @@ Tool-Counts die via npm-readme nicht pruefbar sind:
 | ~~Real UI Browser-Test~~ | ~~QuickBill App existiert nicht als Code~~ | **GESCHLOSSEN** — QuickBill gebaut, 8 Playwright-Tests pass (siehe PHASE_C_RESULTS.md) |
 | run_tests echte Ausfuehrung | Braucht laufende Test-Suite | Niedrig — SM.addTestResult validiert |
 | run_sast echte Ausfuehrung | Braucht Semgrep/Bandit | Niedrig — SM.markSastRun validiert |
-| Backup deploy-gate Warning | Bestehender Test (backup-integration.test.ts) | Niedrig — Code-verifiziert |
+| Backup deploy-gate Hard-Block | Bestehender Test (backup-integration.test.ts, gate-enforcement.test.ts) | Niedrig — Code-verifiziert |
 
 ---
 
@@ -121,8 +121,8 @@ Tool-Counts die via npm-readme nicht pruefbar sind:
 |---|---|---|
 | onboarding -> planning | Ja (`a2p_create_build_plan`) | Ja |
 | planning -> building | **NEIN** | Ja (SM.setPhase + Guards) |
-| building -> security | **NEIN** | Ja (SM.setPhase + Signoff-Gate) |
-| security -> deployment | **NEIN** | Ja (SM.setPhase + SAST/Whitebox/Audit-Gates) |
+| building -> security | **NEIN** | Ja (SM.setPhase + Signoff + Quality-Gate) |
+| security -> deployment | **NEIN** | Ja (SM.setPhase + SAST/Whitebox/Audit/Verification/Backup-Gates) |
 | deployment -> complete | **NEIN** | Ja (SM.setPhase) |
 
 **Status**: Prompt-gesteuert. Gates greifen, aber kein MCP-Tool exponiert `setPhase` direkt.

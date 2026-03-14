@@ -19,7 +19,7 @@ import { ProjectStateSchema } from "../../src/state/validators.js";
 import {
   makeTmpDir, cleanTmpDir, parse, forcePhase,
   initWithStateManager, walkSliceToStatus, addPassingTests,
-  forceField,
+  forceField, addQualityAudit, addReleaseAudit, addPassingVerification,
 } from "../helpers/setup.js";
 
 describe("Enforcement Guards", () => {
@@ -242,17 +242,21 @@ describe("Enforcement Guards", () => {
       forcePhase(dir, "building");
       for (const s of sm.read().slices) walkSliceToStatus(sm, s.id, "done");
       sm.setBuildSignoff();
+      addQualityAudit(sm);
       sm.setPhase("security");
       expect(() => sm.setPhase("deployment")).toThrow("full SAST");
     });
 
-    it("security→deployment with full SAST → OK", () => {
+    it("security→deployment with full SAST + release audit + verification → OK", () => {
       const sm = initWithStateManager(dir);
       forcePhase(dir, "building");
       for (const s of sm.read().slices) walkSliceToStatus(sm, s.id, "done");
       sm.setBuildSignoff();
+      addQualityAudit(sm);
       sm.setPhase("security");
       sm.markFullSastRun(0);
+      addReleaseAudit(sm);
+      addPassingVerification(sm);
       expect(() => sm.setPhase("deployment")).not.toThrow();
     });
 
@@ -355,6 +359,7 @@ describe("Enforcement Guards", () => {
       forcePhase(dir, "building");
       for (const s of sm.read().slices) walkSliceToStatus(sm, s.id, "done");
       sm.setBuildSignoff();
+      addQualityAudit(sm);
       sm.setPhase("security");
       // Set SAST to an old timestamp, then trigger a change after it
       forceField(dir, "lastFullSastAt", "2020-01-01T00:00:00.000Z");

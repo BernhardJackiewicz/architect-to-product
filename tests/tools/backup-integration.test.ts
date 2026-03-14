@@ -5,7 +5,7 @@ import { handleInitProject } from "../../src/tools/init-project.js";
 import { handleSetArchitecture } from "../../src/tools/set-architecture.js";
 import { StateManager } from "../../src/state/state-manager.js";
 import { ProjectStateSchema } from "../../src/state/validators.js";
-import { makeTmpDir, cleanTmpDir, parse, walkSliceToStatus, addPassingTests, addSastEvidence, forcePhase } from "../helpers/setup.js";
+import { makeTmpDir, cleanTmpDir, parse, walkSliceToStatus, addPassingTests, addSastEvidence, forcePhase, addQualityAudit, addReleaseAudit, addPassingVerification } from "../helpers/setup.js";
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -263,8 +263,8 @@ describe("Backup Integration", () => {
 
   // === Deployment gate (2) ===
 
-  describe("deployment gate backup warning", () => {
-    it("stateful app without backup configured → warning event on security→deployment", () => {
+  describe("deployment gate backup blocking", () => {
+    it("stateful app without backup configured → blocked on security→deployment", () => {
       initWithArch(tmpDir, { database: "PostgreSQL" });
       const sm = new StateManager(tmpDir);
 
@@ -278,18 +278,16 @@ describe("Backup Integration", () => {
       sm.setPhase("building");
       walkSliceToStatus(sm, "s1", "done");
       sm.setBuildSignoff();
+      addQualityAudit(sm);
       sm.setPhase("security");
       sm.markFullSastRun(0);
-      sm.setPhase("deployment");
+      addReleaseAudit(sm);
+      addPassingVerification(sm);
 
-      const state = sm.read();
-      const warnEvents = state.buildHistory.filter(
-        e => e.details.includes("WARNING: Backup required") && e.level === "warn"
-      );
-      expect(warnEvents.length).toBe(1);
+      expect(() => sm.setPhase("deployment")).toThrow("backup configuration");
     });
 
-    it("stateful app with backup configured → no warning event", () => {
+    it("stateful app with backup configured → allowed through security→deployment", () => {
       initWithArch(tmpDir, { database: "PostgreSQL" });
       const sm = new StateManager(tmpDir);
 
@@ -304,15 +302,15 @@ describe("Backup Integration", () => {
       sm.setPhase("building");
       walkSliceToStatus(sm, "s1", "done");
       sm.setBuildSignoff();
+      addQualityAudit(sm);
       sm.setPhase("security");
       sm.markFullSastRun(0);
+      addReleaseAudit(sm);
+      addPassingVerification(sm);
       sm.setPhase("deployment");
 
       const state = sm.read();
-      const warnEvents = state.buildHistory.filter(
-        e => e.details.includes("WARNING: Backup required")
-      );
-      expect(warnEvents.length).toBe(0);
+      expect(state.phase).toBe("deployment");
     });
   });
 

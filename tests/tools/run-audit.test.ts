@@ -3,7 +3,7 @@ import { writeFileSync, mkdirSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
 import { StateManager } from "../../src/state/state-manager.js";
 import { handleRunAudit } from "../../src/tools/run-audit.js";
-import { makeTmpDir, parse, initWithStateManager, walkSliceToStatus, forcePhase } from "../helpers/setup.js";
+import { makeTmpDir, parse, initWithStateManager, walkSliceToStatus, forcePhase, addQualityAudit, addReleaseAudit, addPassingVerification } from "../helpers/setup.js";
 import type { AuditResult } from "../../src/state/types.js";
 
 describe("a2p_run_audit", () => {
@@ -275,8 +275,10 @@ describe("Deployment gate: audit critical findings block deploy", () => {
 
     // Transition to security phase
     sm.setBuildSignoff();
+    addQualityAudit(sm);
     sm.setPhase("security");
     sm.markFullSastRun(0);
+    addPassingVerification(sm);
 
     // Add a release audit with critical findings
     const auditResult: AuditResult = {
@@ -304,8 +306,10 @@ describe("Deployment gate: audit critical findings block deploy", () => {
     sm.setPhase("building");
     walkSliceToStatus(sm, "s1", "done");
     sm.setBuildSignoff();
+    addQualityAudit(sm);
     sm.setPhase("security");
     sm.markFullSastRun(0);
+    addPassingVerification(sm);
 
     // Add a clean release audit
     const auditResult: AuditResult = {
@@ -324,13 +328,14 @@ describe("Deployment gate: audit critical findings block deploy", () => {
     expect(() => sm.setPhase("deployment")).not.toThrow();
   });
 
-  it("ignores quality-mode audits for deployment gate", () => {
+  it("ignores quality-mode audits for deployment gate (still needs release audit)", () => {
     const sm = initWithStateManager(dir, 1);
 
     sm.setPhase("planning");
     sm.setPhase("building");
     walkSliceToStatus(sm, "s1", "done");
     sm.setBuildSignoff();
+    addQualityAudit(sm);
     sm.setPhase("security");
     sm.markFullSastRun(0);
 
@@ -349,7 +354,7 @@ describe("Deployment gate: audit critical findings block deploy", () => {
     };
     sm.addAuditResult(auditResult);
 
-    // Should succeed — quality audits don't block deployment
-    expect(() => sm.setPhase("deployment")).not.toThrow();
+    // Should fail due to missing release audit (not due to quality audit critical findings)
+    expect(() => sm.setPhase("deployment")).toThrow("release audit");
   });
 });

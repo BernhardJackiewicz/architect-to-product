@@ -4,7 +4,7 @@ import { handleInitProject } from "../../src/tools/init-project.js";
 import { handleSetArchitecture } from "../../src/tools/set-architecture.js";
 import { handleCreateBuildPlan } from "../../src/tools/create-build-plan.js";
 import { StateManager } from "../../src/state/state-manager.js";
-import { makeTmpDir, cleanTmpDir, parse, addPassingTests, addSastEvidence } from "../helpers/setup.js";
+import { makeTmpDir, cleanTmpDir, parse, addPassingTests, addSastEvidence, addQualityAudit, addReleaseAudit, addPassingVerification } from "../helpers/setup.js";
 
 const twoPhases = [
   {
@@ -109,8 +109,11 @@ describe("handleCompletePhase", () => {
     sm.setPhase("building");
     completeSlice(sm, "s01");
     sm.setBuildSignoff();
+    addQualityAudit(sm);
     sm.setPhase("security");
     sm.markFullSastRun(0);
+    addReleaseAudit(sm);
+    addPassingVerification(sm);
     sm.setPhase("deployment");
 
     const result = parse(handleCompletePhase({ projectPath: tmpDir }));
@@ -128,8 +131,11 @@ describe("handleCompletePhase", () => {
     sm.setPhase("building");
     completeSlice(sm, "s01");
     sm.setBuildSignoff();
+    addQualityAudit(sm);
     sm.setPhase("security");
     sm.markFullSastRun(0);
+    addReleaseAudit(sm);
+    addPassingVerification(sm);
     sm.setPhase("deployment");
 
     const result = parse(handleCompletePhase({ projectPath: tmpDir }));
@@ -151,8 +157,11 @@ describe("handleCompletePhase", () => {
     sm.setPhase("building");
     completeSlice(sm, "s01");
     sm.setBuildSignoff();
+    addQualityAudit(sm);
     sm.setPhase("security");
     sm.markFullSastRun(0);
+    addReleaseAudit(sm);
+    addPassingVerification(sm);
     sm.setPhase("deployment");
 
     // Complete phase 0 → go to phase 1
@@ -178,8 +187,11 @@ describe("handleCompletePhase", () => {
     sm.setPhase("building");
     completeSlice(sm, "s02");
     sm.setBuildSignoff();
+    addQualityAudit(sm);
     sm.setPhase("security");
     sm.markFullSastRun(0);
+    addReleaseAudit(sm);
+    addPassingVerification(sm);
     sm.setPhase("deployment");
 
     const result = parse(handleCompletePhase({ projectPath: tmpDir }));

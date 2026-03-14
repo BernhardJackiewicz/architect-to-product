@@ -17,7 +17,7 @@
 - **State backup**: Automatisches `.bak` vor jedem Write.
 - **Log sanitization**: Passwords, Bearer tokens, GitHub tokens, OpenAI keys werden redacted.
 - **Test command restriction**: Override nur mit explizitem `allowTestCommandOverride=true`.
-- **737 Tests**: Alle Gates, Transitions, Invalidierungen, Edge Cases abgedeckt.
+- **759 Tests**: Alle Gates, Transitions, Invalidierungen, Edge Cases abgedeckt.
 
 ## 2. Main Repo Security Gaps
 
@@ -27,6 +27,7 @@
 |---|-----|-------|----------|-----|
 | M1 | SAST rawOutput nicht sanitized | `run-sast.ts:182,231` | should-fix | `sanitizeOutput()` um `truncate()` gewickelt |
 | M2 | TestResult.output nicht sanitized im State | `run-tests.ts:57` | should-fix | `sanitizeOutput()` um `truncate()` gewickelt |
+| M6 | Backup war nur Warning, kein Hard-Block | `state-manager.ts` | should-fix | Backup-Gate erzwingt Hard-Block bei stateful apps (setPhase security→deployment) |
 
 ### Akzeptiert
 
@@ -35,7 +36,6 @@
 | M3 | Secret-Redaction deckt keine Connection-Strings ab | acceptable | `postgresql://user:pass@host` nicht redacted. Selten in Tool-Output, waere Nice-to-have Pattern-Erweiterung |
 | M4 | State-File nicht verschluesselt | acceptable | Standard fuer lokales Dev-Tool |
 | M5 | `execSync` mit Shell-Execution | acceptable | Trust-Modell ist MCP→Claude, nicht untrusted users |
-| M6 | Backup-Warning nur Log-Event, kein Hard-Block | acceptable | Bewusste Design-Entscheidung |
 | M7 | Signoff/Approval nicht kryptographisch signiert | nice-to-have | Deterministischer Hash reicht fuer lokales Tool |
 
 ## 3. Release Blockers
@@ -57,7 +57,7 @@ Total: 4 Zeilen geaendert, 0 Dateien hinzugefuegt, 0 Dateien geloescht.
 
 ```
 Main Repo Typecheck: Identisch zum Baseline (5 praeexistente TS-Warnungen, keine neuen)
-Main Repo Tests: 737/737 passed (11.08s)
+Main Repo Tests: 759/759 passed
 Audit Workspace Tests: 737/737 passed (10.24s)
 Chaos Workspace Shake-and-Break: 10/10 passed
 ```
