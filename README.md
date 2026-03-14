@@ -408,21 +408,21 @@ a2p auto-configures companion MCP servers based on your tech stack. Each compani
 | Companion | What it adds | Verified Tools |
 |-----------|-------------|----------------|
 | [codebase-memory-mcp](https://github.com/DeusData/codebase-memory-mcp) | Code graph intelligence — up to 100x fewer exploration tokens vs. raw file scanning | 11 tools: `index_repository`, `search_graph`, `search_code`, `trace_call_path`, ... |
-| [mcp-server-git](https://github.com/modelcontextprotocol/servers) | Git history, commits, diffs | 12 tools: `git_log`, `git_diff`, `git_commit`, `git_status`, ... |
+| [mcp-server-git](https://github.com/modelcontextprotocol/servers) | Git history, commits, diffs | `git_log`, `git_diff`, `git_commit`, `git_status`, ... |
 | [@modelcontextprotocol/server-filesystem](https://github.com/modelcontextprotocol/servers) | File operations | 13 tools: `write_file`, `list_directory`, `read_file`, `search_files`, ... |
 | [@modelcontextprotocol/server-sequential-thinking](https://github.com/modelcontextprotocol/servers) | Step-by-step reasoning for complex decisions | 1 tool: `sequentialthinking` |
 
 ### Conditional (installed based on stack)
 
-| Companion | When | Verified Tools |
-|-----------|------|----------------|
-| [Playwright MCP](https://github.com/microsoft/playwright-mcp) | Frontend projects | 22 tools: `browser_navigate`, `browser_click`, `browser_fill_form`, `browser_take_screenshot`, `browser_resize`, ... |
-| [GitHub MCP](https://github.com/github/github-mcp-server) | GitHub repos | 41 tools: `list_issues`, `create_pull_request`, `search_code`, `get_file_contents`, ... |
-| [Supabase MCP](https://github.com/supabase-community/supabase-mcp) | Supabase projects | 29 tools: `execute_sql`, `list_tables`, `apply_migration`, `deploy_edge_function`, ... |
-| [@stripe/mcp](https://github.com/stripe/agent-toolkit) | Payment/billing | 28 tools: `create_product`, `create_price`, `create_payment_link`, `create_customer`, ... |
-| [@cloudflare/mcp-server-cloudflare](https://github.com/cloudflare/mcp-server-cloudflare) | Cloudflare hosting | 61+ tools: `worker_deploy`, `kv_put`, `d1_query`, `r2_put_object`, `zones_list`, `secret_put`, ... |
-| [@sentry/mcp-server](https://github.com/getsentry/sentry-mcp-server) | Error tracking | 22 tools: `list_issues`, `get_issue_details`, `find_projects`, `analyze_issue_with_seer`, ... |
-| [@upstash/mcp-server](https://github.com/upstash/mcp-server) | Serverless Redis/Queue | 26 tools: `redis_database_run_redis_commands`, `qstash_publish_message`, `workflow_logs_list`, ... |
+| Companion | When | Key Tools |
+|-----------|------|-----------|
+| [Playwright MCP](https://github.com/microsoft/playwright-mcp) | Frontend projects | `browser_navigate`, `browser_click`, `browser_fill_form`, `browser_take_screenshot`, ... |
+| [GitHub MCP](https://github.com/github/github-mcp-server) | GitHub repos | `list_issues`, `create_pull_request`, `search_code`, `get_file_contents`, ... |
+| [Supabase MCP](https://github.com/supabase-community/supabase-mcp) | Supabase projects | `execute_sql`, `list_tables`, `apply_migration`, `deploy_edge_function`, ... |
+| [@stripe/mcp](https://github.com/stripe/agent-toolkit) | Payment/billing | `create_product`, `create_price`, `create_payment_link`, `create_customer`, ... |
+| [@cloudflare/mcp-server-cloudflare](https://github.com/cloudflare/mcp-server-cloudflare) | Cloudflare hosting | `worker_deploy`, `kv_put`, `d1_query`, `r2_put_object`, `zones_list`, `secret_put`, ... |
+| [@sentry/mcp-server](https://github.com/getsentry/sentry-mcp-server) | Error tracking | `list_issues`, `get_issue_details`, `find_projects`, `analyze_issue_with_seer`, ... |
+| [@upstash/mcp-server](https://github.com/upstash/mcp-server) | Serverless Redis/Queue | `redis_database_run_redis_commands`, `qstash_publish_message`, `workflow_logs_list`, ... |
 | [Semgrep MCP](https://semgrep.dev/) | Semgrep Pro users | `semgrep_scan`, `security_check`, `get_abstract_syntax_tree` (OSS uses CLI fallback) |
 | [Atlassian MCP](https://developer.atlassian.com/) | Jira/Confluence | Remote MCP via OAuth |
 
