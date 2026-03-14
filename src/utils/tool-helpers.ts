@@ -7,14 +7,15 @@ const NO_PROJECT_ERROR = JSON.stringify({
 
 /**
  * Validate that a project exists and return its StateManager.
- * Returns null and sets `error` if no project found.
+ * sm is always returned (constructor has no side effects);
+ * callers must check error and return early before using sm.
  */
-export function requireProject(projectPath: string): { sm: StateManager; error?: undefined } | { sm?: undefined; error: string } {
+export function requireProject(projectPath: string): { sm: StateManager; error: string | null } {
   const sm = new StateManager(projectPath);
   if (!sm.exists()) {
-    return { error: NO_PROJECT_ERROR };
+    return { sm, error: NO_PROJECT_ERROR };
   }
-  return { sm };
+  return { sm, error: null };
 }
 
 /** Throw if the current phase is not in the allowed list */
