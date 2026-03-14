@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { requireProject } from "../utils/tool-helpers.js";
+import { requireProject, requirePhase } from "../utils/tool-helpers.js";
 import type { QualityIssue } from "../state/types.js";
 
 export const runQualitySchema = z.object({
@@ -34,6 +34,10 @@ export type RunQualityInput = z.infer<typeof runQualitySchema>;
 export function handleRunQuality(input: RunQualityInput): string {
   const { sm, error } = requireProject(input.projectPath);
   if (error) return error;
+
+  const state = sm.read();
+  try { requirePhase(state.phase, ["building"], "a2p_run_quality"); }
+  catch (err) { return JSON.stringify({ error: err instanceof Error ? err.message : String(err) }); }
 
   const recorded: QualityIssue[] = [];
   let counter = 1;

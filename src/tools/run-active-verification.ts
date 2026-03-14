@@ -2,7 +2,7 @@ import { z } from "zod";
 import { mkdtempSync, cpSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { requireProject } from "../utils/tool-helpers.js";
+import { requireProject, requirePhase } from "../utils/tool-helpers.js";
 import { generateRunId } from "../utils/log-sanitizer.js";
 import { StateManager } from "../state/state-manager.js";
 import { isBlockingWhiteboxFinding } from "./run-whitebox-audit.js";
@@ -38,6 +38,8 @@ export function handleRunActiveVerification(input: RunActiveVerificationInput): 
 
   const verifyStart = Date.now();
   const state = sm.read();
+  try { requirePhase(state.phase, ["security"], "a2p_run_active_verification"); }
+  catch (err) { return JSON.stringify({ error: err instanceof Error ? err.message : String(err) }); }
   const categoriesToTest = input.categories ?? ["workflow_gates", "state_recovery", "deployment_gates"];
 
   // Create temp copy of state for destructive tests

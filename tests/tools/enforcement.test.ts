@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { StateManager } from "../../src/state/state-manager.js";
 import { handleUpdateSlice } from "../../src/tools/update-slice.js";
-import { makeTmpDir, initWithStateManager, addPassingTests, addSastEvidence, walkSliceToStatus } from "../helpers/setup.js";
+import { makeTmpDir, initWithStateManager, addPassingTests, addSastEvidence, walkSliceToStatus, forcePhase } from "../helpers/setup.js";
 
 // ─── Slice Status Enforcement ────────────────────────────────────────────────
 
@@ -172,6 +172,7 @@ describe("Enforcement: building → refactoring/security requires all slices don
     walkSliceToStatus(sm, "s1", "done");
     walkSliceToStatus(sm, "s2", "done");
     walkSliceToStatus(sm, "s3", "done");
+    sm.setBuildSignoff();
     const state = sm.setPhase("security");
     expect(state.phase).toBe("security");
   });
@@ -191,6 +192,7 @@ describe("Enforcement: building → refactoring/security requires all slices don
     emptySm.init("empty", emptyDir);
     emptySm.setPhase("planning");
     emptySm.setPhase("building");
+    emptySm.setBuildSignoff();
     const state = emptySm.setPhase("security");
     expect(state.phase).toBe("security");
   });
@@ -204,6 +206,7 @@ describe("Enforcement: handleUpdateSlice returns errors for missing evidence", (
   beforeEach(() => {
     dir = makeTmpDir("a2p-enforce");
     initWithStateManager(dir, 1);
+    forcePhase(dir, "building");
   });
 
   it("returns error when transitioning to green without tests", () => {

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { requireProject, truncate } from "../utils/tool-helpers.js";
+import { requireProject, requirePhase, truncate } from "../utils/tool-helpers.js";
 import { runProcess } from "../utils/process-runner.js";
 import { generateRunId } from "../utils/log-sanitizer.js";
 import type { SASTFinding, FindingSeverity } from "../state/types.js";
@@ -22,6 +22,17 @@ export function handleRunSast(input: RunSastInput): string {
   const { sm, error } = requireProject(input.projectPath);
   if (error) return error;
 
+  const state = sm.read();
+  try {
+    if (input.mode === "slice") {
+      requirePhase(state.phase, ["building"], "a2p_run_sast mode=slice");
+    } else {
+      requirePhase(state.phase, ["security"], "a2p_run_sast mode=full");
+    }
+  } catch (err) {
+    return JSON.stringify({ error: err instanceof Error ? err.message : String(err) });
+  }
+
   const results: {
     tool: string;
     available: boolean;
@@ -36,7 +47,6 @@ export function handleRunSast(input: RunSastInput): string {
 
   // Run Bandit (Python only) in full mode
   if (input.mode === "full") {
-    const state = sm.read();
     const lang = state.architecture?.techStack.language?.toLowerCase() ?? "";
     if (lang.includes("python")) {
       const banditResult = runBandit(input);
@@ -46,9 +56,9 @@ export function handleRunSast(input: RunSastInput): string {
 
   // Record findings in state (deduplicate by tool+file+line+title fingerprint)
   const allFindings = results.flatMap((r) => r.findings);
-  const state = sm.read();
+  const freshState = sm.read();
   const existingFingerprints = new Set(
-    state.slices
+    freshState.slices
       .flatMap((s) => s.sastFindings)
       .map((f) => `${f.tool}:${f.file}:${f.line}:${f.title}`)
   );
@@ -56,6 +66,11 @@ export function handleRunSast(input: RunSastInput): string {
   // Mark SAST as run for this slice (evidence for status transition guard)
   if (input.sliceId) {
     sm.markSastRun(input.sliceId);
+  }
+
+  // Mark full SAST run (evidence for deployment gate)
+  if (input.mode === "full") {
+    sm.markFullSastRun(allFindings.length);
   }
 
   let newCount = 0;

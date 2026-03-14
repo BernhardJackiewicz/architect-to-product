@@ -108,6 +108,12 @@ export class StateManager {
         offsiteProvider: "none", verifyAfterBackup: false, preDeploySnapshot: false,
       },
       backupStatus: { configured: false },
+      lastFullSastAt: null,
+      lastFullSastFindingCount: 0,
+      buildSignoffAt: null,
+      buildSignoffSliceHash: null,
+      deployApprovalAt: null,
+      deployApprovalStateHash: null,
       createdAt: now,
       updatedAt: now,
     };
@@ -153,6 +159,39 @@ export class StateManager {
     writeFileSync(this.statePath, json, "utf-8");
   }
 
+  /** Compute deterministic hash of slice statuses for signoff validation */
+  private computeSliceHash(slices: Slice[]): string {
+    return slices.map(s => `${s.id}:${s.status}`).join("|");
+  }
+
+  /** Compute deterministic hash of deployment-relevant state for approval validation */
+  private computeDeployStateHash(state: ProjectState): string {
+    const parts = [
+      `sast:${state.lastFullSastAt}`,
+      `findings:${state.slices.flatMap(s => s.sastFindings).filter(f => f.status === "open").length}`,
+      `whitebox:${state.whiteboxResults.length}`,
+      `audit:${state.auditResults.length}`,
+      `slices:${state.slices.map(s => `${s.id}:${s.status}`).join(",")}`,
+    ];
+    return parts.join("|");
+  }
+
+  /** Invalidate build signoff when slices/tests change */
+  private invalidateBuildSignoff(state: ProjectState): void {
+    if (state.buildSignoffAt) {
+      state.buildSignoffAt = null;
+      state.buildSignoffSliceHash = null;
+    }
+  }
+
+  /** Invalidate deploy approval when findings/audit/whitebox change */
+  private invalidateDeployApproval(state: ProjectState): void {
+    if (state.deployApprovalAt) {
+      state.deployApprovalAt = null;
+      state.deployApprovalStateHash = null;
+    }
+  }
+
   /** Transition to a new phase */
   setPhase(newPhase: Phase): ProjectState {
     const state = this.read();
@@ -170,6 +209,20 @@ export class StateManager {
       if (notDone.length > 0) {
         throw new Error(
           `Cannot leave building phase: ${notDone.length} slice(s) not done: ${notDone.map((s) => s.id).join(", ")}. Complete all slices first.`
+        );
+      }
+    }
+
+    // Build signoff gate: block building→security without valid signoff
+    if (state.phase === "building" && newPhase === "security") {
+      if (!state.buildSignoffAt) {
+        throw new Error(
+          "Cannot proceed to security without build signoff. Call a2p_build_signoff first."
+        );
+      }
+      if (state.buildSignoffSliceHash !== this.computeSliceHash(state.slices)) {
+        throw new Error(
+          "Build signoff invalidated by slice changes. Call a2p_build_signoff again."
         );
       }
     }
@@ -214,6 +267,13 @@ export class StateManager {
             `Cannot deploy: last release audit (${lastRelease.id}) has ${lastRelease.summary.critical} critical finding(s):\n  ${criticalFindings}\nFix critical findings and re-run a2p_run_audit mode=release.`
           );
         }
+      }
+
+      // Full SAST gate: at least one full SAST scan must have been run
+      if (!state.lastFullSastAt) {
+        throw new Error(
+          "Cannot deploy without a full SAST scan. Run a2p_run_sast mode=full first."
+        );
       }
     }
 
@@ -293,6 +353,8 @@ export class StateManager {
     }
 
     slice.status = newStatus;
+    this.invalidateBuildSignoff(state);
+    this.invalidateDeployApproval(state);
     this.addEvent(state, state.phase, sliceId, "slice_status", `${sliceId} → ${newStatus}`, { status: "success" });
     this.write(state);
     return state;
@@ -313,6 +375,7 @@ export class StateManager {
     const state = this.read();
     state.slices = slices;
     state.currentSliceIndex = slices.length > 0 ? 0 : -1;
+    this.invalidateBuildSignoff(state);
     this.addEvent(state, state.phase, null, "slices_set", `${slices.length} slices created`, { status: "success" });
     this.write(state);
     return state;
@@ -350,6 +413,7 @@ export class StateManager {
     if (!slice) throw new Error(`Slice "${sliceId}" not found`);
 
     slice.testResults.push(result);
+    this.invalidateBuildSignoff(state);
     this.addEvent(
       state,
       state.phase,
@@ -372,6 +436,7 @@ export class StateManager {
       slice.sastFindings.push(finding);
     }
 
+    this.invalidateDeployApproval(state);
     this.addEvent(
       state,
       state.phase,
@@ -461,6 +526,51 @@ export class StateManager {
     return state;
   }
 
+  /** Confirm build signoff — human verified the product works */
+  setBuildSignoff(note?: string): ProjectState {
+    const state = this.read();
+    if (state.phase !== "building") {
+      throw new Error("Build signoff only allowed in building phase");
+    }
+    const notDone = state.slices.filter(s => s.status !== "done");
+    if (notDone.length > 0) {
+      throw new Error(`Cannot sign off: ${notDone.length} slice(s) not done`);
+    }
+    state.buildSignoffAt = new Date().toISOString();
+    state.buildSignoffSliceHash = this.computeSliceHash(state.slices);
+    this.addEvent(state, state.phase, null, "build_signoff",
+      `Build signoff confirmed${note ? `: ${note}` : ""}`,
+      { level: "info", status: "success" });
+    this.write(state);
+    return state;
+  }
+
+  /** Confirm deploy approval — human approved deployment */
+  setDeployApproval(note?: string): ProjectState {
+    const state = this.read();
+    if (state.phase !== "deployment") {
+      throw new Error("Deploy approval only allowed in deployment phase");
+    }
+    state.deployApprovalAt = new Date().toISOString();
+    state.deployApprovalStateHash = this.computeDeployStateHash(state);
+    this.addEvent(state, state.phase, null, "deploy_approval",
+      `Deploy approval confirmed${note ? `: ${note}` : ""}`,
+      { level: "info", status: "success" });
+    this.write(state);
+    return state;
+  }
+
+  /** Mark that a full SAST scan has been completed */
+  markFullSastRun(findingCount: number): void {
+    const state = this.read();
+    state.lastFullSastAt = new Date().toISOString();
+    state.lastFullSastFindingCount = findingCount;
+    this.addEvent(state, state.phase, null, "sast_run",
+      `Full SAST scan completed — ${findingCount} finding(s)`,
+      { level: "info", status: "success" });
+    this.write(state);
+  }
+
   /** Get progress summary */
   getProgress(): {
     phase: Phase;
@@ -509,6 +619,7 @@ export class StateManager {
     const firstNewIndex = state.slices.length;
     state.slices.push(...slices);
     state.currentSliceIndex = firstNewIndex;
+    this.invalidateBuildSignoff(state);
     this.addEvent(state, state.phase, null, "slices_added", `${slices.length} slices appended (total: ${state.slices.length})`, { status: "success" });
     this.write(state);
     return state;
@@ -608,6 +719,7 @@ export class StateManager {
   addAuditResult(result: AuditResult): ProjectState {
     const state = this.read();
     state.auditResults.push(result);
+    this.invalidateDeployApproval(state);
     this.addEvent(
       state,
       state.phase,
@@ -624,6 +736,7 @@ export class StateManager {
   addWhiteboxResult(result: WhiteboxAuditResult): ProjectState {
     const state = this.read();
     state.whiteboxResults.push(result);
+    this.invalidateDeployApproval(state);
     this.addEvent(
       state,
       state.phase,

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { requireProject } from "../utils/tool-helpers.js";
+import { requireProject, requirePhase } from "../utils/tool-helpers.js";
 
 export const runE2eSchema = z.object({
   projectPath: z.string().describe("Absolute path to the project directory"),
@@ -35,11 +35,14 @@ export function handleRunE2e(input: RunE2eInput): string {
   const { sm, error } = requireProject(input.projectPath);
   if (error) return error;
 
+  const state = sm.read();
+  try { requirePhase(state.phase, ["building", "e2e_testing"], "a2p_run_e2e"); }
+  catch (err) { return JSON.stringify({ error: err instanceof Error ? err.message : String(err) }); }
+
   const passed = input.scenarios.filter((s) => s.passed).length;
   const failed = input.scenarios.filter((s) => !s.passed).length;
 
   // Record as build events via proper StateManager API
-  const state = sm.read();
   sm.addBuildEvents(
     input.scenarios.map((scenario) => ({
       phase: state.phase,

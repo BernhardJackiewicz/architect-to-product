@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { makeTmpDir, cleanTmpDir, parse, initWithFindings, initWithStateManager } from "../helpers/setup.js";
+import { makeTmpDir, cleanTmpDir, parse, initWithFindings, initWithStateManager, forcePhase } from "../helpers/setup.js";
 import { handleRunWhiteboxAudit, isBlockingWhiteboxFinding, checkFileForGuards, hasReachabilityEvidence, hasMutationPatterns } from "../../src/tools/run-whitebox-audit.js";
 import { StateManager } from "../../src/state/state-manager.js";
 import { writeFileSync, mkdirSync } from "node:fs";
@@ -18,7 +18,9 @@ describe("run-whitebox-audit", () => {
   });
 
   it("returns empty findings when no candidates", () => {
-    initWithStateManager(dir);
+    const sm = initWithStateManager(dir);
+    forcePhase(dir, "security");
+    sm.markFullSastRun(0);
     const result = parse(handleRunWhiteboxAudit({ projectPath: dir, mode: "full" }));
     expect(result.success).toBe(true);
     expect(result.totalFindings).toBe(0);
@@ -27,6 +29,7 @@ describe("run-whitebox-audit", () => {
 
   it("evaluates SAST findings to WhiteboxFindings", () => {
     initWithFindings(dir);
+    forcePhase(dir, "security");
     const result = parse(handleRunWhiteboxAudit({ projectPath: dir, mode: "full" }));
     expect(result.success).toBe(true);
     expect(result.totalFindings).toBeGreaterThan(0);
@@ -37,6 +40,7 @@ describe("run-whitebox-audit", () => {
 
   it("incremental filters to specified files", () => {
     initWithFindings(dir);
+    forcePhase(dir, "security");
     const result = parse(handleRunWhiteboxAudit({
       projectPath: dir,
       mode: "incremental",
@@ -51,12 +55,14 @@ describe("run-whitebox-audit", () => {
 
   it("full evaluates all candidates", () => {
     initWithFindings(dir, 3);
+    forcePhase(dir, "security");
     const result = parse(handleRunWhiteboxAudit({ projectPath: dir, mode: "full" }));
     expect(result.candidatesEvaluated).toBe(3);
   });
 
   it("classifies categories correctly", () => {
     const sm = initWithFindings(dir, 0);
+    forcePhase(dir, "security");
     const sliceId = sm.read().slices[0].id;
     sm.addSASTFinding(sliceId, {
       id: "AUTH-001",
@@ -77,6 +83,7 @@ describe("run-whitebox-audit", () => {
 
   it("confirmed_exploitable=false when guards are present", () => {
     const sm = initWithFindings(dir, 0);
+    forcePhase(dir, "security");
     const sliceId = sm.read().slices[0].id;
     // Create a file WITH guards
     mkdirSync(join(dir, "src"), { recursive: true });
@@ -101,6 +108,7 @@ describe("run-whitebox-audit", () => {
 
   it("confirmed_exploitable=true when no guards and reachable", () => {
     const sm = initWithFindings(dir, 0);
+    forcePhase(dir, "security");
     const sliceId = sm.read().slices[0].id;
     mkdirSync(join(dir, "src"), { recursive: true });
     writeFileSync(join(dir, "src/unguarded.ts"), `
@@ -123,6 +131,7 @@ describe("run-whitebox-audit", () => {
 
   it("enforcement_type=prompt-only when no code guard", () => {
     const sm = initWithFindings(dir, 0);
+    forcePhase(dir, "security");
     const sliceId = sm.read().slices[0].id;
     mkdirSync(join(dir, "src"), { recursive: true });
     writeFileSync(join(dir, "src/noguard.ts"), `
@@ -184,6 +193,7 @@ describe("run-whitebox-audit", () => {
 
   it("stores WhiteboxAuditResult in state", () => {
     initWithFindings(dir);
+    forcePhase(dir, "security");
     handleRunWhiteboxAudit({ projectPath: dir, mode: "full" });
     const sm = new StateManager(dir);
     const state = sm.read();
@@ -193,6 +203,7 @@ describe("run-whitebox-audit", () => {
 
   it("increments IDs (WBA-001, WBA-002)", () => {
     initWithFindings(dir);
+    forcePhase(dir, "security");
     handleRunWhiteboxAudit({ projectPath: dir, mode: "full" });
     handleRunWhiteboxAudit({ projectPath: dir, mode: "full" });
     const sm = new StateManager(dir);
@@ -204,6 +215,7 @@ describe("run-whitebox-audit", () => {
 
   it("records build event in history", () => {
     initWithFindings(dir);
+    forcePhase(dir, "security");
     handleRunWhiteboxAudit({ projectPath: dir, mode: "full" });
     const sm = new StateManager(dir);
     const state = sm.read();

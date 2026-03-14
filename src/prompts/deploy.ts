@@ -23,6 +23,8 @@ Bevor du Deployment-Configs generierst, zeige dem User:
 Soll ich die Deployment-Configs generieren?"
 
 → STOP. Warte auf explizite Bestätigung.
+→ Nach Bestätigung: Rufe \`a2p_deploy_approval\` auf mit einer kurzen note (z.B. "Staging getestet, ready for prod").
+→ **Ohne \`a2p_deploy_approval\` kann \`a2p_generate_deployment\` nicht aufgerufen werden — Code-enforced Gate.**
 
 ## Vor dem Deployment: Datenbank prüfen (wenn DB-MCP verfügbar)
 1. Prüfe ob alle Migrations erfolgreich gelaufen sind

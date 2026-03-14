@@ -335,6 +335,12 @@ export interface ProjectState {
   currentProductPhase: number; // Index in architecture.phases[], default 0
   backupConfig: BackupConfig;
   backupStatus: BackupStatus;
+  lastFullSastAt: string | null;
+  lastFullSastFindingCount: number;
+  buildSignoffAt: string | null;
+  buildSignoffSliceHash: string | null;
+  deployApprovalAt: string | null;
+  deployApprovalStateHash: string | null;
   createdAt: string;
   updatedAt: string;
 }

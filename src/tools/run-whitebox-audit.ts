@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { requireProject } from "../utils/tool-helpers.js";
+import { requireProject, requirePhase } from "../utils/tool-helpers.js";
 import { generateRunId } from "../utils/log-sanitizer.js";
 import type {
   WhiteboxFinding,
@@ -36,6 +36,8 @@ export function handleRunWhiteboxAudit(input: RunWhiteboxAuditInput): string {
 
   const whiteboxStart = Date.now();
   const state = sm.read();
+  try { requirePhase(state.phase, ["security"], "a2p_run_whitebox_audit"); }
+  catch (err) { return JSON.stringify({ error: err instanceof Error ? err.message : String(err) }); }
 
   // Collect candidates: open SAST findings + critical/high audit findings
   const sastCandidates = state.slices
@@ -72,6 +74,21 @@ export function handleRunWhiteboxAudit(input: RunWhiteboxAuditInput): string {
     seen.add(key);
     return true;
   });
+
+  // Warn if no candidates — differentiate why
+  if (unique.length === 0) {
+    if (!state.lastFullSastAt) {
+      const hasSastEvidence = state.slices.some(s => s.sastRanAt);
+      return JSON.stringify({
+        warning: hasSastEvidence
+          ? "No full SAST scan has been run. Slice-level SAST found no open findings. Run a2p_run_sast mode=full for comprehensive whitebox analysis."
+          : "No SAST scans found. Run a2p_run_sast mode=full first for meaningful whitebox analysis.",
+        reason: hasSastEvidence ? "no_full_sast" : "no_sast_at_all",
+        candidatesEvaluated: 0,
+      });
+    }
+    // Full SAST ran but found nothing — legitimate clean result, continue normally
+  }
 
   // Evaluate each candidate
   const findings: WhiteboxFinding[] = [];
