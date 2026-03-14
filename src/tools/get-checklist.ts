@@ -46,6 +46,45 @@ export function handleGetChecklist(input: GetChecklistInput): string {
     ],
   };
 
+  // Backup-specific items
+  const backupConfig = state.backupConfig;
+  if (backupConfig.enabled && backupConfig.required) {
+    // Remove generic backup item — we have specific ones
+    const genericIdx = checklist.postDeployment.findIndex(
+      (i) => i.item.startsWith("Backup script/cron")
+    );
+    if (genericIdx >= 0) checklist.postDeployment.splice(genericIdx, 1);
+
+    checklist.infrastructure.push(
+      { item: "Backup scripts generated and tested locally", done: false },
+      { item: `Backup scheduler active (${backupConfig.schedule} at ${backupConfig.time})`, done: state.backupStatus.configured },
+      { item: `Retention configured (${backupConfig.retentionDays} days)`, done: false },
+      { item: "Restore documentation present (BACKUP.md)", done: false },
+    );
+
+    if (backupConfig.offsiteProvider !== "none") {
+      checklist.infrastructure.push(
+        { item: `Offsite backup to ${backupConfig.offsiteProvider} configured`, done: false },
+      );
+    }
+
+    checklist.postDeployment.push(
+      { item: "First backup completed successfully", done: false },
+    );
+
+    if (backupConfig.verifyAfterBackup) {
+      checklist.postDeployment.push(
+        { item: "Backup verification: restore to temp + integrity check passed", done: false },
+      );
+    }
+
+    if (backupConfig.preDeploySnapshot) {
+      checklist.postDeployment.push(
+        { item: "Pre-deploy snapshot taken before production deployment", done: false },
+      );
+    }
+  }
+
   // Add tech-specific items
   const db = tech?.database?.toLowerCase() ?? "";
   const hosting = tech?.hosting?.toLowerCase() ?? "";

@@ -2,11 +2,11 @@
 
 MCP server that turns AI-generated code into production-ready software with TDD, security scanning, and deployment automation. Up to 100 times fewer exploration tokens for claude code.
 
-**18 MCP tools** · **666 tests** · **Architecture → Plan → Build → Audit → Security → Whitebox → Deploy**
+**18 MCP tools** · **691 tests** · **Architecture → Plan → Build → Audit → Security → Whitebox → Deploy**
 
 [![npm version](https://img.shields.io/npm/v/architect-to-product)](https://www.npmjs.com/package/architect-to-product)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Tests: 658 passing](https://img.shields.io/badge/tests-666%20passing-brightgreen)]()
+[![Tests: 691 passing](https://img.shields.io/badge/tests-691%20passing-brightgreen)]()
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue)]()
 
 ---
@@ -45,6 +45,7 @@ It coordinates:
 - **Security reviews** — OWASP Top 10 review before deploy
 - **Structured build log** — every tool run tracked with log levels, duration, status, run correlation, and automatic secret redaction. Composable filters by phase, slice, level, time range, or errors
 - **Configurable human oversight** — mandatory build signoff and deploy approval, optional plan approval, slice review, and security signoff
+- **Automated backup strategy** — Stack-aware backup inference: database, uploads, deployment artifacts. Restore scripts, verification, retention, offsite sync. Stateful apps get mandatory backup warnings before deployment
 - **Deployment generation** — stack-specific Dockerfile, docker-compose, Caddyfile, backup scripts
 
 A2P is not a replacement for engineers. It is an engineering safety net for AI-generated code.
@@ -60,6 +61,7 @@ A2P is not a replacement for engineers. It is an engineering safety net for AI-g
 | Ship with TODOs, console.logs, .env in repo | Quality + release audits catch hygiene issues, block deploy on critical findings |
 | AI runs without stopping | Mandatory build signoff + deploy approval, configurable oversight at every phase |
 | AI hallucinates API signatures for unfamiliar libraries | Documentation-first: reads official docs via WebSearch + WebFetch before writing code |
+| No backup strategy, pray nothing breaks | Stack-aware backup inference with restore scripts, verification, and deployment gate warnings |
 | Copy-paste a Dockerfile from StackOverflow | Generated Dockerfile + docker-compose + Caddyfile + backup scripts |
 | No build history, no idea what failed when | Structured build log with levels, duration, run correlation, and secret redaction |
 | Hope for the best | Ship to production with confidence |
@@ -74,6 +76,7 @@ A2P is not a replacement for engineers. It is an engineering safety net for AI-g
 - **Active verification** — Runtime gate tests prove that workflow invariants actually hold: state transitions require evidence, deployment gates block on critical findings, state survives round-trips
 - **Human oversight** — Mandatory build signoff (before wasting tokens on audit/security) and deploy approval. Configurable plan approval, slice review, and security signoff. Two gates are always on, the rest you control
 - **Audit before release** — Quality audits catch debug artifacts, hardcoded secrets, and test coverage gaps during development. Release audits verify README, .gitignore, temp files, and aggregate findings before publish. Critical release findings block deployment (enforced in code)
+- **Automated backup strategy** — Stack-aware backup inference of backup targets (database, uploads, artifacts), stack-aware backup/restore commands, retention, verification scripts, offsite sync, deployment gate warnings for stateful apps
 - **Deploy on day one** — Stack-specific Dockerfile, docker-compose, Caddyfile, backup scripts
 - **Code quality** — Built-in code quality tool: dead code detection, redundancy analysis, coupling metrics
 - **Documentation first** — When the architecture uses unfamiliar tech (exotic auth, new ORMs, niche APIs), Claude reads the official docs via WebSearch + WebFetch instead of hallucinating API signatures. Enforced in every prompt, documented in CLAUDE.md
@@ -181,7 +184,7 @@ Active Verification (runtime gate tests)
 Release Audit (pre-publish checks)
      │
      ▼
-DEPLOY APPROVAL [MANDATORY] ─── "Ready to ship?"
+DEPLOY APPROVAL [MANDATORY] ─── "Ready to ship?" + backup status
      │
      ▼
 Deployment
@@ -202,7 +205,7 @@ Phase 1: Plan → Build → BUILD SIGNOFF → Security → Whitebox → Release 
 5. **Whitebox Audit**: Analyzes whether SAST findings are actually exploitable — checks reachable code paths, missing guards, trust boundaries, prompt-only enforcement. Blocking findings prevent deployment (enforced in code, not just prompts).
 6. **Active Verification**: Runtime gate tests that prove workflow invariants hold — state transitions require evidence, deployment gates block correctly, state survives round-trips.
 7. **Release Audit**: Pre-publish verification — README completeness, temp file cleanup, aggregated SAST/quality findings, build/test pass, .gitignore coverage. Critical findings in the release audit block deployment (enforced in code).
-8. **Deployment**: **Mandatory deploy approval** before generating configs. Stack-specific Dockerfile, docker-compose, Caddyfile, backup scripts, hardening guides. Stack-specific launch checklist.
+8. **Deployment**: **Mandatory deploy approval** before generating configs. Stack-specific Dockerfile, docker-compose, Caddyfile, backup/restore/verify scripts, backup strategy docs, hardening guides. Stateful apps get backup warnings if no backup configured. Stack-specific launch checklist.
 
 ## Client Configuration
 
@@ -409,7 +412,7 @@ git clone https://github.com/BernhardJackiewicz/architect-to-product.git
 cd architect-to-product
 npm install
 npm run typecheck   # Type checking
-npm test            # 666 tests
+npm test            # 691 tests
 npm run build       # Build
 npm run dev         # Dev mode
 ```

@@ -240,6 +240,25 @@ export const ActiveVerificationResultSchema = z.object({
   requires_human_review: z.boolean(),
 });
 
+export const BackupConfigSchema = z.object({
+  enabled: z.boolean(),
+  required: z.boolean(),
+  schedule: z.literal("daily"),
+  time: z.string(),
+  retentionDays: z.number().int().min(1),
+  targets: z.array(z.enum(["database", "uploads", "local_media", "deploy_artifacts"])),
+  offsiteProvider: z.enum(["none", "s3", "b2", "spaces", "hetzner_storage"]),
+  verifyAfterBackup: z.boolean(),
+  preDeploySnapshot: z.boolean(),
+});
+
+export const BackupStatusSchema = z.object({
+  configured: z.boolean(),
+  schedulerType: z.enum(["cron", "systemd_timer"]).optional(),
+  lastVerifiedAt: z.string().nullable().optional(),
+  lastGeneratedAt: z.string().nullable().optional(),
+});
+
 export const ProjectStateSchema = z.object({
   version: z.number().int().positive(),
   projectName: z.string().min(1),
@@ -264,6 +283,20 @@ export const ProjectStateSchema = z.object({
   activeVerificationResults: z.array(ActiveVerificationResultSchema).default([]),
   buildHistory: z.array(BuildEventSchema),
   currentProductPhase: z.number().int().min(0).default(0),
+  backupConfig: BackupConfigSchema.default({
+    enabled: true,
+    required: false,
+    schedule: "daily",
+    time: "02:00",
+    retentionDays: 14,
+    targets: ["deploy_artifacts"],
+    offsiteProvider: "none",
+    verifyAfterBackup: false,
+    preDeploySnapshot: false,
+  }),
+  backupStatus: BackupStatusSchema.default({
+    configured: false,
+  }),
   createdAt: z.string(),
   updatedAt: z.string(),
 });

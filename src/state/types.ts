@@ -295,6 +295,28 @@ export interface ActiveVerificationResult {
   requires_human_review: boolean;
 }
 
+export type BackupTarget = "database" | "uploads" | "local_media" | "deploy_artifacts";
+export type BackupOffsiteProvider = "none" | "s3" | "b2" | "spaces" | "hetzner_storage";
+
+export interface BackupConfig {
+  enabled: boolean;
+  required: boolean;
+  schedule: "daily";
+  time: string;
+  retentionDays: number;
+  targets: BackupTarget[];
+  offsiteProvider: BackupOffsiteProvider;
+  verifyAfterBackup: boolean;
+  preDeploySnapshot: boolean;
+}
+
+export interface BackupStatus {
+  configured: boolean;
+  schedulerType?: "cron" | "systemd_timer";
+  lastVerifiedAt?: string | null;
+  lastGeneratedAt?: string | null;
+}
+
 export interface ProjectState {
   version: number;
   projectName: string;
@@ -310,6 +332,8 @@ export interface ProjectState {
   activeVerificationResults: ActiveVerificationResult[];
   buildHistory: BuildEvent[];
   currentProductPhase: number; // Index in architecture.phases[], default 0
+  backupConfig: BackupConfig;
+  backupStatus: BackupStatus;
   createdAt: string;
   updatedAt: string;
 }
