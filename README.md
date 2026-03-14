@@ -2,11 +2,11 @@
 
 MCP server that turns AI-generated code into production-ready software with TDD, security scanning, and deployment automation. Up to 100 times fewer exploration tokens for claude code.
 
-**20 MCP tools** · **737 tests** · **Architecture → Plan → Build → Quality → Signoff → Security → Whitebox → Verify → Release Audit → Deploy → Backup**
+**21 MCP tools** · **741 tests** · **Architecture → Plan → Build → Quality → Signoff → Security → Whitebox → Verify → Release Audit → Deploy → Backup**
 
 [![npm version](https://img.shields.io/npm/v/architect-to-product)](https://www.npmjs.com/package/architect-to-product)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Tests: 737 passing](https://img.shields.io/badge/tests-737%20passing-brightgreen)]()
+[![Tests: 741 passing](https://img.shields.io/badge/tests-741%20passing-brightgreen)]()
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue)]()
 
 ---
@@ -308,7 +308,7 @@ Add to `.vscode/mcp.json`:
 }
 ```
 
-## MCP Tools (20)
+## MCP Tools (21)
 
 | Tool | Phase | Description |
 |------|-------|-------------|
@@ -331,6 +331,7 @@ Add to `.vscode/mcp.json`:
 | `a2p_build_signoff` | 2 | Confirm build works (mandatory before security phase, code-enforced) |
 | `a2p_deploy_approval` | 7 | Approve deployment (mandatory before generating configs, code-enforced) |
 | `a2p_generate_deployment` | 7 | Stack-specific deployment guidance |
+| `a2p_get_build_log` | * | Query structured build log (filter by phase, slice, level, run, time range, errors) |
 | `a2p_get_checklist` | * | Pre/post-deployment verification checklist |
 
 ## Prompts (9)
@@ -460,7 +461,7 @@ git clone https://github.com/BernhardJackiewicz/architect-to-product.git
 cd architect-to-product
 npm install
 npm run typecheck   # Type checking
-npm test            # 737 tests
+npm test            # 741 tests
 npm run build       # Build
 npm run dev         # Dev mode
 ```

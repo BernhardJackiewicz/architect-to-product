@@ -222,6 +222,42 @@ describe("a2p_run_audit", () => {
   });
 });
 
+describe("audit sanitizes secrets in build/test failure output", () => {
+  let dir: string;
+
+  beforeEach(() => {
+    dir = makeTmpDir("a2p-audit-sanitize");
+  });
+
+  it("redacts secrets from build failure output in persisted findings", () => {
+    const sm = initWithStateManager(dir);
+    forcePhase(dir, "building");
+    sm.updateConfig({ buildCommand: "echo 'password=\"leak123\"' && exit 1" });
+
+    handleRunAudit({ projectPath: dir, mode: "quality", runBuild: true, runTests: false });
+
+    const state = new StateManager(dir).read();
+    const buildFindings = state.auditResults[0].findings.filter((f) => f.category === "build_failure");
+    expect(buildFindings).toHaveLength(1);
+    expect(buildFindings[0].message).toContain("[REDACTED]");
+    expect(buildFindings[0].message).not.toContain("leak123");
+  });
+
+  it("redacts connection strings from test failure output in persisted findings", () => {
+    const sm = initWithStateManager(dir);
+    forcePhase(dir, "building");
+    sm.updateConfig({ testCommand: "echo 'postgresql://admin:s3cret@db.host:5432/mydb' && exit 1" });
+
+    handleRunAudit({ projectPath: dir, mode: "quality", runBuild: false, runTests: true });
+
+    const state = new StateManager(dir).read();
+    const testFindings = state.auditResults[0].findings.filter((f) => f.category === "test_failure");
+    expect(testFindings).toHaveLength(1);
+    expect(testFindings[0].message).toContain("[REDACTED]");
+    expect(testFindings[0].message).not.toContain("s3cret");
+  });
+});
+
 describe("Deployment gate: audit critical findings block deploy", () => {
   let dir: string;
 

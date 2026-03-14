@@ -3,7 +3,7 @@ import { existsSync, readFileSync, readdirSync, lstatSync } from "node:fs";
 import { join, extname } from "node:path";
 import { requireProject, requirePhaseAndMode, truncate } from "../utils/tool-helpers.js";
 import { runProcess } from "../utils/process-runner.js";
-import { generateRunId } from "../utils/log-sanitizer.js";
+import { generateRunId, sanitizeOutput } from "../utils/log-sanitizer.js";
 import type { AuditFinding, AuditResult, FindingSeverity } from "../state/types.js";
 
 export const runAuditSchema = z.object({
@@ -140,7 +140,7 @@ export function handleRunAudit(input: RunAuditInput): string {
         severity: "critical",
         file: "project",
         line: 0,
-        message: `Build failed: ${truncate(buildResult.stderr || buildResult.stdout, 500)}`,
+        message: `Build failed: ${truncate(sanitizeOutput(buildResult.stderr || buildResult.stdout), 500)}`,
         fix: "Fix build errors",
       });
     }
@@ -155,7 +155,7 @@ export function handleRunAudit(input: RunAuditInput): string {
         severity: "critical",
         file: "project",
         line: 0,
-        message: `Tests failed: ${truncate(testResult.stderr || testResult.stdout, 500)}`,
+        message: `Tests failed: ${truncate(sanitizeOutput(testResult.stderr || testResult.stdout), 500)}`,
         fix: "Fix failing tests",
       });
     }
