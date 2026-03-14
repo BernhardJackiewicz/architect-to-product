@@ -73,7 +73,10 @@ Wenn der aktuelle Slice \`hasUI: true\` hat UND \`architecture.uiDesign\` existi
 ### Visual Verification (nur bei Frontend-Slices)
 Wenn der aktuelle Slice \`hasUI: true\` hat (Frontend-Komponenten, Seiten, Formulare):
 
-**PFLICHT nach GREEN, vor REFACTOR:**
+**PFLICHT nach GREEN, vor REFACTOR — NICHT ÜBERSPRINGEN:**
+Du MUSST die folgenden Playwright-Tools aufrufen. Überspringe diesen Schritt NICHT.
+Wenn Playwright MCP nicht verfügbar ist, sage dem User dass er es starten soll.
+
 1. App starten (oder sicherstellen dass sie läuft)
 2. \`browser_navigate\` zur relevanten Seite
 3. \`browser_take_screenshot\` — visueller Check:
@@ -99,7 +102,10 @@ Wenn der aktuelle Slice \`hasUI: true\` hat (Frontend-Komponenten, Seiten, Formu
 ### Phase SAST: Security-Prüfung
 **Ziel**: Offensichtliche Security-Issues im neuen Code finden.
 
-1. Rufe \`a2p_run_sast\` mit mode="slice" auf
+**Du MUSST \`a2p_run_sast\` aufrufen. Überspringe diesen Schritt NICHT.
+Markiere den Slice NICHT als "sast" ohne vorher \`a2p_run_sast\` ausgeführt zu haben.**
+
+1. Rufe \`a2p_run_sast\` mit mode="slice" auf — PFLICHT, nicht optional
 2. Führe \`a2p_run_tests\` aus — finale Bestätigung
 3. Wenn codebase-memory-mcp verfügbar: \`index_repository\` — Graph aktualisieren
 4. Findings triagieren:
@@ -123,12 +129,13 @@ Erstelle eine kurze Zusammenfassung:
 **Recherchierte Fakten:**
 - [Falls WebSearch genutzt wurde: Quellen und verifizierte Werte]
 
-## Checkpoint nach Slice-Completion
+## Checkpoint nach Slice-Completion — HARD STOP
 Prüfe den Output von \`a2p_update_slice\`:
-- Wenn \`awaitingHumanReview: true\` → STOPPE. Zeige die Summary.
+- Wenn \`awaitingHumanReview: true\` → **STOPPE SOFORT.** Zeige die Summary.
   Sage: "Slice X ist fertig. Bitte reviewe und bestätige, bevor ich
   mit dem nächsten Slice fortfahre."
-  Warte auf explizite Bestätigung.
+  **Fahre NICHT mit dem nächsten Slice fort. Warte auf explizite Bestätigung vom User.**
+  **Auch wenn der User vorher "mach alles" gesagt hat — dieser Checkpoint ist NICHT verhandelbar.**
 - Wenn \`awaitingHumanReview: false\` → Zeige die Summary, fahre fort.
 
 ## Git-Commits nach jeder TDD-Phase (wenn Git MCP verfügbar)
