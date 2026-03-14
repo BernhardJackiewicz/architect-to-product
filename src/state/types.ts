@@ -50,6 +50,14 @@ export type SliceStatus =
 
 export type ReviewMode = "off" | "all" | "ui-only";
 
+export interface OversightConfig {
+  sliceReview: ReviewMode;       // default: "off" — pause after slice completion
+  planApproval: boolean;         // default: true — must approve slice plan before building
+  buildSignoff: boolean;         // MANDATORY (always true) — must confirm product works after building
+  deployApproval: boolean;       // MANDATORY (always true) — must confirm before deploy
+  securitySignoff: boolean;      // default: false — explicit go/no-go after security gate
+}
+
 export type UISourceType = "description" | "wireframe" | "mockup" | "screenshot" | "file";
 
 export interface UIReference {
@@ -87,7 +95,8 @@ export interface Architecture {
   apiDesign: string;
   raw: string; // Original architecture text from user
   phases?: ProductPhase[]; // Optional for backward compat
-  reviewMode?: ReviewMode; // default: "off"
+  reviewMode?: ReviewMode; // default: "off" — DEPRECATED: use oversight.sliceReview
+  oversight?: OversightConfig; // Granular human oversight configuration
   uiDesign?: UIDesign; // UI description, wireframes, mockups
 }
 
@@ -178,12 +187,68 @@ export interface BuildEvent {
   details: string;
 }
 
+export type ClaudeModel = "opus" | "sonnet" | "haiku";
+
 export interface ProjectConfig {
   projectPath: string;
   testCommand: string;
   lintCommand: string;
   buildCommand: string;
   formatCommand: string;
+  claudeModel: ClaudeModel; // default: "opus" — which Claude model does the programming
+}
+
+export type WhiteboxCategory =
+  | "InputOutputSafety"
+  | "AuthAuthz"
+  | "TenantIsolation"
+  | "Secrets"
+  | "FilesystemProcessCmd"
+  | "WorkflowGateEnforcement"
+  | "StateRecoverySafety"
+  | "DeploymentArtifactSafety";
+
+export type WhiteboxEvidenceType = "runtime_tested" | "code_verified" | "speculative";
+export type WhiteboxEnforcementType = "code" | "config" | "prompt-only" | "mixed";
+
+export interface WhiteboxFinding {
+  id: string;
+  category: WhiteboxCategory;
+  severity: FindingSeverity;
+  confirmed_exploitable: boolean;
+  evidence_type: WhiteboxEvidenceType;
+  enforcement_type: WhiteboxEnforcementType;
+  runtime_path_reachable: boolean;
+  state_change_provable: boolean;
+  boundary_actually_bypassed: boolean;
+  root_cause: string;
+  affected_files: string[];
+  minimal_fix: string;
+  required_regression_tests: string[];
+  blocking: boolean;
+}
+
+export interface WhiteboxAuditResult {
+  id: string;
+  mode: "incremental" | "full";
+  timestamp: string;
+  candidates_evaluated: number;
+  findings: WhiteboxFinding[];
+  summary: { critical: number; high: number; medium: number; low: number };
+  blocking_count: number;
+}
+
+export interface ActiveVerificationResult {
+  id: string;
+  timestamp: string;
+  round: number;
+  tests_run: number;
+  tests_passed: number;
+  tests_failed: number;
+  findings: WhiteboxFinding[];
+  summary: { critical: number; high: number; medium: number; low: number };
+  blocking_count: number;
+  requires_human_review: boolean;
 }
 
 export interface ProjectState {
@@ -197,6 +262,8 @@ export interface ProjectState {
   companions: CompanionServer[];
   qualityIssues: QualityIssue[];
   auditResults: AuditResult[];
+  whiteboxResults: WhiteboxAuditResult[];
+  activeVerificationResults: ActiveVerificationResult[];
   buildHistory: BuildEvent[];
   currentProductPhase: number; // Index in architecture.phases[], default 0
   createdAt: string;

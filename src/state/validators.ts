@@ -29,6 +29,14 @@ export const UIDesignSchema = z.object({
   references: z.array(UIReferenceSchema),
 });
 
+export const OversightConfigSchema = z.object({
+  sliceReview: z.enum(["off", "all", "ui-only"]).default("off"),
+  planApproval: z.boolean().default(true),
+  buildSignoff: z.boolean().default(true),
+  deployApproval: z.boolean().default(true),
+  securitySignoff: z.boolean().default(false),
+});
+
 export const ArchitectureSchema = z.object({
   name: z.string().min(1),
   description: z.string().min(1),
@@ -39,6 +47,7 @@ export const ArchitectureSchema = z.object({
   raw: z.string(),
   phases: z.array(ProductPhaseSchema).optional(),
   reviewMode: z.enum(["off", "all", "ui-only"]).optional(),
+  oversight: OversightConfigSchema.optional(),
   uiDesign: UIDesignSchema.optional(),
 });
 
@@ -166,6 +175,61 @@ export const ProjectConfigSchema = z.object({
   lintCommand: z.string(),
   buildCommand: z.string(),
   formatCommand: z.string(),
+  claudeModel: z.enum(["opus", "sonnet", "haiku"]).default("opus"),
+});
+
+export const WhiteboxFindingSchema = z.object({
+  id: z.string().min(1),
+  category: z.enum([
+    "InputOutputSafety", "AuthAuthz", "TenantIsolation", "Secrets",
+    "FilesystemProcessCmd", "WorkflowGateEnforcement", "StateRecoverySafety",
+    "DeploymentArtifactSafety",
+  ]),
+  severity: z.enum(["critical", "high", "medium", "low", "info"]),
+  confirmed_exploitable: z.boolean(),
+  evidence_type: z.enum(["runtime_tested", "code_verified", "speculative"]),
+  enforcement_type: z.enum(["code", "config", "prompt-only", "mixed"]),
+  runtime_path_reachable: z.boolean(),
+  state_change_provable: z.boolean(),
+  boundary_actually_bypassed: z.boolean(),
+  root_cause: z.string(),
+  affected_files: z.array(z.string()),
+  minimal_fix: z.string(),
+  required_regression_tests: z.array(z.string()),
+  blocking: z.boolean(),
+});
+
+export const WhiteboxAuditResultSchema = z.object({
+  id: z.string().min(1),
+  mode: z.enum(["incremental", "full"]),
+  timestamp: z.string(),
+  candidates_evaluated: z.number().int().min(0),
+  findings: z.array(WhiteboxFindingSchema),
+  summary: z.object({
+    critical: z.number().int().min(0),
+    high: z.number().int().min(0),
+    medium: z.number().int().min(0),
+    low: z.number().int().min(0),
+  }),
+  blocking_count: z.number().int().min(0),
+});
+
+export const ActiveVerificationResultSchema = z.object({
+  id: z.string().min(1),
+  timestamp: z.string(),
+  round: z.number().int().min(1).max(3),
+  tests_run: z.number().int().min(0),
+  tests_passed: z.number().int().min(0),
+  tests_failed: z.number().int().min(0),
+  findings: z.array(WhiteboxFindingSchema),
+  summary: z.object({
+    critical: z.number().int().min(0),
+    high: z.number().int().min(0),
+    medium: z.number().int().min(0),
+    low: z.number().int().min(0),
+  }),
+  blocking_count: z.number().int().min(0),
+  requires_human_review: z.boolean(),
 });
 
 export const ProjectStateSchema = z.object({
@@ -188,6 +252,8 @@ export const ProjectStateSchema = z.object({
   companions: z.array(CompanionServerSchema),
   qualityIssues: z.array(QualityIssueSchema),
   auditResults: z.array(AuditResultSchema).default([]),
+  whiteboxResults: z.array(WhiteboxAuditResultSchema).default([]),
+  activeVerificationResults: z.array(ActiveVerificationResultSchema).default([]),
   buildHistory: z.array(BuildEventSchema),
   currentProductPhase: z.number().int().min(0).default(0),
   createdAt: z.string(),
