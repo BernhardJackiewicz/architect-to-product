@@ -2,11 +2,11 @@
 
 MCP server that turns AI-generated code into production-ready software with TDD, security scanning, and deployment automation. Up to 100 times fewer exploration tokens for claude code.
 
-**20 MCP tools** · **729 tests** · **Architecture → Plan → Build → Audit → Security → Whitebox → Deploy**
+**20 MCP tools** · **737 tests** · **Architecture → Plan → Build → Quality → Signoff → Security → Whitebox → Verify → Release Audit → Deploy → Backup**
 
 [![npm version](https://img.shields.io/npm/v/architect-to-product)](https://www.npmjs.com/package/architect-to-product)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Tests: 729 passing](https://img.shields.io/badge/tests-729%20passing-brightgreen)]()
+[![Tests: 737 passing](https://img.shields.io/badge/tests-737%20passing-brightgreen)]()
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue)]()
 
 ---
@@ -220,7 +220,7 @@ Security Gate (SAST + OWASP) ─── [securitySignoff? → STOP]
 Whitebox Audit (exploitability analysis)
      │
      ▼
-Active Verification (runtime gate tests)
+Active Verification (recommended, not gate-enforced)
      │
      ▼
 Release Audit (pre-publish checks)
@@ -245,7 +245,7 @@ Phase 1: Plan → Build → BUILD SIGNOFF → Security → Whitebox → Release 
 3. **Build Loop**: TDD per slice: RED (write failing tests) → GREEN (minimal implementation) → REFACTOR (clean up) → SAST (lightweight AI security testing). Frontend slices with `hasUI: true` get visual verification via Playwright between GREEN and REFACTOR — when `uiVerification` is on (default for frontend projects), the human reviews screenshots before proceeding. Configurable review checkpoints (`oversight.sliceReview`: `off`, `all`, `ui-only`) pause after slices for human approval. Domain logic triggers a WebSearch step before tests to verify facts (tax rates, regulations, standards). Quality audits run every ~5-10 commits to catch TODOs, debug artifacts, hardcoded secrets, and test coverage gaps. **Mandatory build signoff** after all slices are done — you verify the product works before spending tokens on audit and security. **Structured build log** tracks every tool run with log levels, duration, status, run correlation, and secret redaction — queryable by phase, slice, level, time range, or errors.
 4. **Security Gate**: Full SAST scan (static code analysis via Semgrep + Bandit), OWASP Top 10 manual review, dependency audit. Acts as an AI code review tool and AI code scanner for your entire codebase. Fix all critical/high findings.
 5. **Whitebox Audit**: Analyzes whether SAST findings are actually exploitable — checks reachable code paths, missing guards, trust boundaries, prompt-only enforcement. Blocking findings prevent deployment (enforced in code, not just prompts).
-6. **Active Verification**: Runtime gate tests that prove workflow invariants hold — state transitions require evidence, deployment gates block correctly, state survives round-trips.
+6. **Active Verification** (recommended): Runtime gate tests that prove workflow invariants hold — state transitions require evidence, deployment gates block correctly, state survives round-trips. Not gate-enforced; run for confidence, not as a deployment blocker.
 7. **Release Audit**: Pre-publish verification — README completeness, temp file cleanup, aggregated SAST/quality findings, build/test pass, .gitignore coverage. Critical findings in the release audit block deployment (enforced in code).
 8. **Deployment**: **Mandatory deploy approval** before generating configs. Stack-specific Dockerfile, docker-compose, Caddyfile, backup/restore/verify scripts, backup strategy docs, hardening guides. Stateful apps get backup warnings if no backup configured. Stack-specific launch checklist.
 
@@ -456,7 +456,7 @@ git clone https://github.com/BernhardJackiewicz/architect-to-product.git
 cd architect-to-product
 npm install
 npm run typecheck   # Type checking
-npm test            # 729 tests
+npm test            # 737 tests
 npm run build       # Build
 npm run dev         # Dev mode
 ```

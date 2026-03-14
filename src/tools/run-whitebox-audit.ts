@@ -87,6 +87,15 @@ export function handleRunWhiteboxAudit(input: RunWhiteboxAuditInput): string {
         candidatesEvaluated: 0,
       });
     }
+    // Check for stale full SAST
+    if (state.lastFullSastAt && state.lastSecurityRelevantChangeAt &&
+        state.lastFullSastAt < state.lastSecurityRelevantChangeAt) {
+      return JSON.stringify({
+        warning: "Full SAST scan is stale — code changed after scan. Re-run a2p_run_sast mode=full.",
+        reason: "stale_full_sast",
+        candidatesEvaluated: 0,
+      });
+    }
     // Full SAST ran but found nothing — legitimate clean result, continue normally
   }
 

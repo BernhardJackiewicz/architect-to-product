@@ -28,10 +28,10 @@ export function handleRunTests(input: RunTestsInput): string {
   try { requirePhase(state.phase, ["building"], "a2p_run_tests"); }
   catch (err) { return JSON.stringify({ error: err instanceof Error ? err.message : String(err) }); }
 
-  // Block test command override when a test command is configured
-  if (input.command && state.config.testCommand) {
+  // Block test command override when a test command is configured (unless escape hatch enabled)
+  if (input.command && state.config.testCommand && !state.config.allowTestCommandOverride) {
     return JSON.stringify({
-      error: `Test command override not allowed. Configured: "${state.config.testCommand}". Remove the command parameter to use the configured test command.`,
+      error: `Test command override not allowed. Set config.allowTestCommandOverride=true to enable. Configured: "${state.config.testCommand}".`,
     });
   }
   const testCommand = input.command ?? state.config.testCommand;

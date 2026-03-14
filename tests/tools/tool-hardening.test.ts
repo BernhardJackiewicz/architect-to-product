@@ -500,6 +500,8 @@ describe("Security gate: setPhase(deployment) blocks on open CRITICAL/HIGH", () 
       description: "was unparameterized",
       fix: "used params",
     });
+    // Re-run full SAST after the change so it's not stale
+    sm.markFullSastRun(0);
 
     const state = sm.setPhase("deployment");
     expect(state.phase).toBe("deployment");
@@ -524,6 +526,8 @@ describe("Security gate: setPhase(deployment) blocks on open CRITICAL/HIGH", () 
       description: "verbose error",
       fix: "sanitize",
     });
+    // Re-run full SAST after the change so it's not stale
+    sm.markFullSastRun(1);
 
     const state = sm.setPhase("deployment");
     expect(state.phase).toBe("deployment");
