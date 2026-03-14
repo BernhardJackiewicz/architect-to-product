@@ -19,6 +19,7 @@ import { ProjectStateSchema } from "../../src/state/validators.js";
 import {
   makeTmpDir, cleanTmpDir, parse, forcePhase,
   initWithStateManager, walkSliceToStatus, addPassingTests,
+  forceField,
 } from "../helpers/setup.js";
 
 describe("Enforcement Guards", () => {
@@ -185,6 +186,7 @@ describe("Enforcement Guards", () => {
     it("setDeployApproval in deployment → OK", () => {
       const sm = initWithStateManager(dir);
       forcePhase(dir, "deployment");
+      sm.markFullSastRun(0);
       const state = sm.setDeployApproval("staging tested");
       expect(state.deployApprovalAt).toBeTruthy();
       expect(state.deployApprovalStateHash).toBeTruthy();
@@ -206,6 +208,7 @@ describe("Enforcement Guards", () => {
     it("approval invalidated after addSASTFinding", () => {
       const sm = initWithStateManager(dir);
       forcePhase(dir, "deployment");
+      sm.markFullSastRun(0);
       sm.setDeployApproval();
       expect(sm.read().deployApprovalAt).toBeTruthy();
       sm.addSASTFinding("s1", {
@@ -218,6 +221,7 @@ describe("Enforcement Guards", () => {
     it("approval invalidated after addWhiteboxResult", () => {
       const sm = initWithStateManager(dir);
       forcePhase(dir, "deployment");
+      sm.markFullSastRun(0);
       sm.setDeployApproval();
       expect(sm.read().deployApprovalAt).toBeTruthy();
       sm.addWhiteboxResult({
@@ -316,6 +320,111 @@ describe("Enforcement Guards", () => {
     });
   });
 
+  // === Hardening v2 (~9) ===
+
+  describe("deploy approval invalidation (v2)", () => {
+    it("deploy approval invalidated after addAuditResult", () => {
+      const sm = initWithStateManager(dir);
+      forcePhase(dir, "deployment");
+      sm.markFullSastRun(0);
+      sm.setDeployApproval();
+      expect(sm.read().deployApprovalAt).toBeTruthy();
+      sm.addAuditResult({
+        id: "AUD-1", mode: "release", timestamp: new Date().toISOString(),
+        findings: [], summary: { critical: 0, high: 0, medium: 0, low: 0 },
+        buildPassed: true, testsPassed: true,
+        aggregated: { openSastFindings: 0, openQualityIssues: 0, slicesDone: 3, slicesTotal: 3 },
+      });
+      expect(sm.read().deployApprovalAt).toBeNull();
+    });
+
+    it("deploy approval invalidated after markFullSastRun", () => {
+      const sm = initWithStateManager(dir);
+      forcePhase(dir, "deployment");
+      sm.markFullSastRun(0);
+      sm.setDeployApproval();
+      expect(sm.read().deployApprovalAt).toBeTruthy();
+      sm.markFullSastRun(1);
+      expect(sm.read().deployApprovalAt).toBeNull();
+    });
+  });
+
+  describe("stale SAST detection (v2)", () => {
+    it("stale full SAST blocks security→deployment", () => {
+      const sm = initWithStateManager(dir);
+      forcePhase(dir, "building");
+      for (const s of sm.read().slices) walkSliceToStatus(sm, s.id, "done");
+      sm.setBuildSignoff();
+      sm.setPhase("security");
+      // Set SAST to an old timestamp, then trigger a change after it
+      forceField(dir, "lastFullSastAt", "2020-01-01T00:00:00.000Z");
+      sm.addSASTFinding("s1", {
+        id: "STALE-1", tool: "manual", severity: "low", status: "open",
+        title: "new finding", file: "t.ts", line: 1, description: "d", fix: "f",
+      });
+      expect(() => sm.setPhase("deployment")).toThrow("stale");
+    });
+
+    it("whitebox with stale full SAST → warning stale_full_sast", () => {
+      const sm = initWithStateManager(dir);
+      forcePhase(dir, "security");
+      // Force stale timestamps: SAST ran before last security-relevant change, no open findings
+      forceField(dir, "lastFullSastAt", "2020-01-01T00:00:00.000Z");
+      forceField(dir, "lastSecurityRelevantChangeAt", "2025-01-01T00:00:00.000Z");
+      const result = parse(handleRunWhiteboxAudit({ projectPath: dir, mode: "full" }));
+      expect(result.warning).toBeDefined();
+      expect(result.reason).toBe("stale_full_sast");
+    });
+  });
+
+  describe("architecture invalidation (v2)", () => {
+    it("architecture change invalidates build signoff", () => {
+      const sm = initWithStateManager(dir);
+      forcePhase(dir, "building");
+      for (const s of sm.read().slices) walkSliceToStatus(sm, s.id, "done");
+      sm.setBuildSignoff();
+      expect(sm.read().buildSignoffAt).toBeTruthy();
+      sm.setArchitecture({
+        name: "New", description: "Changed", techStack: {
+          language: "Go", framework: "Gin", database: null, frontend: null, hosting: null, other: [],
+        }, features: ["f2"], dataModel: "none", apiDesign: "REST", raw: "",
+      });
+      expect(sm.read().buildSignoffAt).toBeNull();
+    });
+  });
+
+  describe("deploy approval preconditions (v2)", () => {
+    it("setDeployApproval without full SAST → throw", () => {
+      const sm = initWithStateManager(dir);
+      forcePhase(dir, "deployment");
+      expect(() => sm.setDeployApproval()).toThrow("full SAST");
+    });
+
+    it("setDeployApproval with stale SAST → throw", () => {
+      const sm = initWithStateManager(dir);
+      forcePhase(dir, "deployment");
+      // Set SAST to an old timestamp, then trigger a change after it
+      forceField(dir, "lastFullSastAt", "2020-01-01T00:00:00.000Z");
+      sm.addSASTFinding("s1", {
+        id: "STALE-3", tool: "manual", severity: "low", status: "open",
+        title: "post-sast", file: "t.ts", line: 1, description: "d", fix: "f",
+      });
+      expect(() => sm.setDeployApproval()).toThrow("stale");
+    });
+  });
+
+  describe("test command override escape hatch (v2)", () => {
+    it("override allowed with allowTestCommandOverride=true", () => {
+      const sm = initWithStateManager(dir);
+      sm.updateConfig({ testCommand: "npm test", allowTestCommandOverride: true });
+      forcePhase(dir, "building");
+      const result = parse(handleRunTests({
+        projectPath: dir, sliceId: "s1", command: "echo '1 passed'",
+      }));
+      expect(result.error).toBeUndefined();
+    });
+  });
+
   // === Backward compat (~2) ===
 
   describe("backward compatibility", () => {
@@ -328,12 +437,14 @@ describe("Enforcement Guards", () => {
         createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
       };
       const result = ProjectStateSchema.parse(raw);
+      expect(result.lastSecurityRelevantChangeAt).toBeNull();
       expect(result.lastFullSastAt).toBeNull();
       expect(result.lastFullSastFindingCount).toBe(0);
       expect(result.buildSignoffAt).toBeNull();
       expect(result.buildSignoffSliceHash).toBeNull();
       expect(result.deployApprovalAt).toBeNull();
       expect(result.deployApprovalStateHash).toBeNull();
+      expect(result.config.allowTestCommandOverride).toBe(false);
     });
 
     it("a2p_build_signoff tool returns success", () => {

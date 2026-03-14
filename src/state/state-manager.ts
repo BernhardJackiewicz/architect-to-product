@@ -94,6 +94,7 @@ export class StateManager {
         buildCommand: "",
         formatCommand: "",
         claudeModel: "opus",
+        allowTestCommandOverride: false,
       },
       companions: [],
       qualityIssues: [],
@@ -108,6 +109,7 @@ export class StateManager {
         offsiteProvider: "none", verifyAfterBackup: false, preDeploySnapshot: false,
       },
       backupStatus: { configured: false },
+      lastSecurityRelevantChangeAt: null,
       lastFullSastAt: null,
       lastFullSastFindingCount: 0,
       buildSignoffAt: null,
@@ -161,19 +163,23 @@ export class StateManager {
 
   /** Compute deterministic hash of slice statuses for signoff validation */
   private computeSliceHash(slices: Slice[]): string {
-    return slices.map(s => `${s.id}:${s.status}`).join("|");
+    return slices.map(s =>
+      `${s.id}:${s.status}:${s.acceptanceCriteria.length}:${s.testResults.length}`
+    ).join("|");
   }
 
   /** Compute deterministic hash of deployment-relevant state for approval validation */
   private computeDeployStateHash(state: ProjectState): string {
-    const parts = [
+    const lastWhitebox = state.whiteboxResults[state.whiteboxResults.length - 1];
+    const lastAudit = state.auditResults[state.auditResults.length - 1];
+    const openFindings = state.slices.flatMap(s => s.sastFindings).filter(f => f.status === "open").length;
+    return [
       `sast:${state.lastFullSastAt}`,
-      `findings:${state.slices.flatMap(s => s.sastFindings).filter(f => f.status === "open").length}`,
-      `whitebox:${state.whiteboxResults.length}`,
-      `audit:${state.auditResults.length}`,
+      `findings:${openFindings}`,
+      `wb:${lastWhitebox?.id ?? "none"}:${lastWhitebox?.blocking_count ?? 0}`,
+      `audit:${lastAudit?.id ?? "none"}:${lastAudit?.summary.critical ?? 0}`,
       `slices:${state.slices.map(s => `${s.id}:${s.status}`).join(",")}`,
-    ];
-    return parts.join("|");
+    ].join("|");
   }
 
   /** Invalidate build signoff when slices/tests change */
@@ -190,6 +196,11 @@ export class StateManager {
       state.deployApprovalAt = null;
       state.deployApprovalStateHash = null;
     }
+  }
+
+  /** Mark the timestamp of the last security-relevant change (for stale SAST detection) */
+  private setLastSecurityRelevantChange(state: ProjectState): void {
+    state.lastSecurityRelevantChangeAt = new Date().toISOString();
   }
 
   /** Transition to a new phase */
@@ -275,6 +286,15 @@ export class StateManager {
           "Cannot deploy without a full SAST scan. Run a2p_run_sast mode=full first."
         );
       }
+
+      // Stale SAST check: full SAST must be after last security-relevant change
+      if (state.lastSecurityRelevantChangeAt &&
+          state.lastFullSastAt &&
+          state.lastFullSastAt < state.lastSecurityRelevantChangeAt) {
+        throw new Error(
+          "Full SAST scan is stale — code changed after last scan. Re-run a2p_run_sast mode=full."
+        );
+      }
     }
 
     // Backup warning: warn if stateful app deploys without backup configured
@@ -355,6 +375,7 @@ export class StateManager {
     slice.status = newStatus;
     this.invalidateBuildSignoff(state);
     this.invalidateDeployApproval(state);
+    this.setLastSecurityRelevantChange(state);
     this.addEvent(state, state.phase, sliceId, "slice_status", `${sliceId} → ${newStatus}`, { status: "success" });
     this.write(state);
     return state;
@@ -376,6 +397,7 @@ export class StateManager {
     state.slices = slices;
     state.currentSliceIndex = slices.length > 0 ? 0 : -1;
     this.invalidateBuildSignoff(state);
+    this.setLastSecurityRelevantChange(state);
     this.addEvent(state, state.phase, null, "slices_set", `${slices.length} slices created`, { status: "success" });
     this.write(state);
     return state;
@@ -414,6 +436,7 @@ export class StateManager {
 
     slice.testResults.push(result);
     this.invalidateBuildSignoff(state);
+    this.setLastSecurityRelevantChange(state);
     this.addEvent(
       state,
       state.phase,
@@ -437,6 +460,7 @@ export class StateManager {
     }
 
     this.invalidateDeployApproval(state);
+    this.setLastSecurityRelevantChange(state);
     this.addEvent(
       state,
       state.phase,
@@ -490,6 +514,8 @@ export class StateManager {
   setArchitecture(architecture: ProjectState["architecture"]): ProjectState {
     const state = this.read();
     state.architecture = architecture;
+    this.invalidateBuildSignoff(state);
+    this.setLastSecurityRelevantChange(state);
     this.addEvent(state, state.phase, null, "architecture_set", `Architecture: ${architecture?.name ?? "cleared"}`, { status: "success" });
     this.write(state);
     return state;
@@ -551,6 +577,13 @@ export class StateManager {
     if (state.phase !== "deployment") {
       throw new Error("Deploy approval only allowed in deployment phase");
     }
+    if (!state.lastFullSastAt) {
+      throw new Error("Deploy approval requires a full SAST scan first");
+    }
+    if (state.lastSecurityRelevantChangeAt &&
+        state.lastFullSastAt < state.lastSecurityRelevantChangeAt) {
+      throw new Error("Full SAST scan is stale. Re-run a2p_run_sast mode=full first.");
+    }
     state.deployApprovalAt = new Date().toISOString();
     state.deployApprovalStateHash = this.computeDeployStateHash(state);
     this.addEvent(state, state.phase, null, "deploy_approval",
@@ -565,6 +598,7 @@ export class StateManager {
     const state = this.read();
     state.lastFullSastAt = new Date().toISOString();
     state.lastFullSastFindingCount = findingCount;
+    this.invalidateDeployApproval(state);
     this.addEvent(state, state.phase, null, "sast_run",
       `Full SAST scan completed — ${findingCount} finding(s)`,
       { level: "info", status: "success" });
@@ -620,6 +654,7 @@ export class StateManager {
     state.slices.push(...slices);
     state.currentSliceIndex = firstNewIndex;
     this.invalidateBuildSignoff(state);
+    this.setLastSecurityRelevantChange(state);
     this.addEvent(state, state.phase, null, "slices_added", `${slices.length} slices appended (total: ${state.slices.length})`, { status: "success" });
     this.write(state);
     return state;

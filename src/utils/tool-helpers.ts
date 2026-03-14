@@ -30,6 +30,26 @@ export function requirePhase(
   }
 }
 
+/** Phase + mode guard: validates that the current phase is allowed for a given tool mode */
+export function requirePhaseAndMode(
+  currentPhase: Phase,
+  allowedPhases: Phase[],
+  toolName: string,
+  mode?: string,
+  modePhaseMap?: Record<string, Phase[]>,
+): void {
+  if (modePhaseMap && mode) {
+    const modeAllowed = modePhaseMap[mode];
+    if (modeAllowed && !modeAllowed.includes(currentPhase)) {
+      throw new Error(
+        `${toolName} ${mode} can only be used in phases: ${modeAllowed.join(", ")}. Current phase: ${currentPhase}`
+      );
+    }
+    return;
+  }
+  requirePhase(currentPhase, allowedPhases, toolName);
+}
+
 /** Truncate a string to maxLen characters, appending a truncation notice. */
 export function truncate(str: string, maxLen: number): string {
   if (str.length <= maxLen) return str;

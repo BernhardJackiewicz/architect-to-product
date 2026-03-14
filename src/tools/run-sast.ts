@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { requireProject, requirePhase, truncate } from "../utils/tool-helpers.js";
+import { requireProject, requirePhaseAndMode, truncate } from "../utils/tool-helpers.js";
 import { runProcess } from "../utils/process-runner.js";
 import { generateRunId } from "../utils/log-sanitizer.js";
 import type { SASTFinding, FindingSeverity } from "../state/types.js";
@@ -24,11 +24,10 @@ export function handleRunSast(input: RunSastInput): string {
 
   const state = sm.read();
   try {
-    if (input.mode === "slice") {
-      requirePhase(state.phase, ["building"], "a2p_run_sast mode=slice");
-    } else {
-      requirePhase(state.phase, ["security"], "a2p_run_sast mode=full");
-    }
+    requirePhaseAndMode(state.phase, ["building", "security"], "a2p_run_sast", input.mode, {
+      slice: ["building"],
+      full: ["security"],
+    });
   } catch (err) {
     return JSON.stringify({ error: err instanceof Error ? err.message : String(err) });
   }

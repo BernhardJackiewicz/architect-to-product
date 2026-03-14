@@ -185,6 +185,7 @@ export const ProjectConfigSchema = z.object({
   buildCommand: z.string(),
   formatCommand: z.string(),
   claudeModel: z.enum(["opus", "sonnet", "haiku"]).default("opus"),
+  allowTestCommandOverride: z.boolean().default(false),
 });
 
 export const WhiteboxFindingSchema = z.object({
@@ -298,6 +299,7 @@ export const ProjectStateSchema = z.object({
   backupStatus: BackupStatusSchema.default({
     configured: false,
   }),
+  lastSecurityRelevantChangeAt: z.string().nullable().default(null),
   lastFullSastAt: z.string().nullable().default(null),
   lastFullSastFindingCount: z.number().int().min(0).default(0),
   buildSignoffAt: z.string().nullable().default(null),

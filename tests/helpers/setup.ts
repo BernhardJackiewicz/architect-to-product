@@ -75,6 +75,17 @@ export function forcePhase(dir: string, phase: Phase): void {
   writeFileSync(statePath, JSON.stringify(state, null, 2), "utf-8");
 }
 
+/**
+ * Force a top-level field in state file (bypasses all checks).
+ * TEST ONLY — for setting up test preconditions like stale timestamps.
+ */
+export function forceField(dir: string, field: string, value: unknown): void {
+  const statePath = join(dir, ".a2p", "state.json");
+  const state = JSON.parse(readFileSync(statePath, "utf-8"));
+  state[field] = value;
+  writeFileSync(statePath, JSON.stringify(state, null, 2), "utf-8");
+}
+
 /** Initialize a project with a basic architecture (no slices). */
 export function initWithArch(dir: string, opts?: { language?: string; framework?: string }): void {
   handleInitProject({ projectPath: dir, projectName: "test" });

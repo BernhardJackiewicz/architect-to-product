@@ -241,6 +241,7 @@ export interface ProjectConfig {
   buildCommand: string;
   formatCommand: string;
   claudeModel: ClaudeModel; // default: "opus" — which Claude model does the programming
+  allowTestCommandOverride: boolean; // default: false — allow overriding testCommand via parameter
 }
 
 export type WhiteboxCategory =
@@ -335,6 +336,7 @@ export interface ProjectState {
   currentProductPhase: number; // Index in architecture.phases[], default 0
   backupConfig: BackupConfig;
   backupStatus: BackupStatus;
+  lastSecurityRelevantChangeAt: string | null;
   lastFullSastAt: string | null;
   lastFullSastFindingCount: number;
   buildSignoffAt: string | null;
