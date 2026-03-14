@@ -18,6 +18,7 @@ import { getChecklistSchema, handleGetChecklist } from "./tools/get-checklist.js
 import { completePhaseSchema, handleCompletePhase } from "./tools/complete-phase.js";
 import { addSliceSchema, handleAddSlice } from "./tools/add-slice.js";
 import { getBuildLogSchema, handleGetBuildLog } from "./tools/get-build-log.js";
+import { runAuditSchema, handleRunAudit } from "./tools/run-audit.js";
 
 // Prompts
 import { ONBOARDING_PROMPT } from "./prompts/onboarding.js";
@@ -27,6 +28,7 @@ import { REFACTOR_PROMPT } from "./prompts/refactor.js";
 import { E2E_TESTING_PROMPT } from "./prompts/e2e-testing.js";
 import { SECURITY_GATE_PROMPT } from "./prompts/security-gate.js";
 import { DEPLOY_PROMPT } from "./prompts/deploy.js";
+import { AUDIT_PROMPT } from "./prompts/audit.js";
 
 // Resources
 import { StateManager } from "./state/state-manager.js";
@@ -241,6 +243,18 @@ export function createServer(): McpServer {
     wrapTool(handleGetBuildLog as ToolHandler)
   );
 
+  server.tool(
+    "a2p_run_audit",
+    "Run code audit: quality (dev hygiene every ~5-10 commits) or release (pre-publish checks)",
+    {
+      projectPath: runAuditSchema.shape.projectPath,
+      mode: runAuditSchema.shape.mode,
+      runBuild: runAuditSchema.shape.runBuild,
+      runTests: runAuditSchema.shape.runTests,
+    },
+    wrapTool(handleRunAudit as ToolHandler)
+  );
+
   // ===== PROMPTS =====
 
   server.prompt("a2p", "architect-to-product onboarding: When the user says 'a2p', 'onboarding', 'start project', or 'new project' — use THIS prompt to guide them through architecture definition, tech stack selection, UI design, and project setup. This is the entry point for architect-to-product.", () => ({
@@ -269,6 +283,10 @@ export function createServer(): McpServer {
 
   server.prompt("a2p_deploy", "architect-to-product deploy: When the user says 'a2p deploy' or 'deployment' — use THIS prompt to generate production deployment configs and deployment guide.", () => ({
     messages: [{ role: "user", content: { type: "text", text: DEPLOY_PROMPT } }],
+  }));
+
+  server.prompt("a2p_audit", "architect-to-product audit: When the user says 'a2p audit', 'quality audit', or 'release audit' — use THIS prompt for code hygiene checks (quality mode) or pre-release verification (release mode).", () => ({
+    messages: [{ role: "user", content: { type: "text", text: AUDIT_PROMPT } }],
   }));
 
   // ===== RESOURCES =====

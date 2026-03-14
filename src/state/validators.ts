@@ -75,6 +75,7 @@ export const SliceSchema = z.object({
   files: z.array(z.string()),
   testResults: z.array(TestResultSchema),
   sastFindings: z.array(SASTFindingSchema),
+  sastRanAt: z.string().optional(),
   productPhaseId: z.string().optional(),
   type: z.enum(["feature", "integration", "infrastructure"]).optional(),
   hasUI: z.boolean().optional(),
@@ -87,6 +88,36 @@ export const QualityIssueSchema = z.object({
   symbol: z.string(),
   description: z.string(),
   status: z.enum(["open", "fixed", "accepted", "false_positive"]),
+});
+
+export const AuditFindingSchema = z.object({
+  category: z.string(),
+  severity: z.enum(["critical", "high", "medium", "low", "info"]),
+  file: z.string(),
+  line: z.number().int().min(0),
+  message: z.string(),
+  fix: z.string(),
+});
+
+export const AuditResultSchema = z.object({
+  id: z.string().min(1),
+  mode: z.enum(["quality", "release"]),
+  timestamp: z.string(),
+  findings: z.array(AuditFindingSchema),
+  summary: z.object({
+    critical: z.number().int().min(0),
+    high: z.number().int().min(0),
+    medium: z.number().int().min(0),
+    low: z.number().int().min(0),
+  }),
+  buildPassed: z.boolean().nullable(),
+  testsPassed: z.boolean().nullable(),
+  aggregated: z.object({
+    openSastFindings: z.number().int().min(0),
+    openQualityIssues: z.number().int().min(0),
+    slicesDone: z.number().int().min(0),
+    slicesTotal: z.number().int().min(0),
+  }),
 });
 
 export const CompanionServerSchema = z.object({
@@ -156,6 +187,7 @@ export const ProjectStateSchema = z.object({
   config: ProjectConfigSchema,
   companions: z.array(CompanionServerSchema),
   qualityIssues: z.array(QualityIssueSchema),
+  auditResults: z.array(AuditResultSchema).default([]),
   buildHistory: z.array(BuildEventSchema),
   currentProductPhase: z.number().int().min(0).default(0),
   createdAt: z.string(),
