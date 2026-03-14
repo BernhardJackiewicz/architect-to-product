@@ -1,0 +1,15 @@
+src/
+tests/
+.env
+.env.*
+.env.test
+.credentials
+.secrets
+.DS_Store
+*.tsbuildinfo
+.a2p/
+.mcp.json
+tsconfig.json
+vitest.config.ts
+setup.sh
+.gitignore
