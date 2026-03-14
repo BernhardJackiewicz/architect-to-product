@@ -48,7 +48,11 @@ It coordinates:
 - **Backup strategy** — Automatic inference of backup targets (database, uploads, artifacts) from tech stack. Stack-aware backup/restore commands, retention policies, verification scripts, offsite sync. Stateful apps get deployment gate warnings if backup is missing
 - **Deployment generation** — stack-specific Dockerfile, docker-compose, Caddyfile, backup/restore/verify scripts, hardening guides
 
-A2P is not a replacement for engineers. It is an engineering safety net for AI-generated code.
+A2P is not a replacement for engineers — it is the engineering reality layer that most architectures forget.
+
+Humans design features, flows, data models, and business logic. What they skip: logging, backup strategy, restore verification, deploy checks, test evidence, release hygiene, and proof that the code is actually secure — not just scanner-clean. A2P forces these layers in automatically. Every slice needs test evidence before it can advance. Every deployment needs a backup plan, a full security scan, and human sign-off. Every finding gets triaged for real exploitability, not just pattern-matched.
+
+Most AI-generated — and human-built — architectures don't fail because the main idea was wrong. They fail because of missing defaults, missing safeguards, and missing operational discipline. A2P closes that gap systematically.
 
 ## Without vs. With architect-to-product
 
@@ -384,16 +388,16 @@ You don't have to run the full pipeline. Each prompt works standalone — pick w
 
 ## Supported Deploy Targets
 
-| Target | Method | What gets generated |
-|--------|--------|-------------------|
-| **Docker VPS** (Hetzner, DigitalOcean, any VPS) | Dockerfile + docker-compose + Caddy | Dockerfile, docker-compose.prod.yml, Caddyfile, backup/restore/verify scripts, BACKUP.md, DEPLOYMENT.md |
-| **Vercel** | Vercel CLI | vercel.json, Edge Middleware, env var setup |
-| **Cloudflare** (Pages/Workers) | Wrangler CLI / MCP | wrangler.toml, Page Rules, DNS config |
-| **Railway** | Railway CLI | railway.toml / Procfile, service config |
-| **Fly.io** | Fly CLI | fly.toml, secrets, volumes |
-| **Render** | Blueprint | render.yaml, health checks, auto-deploy |
+| Target | What A2P generates |
+|--------|-------------------|
+| **Docker VPS** (Hetzner, DigitalOcean, any VPS) | File generation guidance for Dockerfile, docker-compose.prod.yml, Caddyfile, backup/restore/verify scripts, BACKUP.md, DEPLOYMENT.md. Security hardening checklist. Stack-specific recommendations. |
+| **Vercel** | Recommendations (Edge Functions, env vars, preview deploys). Checklist items (project linked, env vars set, preview tested). |
+| **Cloudflare** (Pages/Workers) | Recommendations (wrangler.toml bindings, WAF, CDN). Checklist items (NS records, SSL Full Strict, WAF rules). |
+| **Railway** | Recommendations (railway up, managed DB add-ons). Checklist items (services configured, env vars, custom domain). |
+| **Fly.io** | Recommendations (fly.toml, Volumes, TLS). Checklist items (app created, secrets set, TLS cert). |
+| **Render** | Recommendations (render.yaml Blueprint, Private Services). Checklist items (Blueprint deployed, health check, auto-deploy). |
 
-Each deploy path includes: env var handling, basic hardening, smoke checks, domain checklist, and stack-aware backup/restore scripts.
+Docker VPS targets get full file generation guidance (Dockerfile, compose, Caddy, backup scripts). PaaS targets (Vercel, Railway, Cloudflare, Fly.io, Render) get stack-specific recommendations and deployment checklists — Claude generates the platform-specific config files based on these recommendations.
 
 ## Companion MCP Servers
 
@@ -405,7 +409,7 @@ a2p auto-configures companion MCP servers based on your tech stack. Each compani
 |-----------|-------------|----------------|
 | [codebase-memory-mcp](https://github.com/DeusData/codebase-memory-mcp) | Code graph intelligence — up to 100x fewer exploration tokens vs. raw file scanning | 11 tools: `index_repository`, `search_graph`, `search_code`, `trace_call_path`, ... |
 | [mcp-server-git](https://github.com/modelcontextprotocol/servers) | Git history, commits, diffs | 12 tools: `git_log`, `git_diff`, `git_commit`, `git_status`, ... |
-| [@modelcontextprotocol/server-filesystem](https://github.com/modelcontextprotocol/servers) | File operations | 14 tools: `write_file`, `list_directory`, `read_file`, `search_files`, ... |
+| [@modelcontextprotocol/server-filesystem](https://github.com/modelcontextprotocol/servers) | File operations | 13 tools: `write_file`, `list_directory`, `read_file`, `search_files`, ... |
 | [@modelcontextprotocol/server-sequential-thinking](https://github.com/modelcontextprotocol/servers) | Step-by-step reasoning for complex decisions | 1 tool: `sequentialthinking` |
 
 ### Conditional (installed based on stack)
@@ -416,7 +420,7 @@ a2p auto-configures companion MCP servers based on your tech stack. Each compani
 | [GitHub MCP](https://github.com/github/github-mcp-server) | GitHub repos | 41 tools: `list_issues`, `create_pull_request`, `search_code`, `get_file_contents`, ... |
 | [Supabase MCP](https://github.com/supabase-community/supabase-mcp) | Supabase projects | 29 tools: `execute_sql`, `list_tables`, `apply_migration`, `deploy_edge_function`, ... |
 | [@stripe/mcp](https://github.com/stripe/agent-toolkit) | Payment/billing | 28 tools: `create_product`, `create_price`, `create_payment_link`, `create_customer`, ... |
-| [@cloudflare/mcp-server-cloudflare](https://github.com/cloudflare/mcp-server-cloudflare) | Cloudflare hosting | 85 tools: `worker_deploy`, `kv_put`, `d1_query`, `r2_put_object`, `zones_list`, `secret_put`, ... |
+| [@cloudflare/mcp-server-cloudflare](https://github.com/cloudflare/mcp-server-cloudflare) | Cloudflare hosting | 61+ tools: `worker_deploy`, `kv_put`, `d1_query`, `r2_put_object`, `zones_list`, `secret_put`, ... |
 | [@sentry/mcp-server](https://github.com/getsentry/sentry-mcp-server) | Error tracking | 22 tools: `list_issues`, `get_issue_details`, `find_projects`, `analyze_issue_with_seer`, ... |
 | [@upstash/mcp-server](https://github.com/upstash/mcp-server) | Serverless Redis/Queue | 26 tools: `redis_database_run_redis_commands`, `qstash_publish_message`, `workflow_logs_list`, ... |
 | [Semgrep MCP](https://semgrep.dev/) | Semgrep Pro users | `semgrep_scan`, `security_check`, `get_abstract_syntax_tree` (OSS uses CLI fallback) |
