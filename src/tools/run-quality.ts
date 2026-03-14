@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { StateManager } from "../state/state-manager.js";
+import { requireProject } from "../utils/tool-helpers.js";
 import type { QualityIssue } from "../state/types.js";
 
 export const runQualitySchema = z.object({
@@ -32,11 +32,8 @@ export type RunQualityInput = z.infer<typeof runQualitySchema>;
  * This tool records the results in the project state.
  */
 export function handleRunQuality(input: RunQualityInput): string {
-  const sm = new StateManager(input.projectPath);
-
-  if (!sm.exists()) {
-    return JSON.stringify({ error: "No project found." });
-  }
+  const { sm, error } = requireProject(input.projectPath);
+  if (error) return error;
 
   const recorded: QualityIssue[] = [];
   let counter = 1;

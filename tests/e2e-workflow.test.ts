@@ -42,8 +42,8 @@ describe("E2E Workflow: Full project lifecycle", () => {
   describe("Phase 0: Onboarding", () => {
     it("a2p_get_state returns error when no project exists", () => {
       const result = parse(handleGetState({ projectPath: tmpDir }));
-      expect(result.error).toBe("No project found");
-      expect(result.hint).toContain("a2p_init_project");
+      expect(result.error).toContain("No project found");
+      expect(result.error).toContain("a2p_init_project");
     });
 
     it("a2p_init_project creates all required files", () => {

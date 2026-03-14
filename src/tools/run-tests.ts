@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { StateManager } from "../state/state-manager.js";
+import { requireProject, truncate } from "../utils/tool-helpers.js";
 import { runProcess } from "../utils/process-runner.js";
 import type { TestResult } from "../state/types.js";
 
@@ -19,11 +19,8 @@ export const runTestsSchema = z.object({
 export type RunTestsInput = z.infer<typeof runTestsSchema>;
 
 export function handleRunTests(input: RunTestsInput): string {
-  const sm = new StateManager(input.projectPath);
-
-  if (!sm.exists()) {
-    return JSON.stringify({ error: "No project found." });
-  }
+  const { sm, error } = requireProject(input.projectPath);
+  if (error) return error;
 
   const state = sm.read();
   const testCommand = input.command ?? state.config.testCommand;
@@ -116,7 +113,3 @@ function parseTestCounts(output: string): {
   return { passed, failed, skipped };
 }
 
-function truncate(str: string, maxLen: number): string {
-  if (str.length <= maxLen) return str;
-  return str.slice(0, maxLen) + "\n... (truncated)";
-}

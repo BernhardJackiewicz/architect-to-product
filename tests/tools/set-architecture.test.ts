@@ -1,18 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { mkdtempSync, rmSync } from "node:fs";
-import { join } from "node:path";
-import { tmpdir } from "node:os";
 import { handleSetArchitecture } from "../../src/tools/set-architecture.js";
 import { handleInitProject } from "../../src/tools/init-project.js";
 import { StateManager } from "../../src/state/state-manager.js";
-
-function makeTmpDir(): string {
-  return mkdtempSync(join(tmpdir(), "a2p-arch-"));
-}
-
-function parse(json: string) {
-  return JSON.parse(json);
-}
+import { makeTmpDir, cleanTmpDir, parse } from "../helpers/setup.js";
 
 const baseInput = {
   name: "Test App",
@@ -28,12 +18,12 @@ describe("handleSetArchitecture", () => {
   let tmpDir: string;
 
   beforeEach(() => {
-    tmpDir = makeTmpDir();
+    tmpDir = makeTmpDir("a2p-arch");
     handleInitProject({ projectPath: tmpDir, projectName: "test" });
   });
 
   afterEach(() => {
-    rmSync(tmpDir, { recursive: true, force: true });
+    cleanTmpDir(tmpDir);
   });
 
   it("stores architecture correctly in state", () => {
@@ -130,12 +120,12 @@ describe("handleSetArchitecture", () => {
   });
 
   it("returns error without init", () => {
-    const otherDir = makeTmpDir();
+    const otherDir = makeTmpDir("a2p-arch");
     const result = parse(
       handleSetArchitecture({ projectPath: otherDir, ...baseInput })
     );
     expect(result.error).toContain("No project");
-    rmSync(otherDir, { recursive: true, force: true });
+    cleanTmpDir(otherDir);
   });
 
   it("counts features correctly", () => {

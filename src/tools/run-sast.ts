@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { StateManager } from "../state/state-manager.js";
+import { requireProject, truncate } from "../utils/tool-helpers.js";
 import { runProcess } from "../utils/process-runner.js";
 import type { SASTFinding, FindingSeverity } from "../state/types.js";
 
@@ -18,11 +18,8 @@ export const runSastSchema = z.object({
 export type RunSastInput = z.infer<typeof runSastSchema>;
 
 export function handleRunSast(input: RunSastInput): string {
-  const sm = new StateManager(input.projectPath);
-
-  if (!sm.exists()) {
-    return JSON.stringify({ error: "No project found." });
-  }
+  const { sm, error } = requireProject(input.projectPath);
+  if (error) return error;
 
   const results: {
     tool: string;
@@ -218,7 +215,3 @@ function mapBanditSeverity(sev: string): FindingSeverity {
   }
 }
 
-function truncate(str: string, maxLen: number): string {
-  if (str.length <= maxLen) return str;
-  return str.slice(0, maxLen) + "\n... (truncated)";
-}

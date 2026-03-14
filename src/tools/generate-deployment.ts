@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { StateManager } from "../state/state-manager.js";
+import { requireProject } from "../utils/tool-helpers.js";
 
 export const generateDeploymentSchema = z.object({
   projectPath: z.string().describe("Absolute path to the project directory"),
@@ -12,11 +12,8 @@ export type GenerateDeploymentInput = z.infer<typeof generateDeploymentSchema>;
  * Claude uses this to dynamically generate Dockerfile, docker-compose, Caddyfile, etc.
  */
 export function handleGenerateDeployment(input: GenerateDeploymentInput): string {
-  const sm = new StateManager(input.projectPath);
-
-  if (!sm.exists()) {
-    return JSON.stringify({ error: "No project found." });
-  }
+  const { sm, error } = requireProject(input.projectPath);
+  if (error) return error;
 
   const state = sm.read();
   if (!state.architecture) {

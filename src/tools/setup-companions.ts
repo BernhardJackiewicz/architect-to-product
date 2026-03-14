@@ -2,7 +2,7 @@ import { z } from "zod";
 import { execSync } from "node:child_process";
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
-import { StateManager } from "../state/state-manager.js";
+import { requireProject } from "../utils/tool-helpers.js";
 import type { CompanionServer } from "../state/types.js";
 
 export const setupCompanionsSchema = z.object({
@@ -45,11 +45,8 @@ export const setupCompanionsSchema = z.object({
 export type SetupCompanionsInput = z.infer<typeof setupCompanionsSchema>;
 
 export function handleSetupCompanions(input: SetupCompanionsInput): string {
-  const sm = new StateManager(input.projectPath);
-
-  if (!sm.exists()) {
-    return JSON.stringify({ error: "No project found. Run a2p_init_project first." });
-  }
+  const { sm, error } = requireProject(input.projectPath);
+  if (error) return error;
 
   const results: Array<{
     name: string;

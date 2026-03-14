@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { StateManager } from "../state/state-manager.js";
+import { requireProject } from "../utils/tool-helpers.js";
 import type { Slice } from "../state/types.js";
 
 export const createBuildPlanSchema = z.object({
@@ -28,11 +28,8 @@ export const createBuildPlanSchema = z.object({
 export type CreateBuildPlanInput = z.infer<typeof createBuildPlanSchema>;
 
 export function handleCreateBuildPlan(input: CreateBuildPlanInput): string {
-  const sm = new StateManager(input.projectPath);
-
-  if (!sm.exists()) {
-    return JSON.stringify({ error: "No project found. Run a2p_init_project first." });
-  }
+  const { sm, error } = requireProject(input.projectPath);
+  if (error) return error;
 
   const state = sm.read();
 

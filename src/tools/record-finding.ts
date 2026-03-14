@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { StateManager } from "../state/state-manager.js";
+import { requireProject } from "../utils/tool-helpers.js";
 import type { SASTFinding } from "../state/types.js";
 
 export const recordFindingSchema = z.object({
@@ -19,11 +19,8 @@ export const recordFindingSchema = z.object({
 export type RecordFindingInput = z.infer<typeof recordFindingSchema>;
 
 export function handleRecordFinding(input: RecordFindingInput): string {
-  const sm = new StateManager(input.projectPath);
-
-  if (!sm.exists()) {
-    return JSON.stringify({ error: "No project found." });
-  }
+  const { sm, error } = requireProject(input.projectPath);
+  if (error) return error;
 
   // Check for ID collision
   const state = sm.read();

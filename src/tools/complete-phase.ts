@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { StateManager } from "../state/state-manager.js";
+import { requireProject } from "../utils/tool-helpers.js";
 
 export const completePhaseSchema = z.object({
   projectPath: z.string().describe("Absolute path to the project directory"),
@@ -8,11 +8,8 @@ export const completePhaseSchema = z.object({
 export type CompletePhaseInput = z.infer<typeof completePhaseSchema>;
 
 export function handleCompletePhase(input: CompletePhaseInput): string {
-  const sm = new StateManager(input.projectPath);
-
-  if (!sm.exists()) {
-    return JSON.stringify({ error: "No project found. Run a2p_init_project first." });
-  }
+  const { sm, error } = requireProject(input.projectPath);
+  if (error) return error;
 
   const stateBefore = sm.read();
   const phases = stateBefore.architecture?.phases;
