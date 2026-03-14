@@ -478,6 +478,102 @@ describe("complete-phase: blocks on open high/critical findings", () => {
   });
 });
 
+// ─── Security gate: block deployment with open findings ─────────────────────
+
+describe("Security gate: setPhase(deployment) blocks on open CRITICAL/HIGH", () => {
+  let dir: string;
+
+  beforeEach(() => {
+    dir = createTestProject();
+    const sm = setupProjectWithSlices(dir, 1);
+    // Move through phases to security
+    sm.setPhase("planning");
+    sm.setPhase("building");
+    sm.setSliceStatus("s1", "red");
+    sm.setSliceStatus("s1", "green");
+    sm.setSliceStatus("s1", "refactor");
+    sm.setSliceStatus("s1", "sast");
+    sm.setSliceStatus("s1", "done");
+    sm.setPhase("security");
+  });
+
+  it("throws when open CRITICAL finding exists", () => {
+    const sm = new StateManager(dir);
+    sm.addSASTFinding("s1", {
+      id: "F-crit",
+      tool: "semgrep",
+      severity: "critical",
+      status: "open",
+      title: "SQL Injection",
+      file: "db.ts",
+      line: 42,
+      description: "unparameterized query",
+      fix: "use params",
+    });
+
+    expect(() => sm.setPhase("deployment")).toThrow("CRITICAL/HIGH");
+  });
+
+  it("throws when open HIGH finding exists", () => {
+    const sm = new StateManager(dir);
+    sm.addSASTFinding("s1", {
+      id: "F-high",
+      tool: "semgrep",
+      severity: "high",
+      status: "open",
+      title: "XSS",
+      file: "view.ts",
+      line: 10,
+      description: "reflected xss",
+      fix: "escape",
+    });
+
+    expect(() => sm.setPhase("deployment")).toThrow("CRITICAL/HIGH");
+  });
+
+  it("allows deployment when findings are fixed", () => {
+    const sm = new StateManager(dir);
+    sm.addSASTFinding("s1", {
+      id: "F-fixed",
+      tool: "semgrep",
+      severity: "critical",
+      status: "fixed",
+      title: "SQL Injection",
+      file: "db.ts",
+      line: 42,
+      description: "was unparameterized",
+      fix: "used params",
+    });
+
+    const state = sm.setPhase("deployment");
+    expect(state.phase).toBe("deployment");
+  });
+
+  it("allows deployment with no findings", () => {
+    const sm = new StateManager(dir);
+    const state = sm.setPhase("deployment");
+    expect(state.phase).toBe("deployment");
+  });
+
+  it("allows deployment when only MEDIUM/LOW findings are open", () => {
+    const sm = new StateManager(dir);
+    sm.addSASTFinding("s1", {
+      id: "F-med",
+      tool: "semgrep",
+      severity: "medium",
+      status: "open",
+      title: "Info leak",
+      file: "app.ts",
+      line: 5,
+      description: "verbose error",
+      fix: "sanitize",
+    });
+
+    const state = sm.setPhase("deployment");
+    expect(state.phase).toBe("deployment");
+  });
+});
+
 // ─── update-slice: proper file persistence ──────────────────────────────────
 
 describe("update-slice: file tracking persistence", () => {

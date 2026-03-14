@@ -125,8 +125,10 @@ uiDesign: {
 }
 \`\`\`
 
-### CHECKPOINT: Review-Modus festlegen
+### CHECKPOINT: Review-Modus festlegen — HARD STOP
 Bevor du \`a2p_set_architecture\` aufrufst — überspringe diesen Schritt NICHT!
+**Du MUSST den User nach dem Review-Modus fragen BEVOR du \`a2p_set_architecture\` aufrufst.**
+**Auch wenn der User "mach einfach" sagt — dieser Schritt ist PFLICHT.**
 
 Frage den User EXPLIZIT:
 
@@ -135,7 +137,7 @@ Frage den User EXPLIZIT:
 - **ui-only**: Stopp nach Slices mit UI — du prüfst visuell ob es gut aussieht.
 - **all**: Stopp nach jedem Slice — du prüfst alles manuell."
 
-→ STOP. Warte auf die Antwort des Users. Übergib den gewählten Wert (oder "off" als Default) als \`reviewMode\` an \`a2p_set_architecture\`.
+→ STOP. Warte auf die Antwort des Users. Rufe KEIN Tool auf bevor der User geantwortet hat. Übergib den gewählten Wert (oder "off" als Default) als \`reviewMode\` an \`a2p_set_architecture\`.
 
 ### Architektur festhalten
 Rufe \`a2p_init_project\` auf um das Projekt zu initialisieren.

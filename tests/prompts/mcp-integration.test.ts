@@ -827,4 +827,16 @@ describe("Enforcement rules in onboarding", () => {
     expect(prereqPos).toBeGreaterThan(-1);
     expect(prereqPos).toBeLessThan(handoffPos);
   });
+
+  it("ReviewMode checkpoint is a hard stop — not negotiable", () => {
+    const reviewSection = ONBOARDING_PROMPT.indexOf("Review-Modus festlegen");
+    expect(reviewSection).toBeGreaterThan(-1);
+    const sectionEnd = ONBOARDING_PROMPT.indexOf("### Architektur festhalten", reviewSection);
+    const section = ONBOARDING_PROMPT.slice(reviewSection, sectionEnd);
+    expect(section).toContain("HARD STOP");
+    expect(section).toContain("MUSST");
+    expect(section).toContain("PFLICHT");
+    // Must explicitly say: don't skip even if user says "just do it"
+    expect(section).toMatch(/auch wenn.*User/i);
+  });
 });

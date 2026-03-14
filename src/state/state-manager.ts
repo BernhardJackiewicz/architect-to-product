@@ -144,6 +144,26 @@ export class StateManager {
       );
     }
 
+    // Security gate: block deployment if open CRITICAL/HIGH findings exist
+    if (state.phase === "security" && newPhase === "deployment") {
+      const openBlockers = state.slices
+        .flatMap((s) => s.sastFindings)
+        .filter(
+          (f) =>
+            f.status === "open" &&
+            (f.severity === "critical" || f.severity === "high")
+        );
+
+      if (openBlockers.length > 0) {
+        const blockerList = openBlockers
+          .map((f) => `[${f.severity.toUpperCase()}] ${f.title} — ${f.file}:${f.line}`)
+          .join("\n  ");
+        throw new Error(
+          `Cannot deploy with ${openBlockers.length} open CRITICAL/HIGH finding(s):\n  ${blockerList}\nFix or accept all CRITICAL/HIGH findings before deploying.`
+        );
+      }
+    }
+
     state.phase = newPhase;
     this.addEvent(state, newPhase, null, "phase_change", `Phase → ${newPhase}`);
     this.write(state);
@@ -294,6 +314,7 @@ export class StateManager {
   updateConfig(partial: Partial<ProjectState["config"]>): ProjectState {
     const state = this.read();
     state.config = { ...state.config, ...partial };
+    this.addEvent(state, state.phase, null, "config_update", `Config updated: ${Object.keys(partial).join(", ")}`);
     this.write(state);
     return state;
   }
@@ -427,6 +448,7 @@ export class StateManager {
     const existing = new Set(slice.files);
     for (const f of files) existing.add(f);
     slice.files = [...existing];
+    this.addEvent(state, state.phase, sliceId, "files_updated", `${files.length} file(s) updated on ${sliceId}`);
     this.write(state);
   }
 
