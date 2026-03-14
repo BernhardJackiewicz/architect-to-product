@@ -5,7 +5,19 @@ import { handleInitProject } from "../../src/tools/init-project.js";
 import { handleSetArchitecture } from "../../src/tools/set-architecture.js";
 import { StateManager } from "../../src/state/state-manager.js";
 import { ProjectStateSchema } from "../../src/state/validators.js";
-import { makeTmpDir, cleanTmpDir, parse, walkSliceToStatus, addPassingTests, addSastEvidence } from "../helpers/setup.js";
+import { makeTmpDir, cleanTmpDir, parse, walkSliceToStatus, addPassingTests, addSastEvidence, forcePhase } from "../helpers/setup.js";
+import { readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+
+/** Set up project in deployment phase with deploy approval */
+function setDeployReady(dir: string): void {
+  forcePhase(dir, "deployment");
+  const statePath = join(dir, ".a2p", "state.json");
+  const raw = JSON.parse(readFileSync(statePath, "utf-8"));
+  raw.deployApprovalAt = new Date().toISOString();
+  raw.deployApprovalStateHash = "test";
+  writeFileSync(statePath, JSON.stringify(raw, null, 2), "utf-8");
+}
 
 function initWithArch(dir: string, overrides: Record<string, unknown> = {}) {
   handleInitProject({ projectPath: dir, projectName: "test-app" });
@@ -170,6 +182,7 @@ describe("Backup Integration", () => {
   describe("generate-deployment backup output", () => {
     it("stateful project → filesToGenerate includes backup.sh, restore.sh, backup-verify.sh, BACKUP.md", () => {
       initWithArch(tmpDir, { database: "PostgreSQL" });
+      setDeployReady(tmpDir);
       const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
       const files = result.deploymentGuide.filesToGenerate.join(" ");
       expect(files).toContain("backup.sh");
@@ -180,18 +193,21 @@ describe("Backup Integration", () => {
 
     it("stateful + postgres → backupGuide.dbCommand contains pg_dump", () => {
       initWithArch(tmpDir, { database: "PostgreSQL" });
+      setDeployReady(tmpDir);
       const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
       expect(result.deploymentGuide.backupGuide.dbCommand).toContain("pg_dump");
     });
 
     it("stateful + sqlite → backupGuide.restoreCommand contains Stop application", () => {
       initWithArch(tmpDir, { database: "SQLite" });
+      setDeployReady(tmpDir);
       const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
       expect(result.deploymentGuide.backupGuide.restoreCommand).toContain("Stop application");
     });
 
     it("stateless project → filesToGenerate includes backup.sh (deploy artifact), NO dbCommand in backupGuide", () => {
       initWithArch(tmpDir, { database: undefined });
+      setDeployReady(tmpDir);
       const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
       const files = result.deploymentGuide.filesToGenerate.join(" ");
       expect(files).toContain("backup.sh");
@@ -200,6 +216,7 @@ describe("Backup Integration", () => {
 
     it("backup required + not configured → backupWarning present", () => {
       initWithArch(tmpDir, { database: "PostgreSQL" });
+      setDeployReady(tmpDir);
       const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
       expect(result.deploymentGuide.backupWarning).toBeDefined();
       expect(result.deploymentGuide.backupWarning.stateful).toBe(true);
@@ -208,6 +225,7 @@ describe("Backup Integration", () => {
 
     it("MySQL → backup/restore commands use --defaults-file, NOT -p$DB_PASS", () => {
       initWithArch(tmpDir, { database: "MySQL" });
+      setDeployReady(tmpDir);
       const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
       expect(result.deploymentGuide.backupGuide.dbCommand).toContain("--defaults-file");
       expect(result.deploymentGuide.backupGuide.dbCommand).not.toContain("-p$");
@@ -259,7 +277,9 @@ describe("Backup Integration", () => {
       }]);
       sm.setPhase("building");
       walkSliceToStatus(sm, "s1", "done");
+      sm.setBuildSignoff();
       sm.setPhase("security");
+      sm.markFullSastRun(0);
       sm.setPhase("deployment");
 
       const state = sm.read();
@@ -283,7 +303,9 @@ describe("Backup Integration", () => {
       }]);
       sm.setPhase("building");
       walkSliceToStatus(sm, "s1", "done");
+      sm.setBuildSignoff();
       sm.setPhase("security");
+      sm.markFullSastRun(0);
       sm.setPhase("deployment");
 
       const state = sm.read();
@@ -308,6 +330,7 @@ describe("Backup Integration", () => {
 
     it("deployment generation without DB → no DB backup command in output", () => {
       initWithArch(tmpDir, { database: undefined });
+      setDeployReady(tmpDir);
       const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
       expect(result.deploymentGuide.backupGuide.dbCommand).toBeUndefined();
       expect(result.deploymentGuide.backupGuide.restoreCommand).toBeUndefined();

@@ -2,11 +2,11 @@
 
 MCP server that turns AI-generated code into production-ready software with TDD, security scanning, and deployment automation. Up to 100 times fewer exploration tokens for claude code.
 
-**18 MCP tools** · **696 tests** · **Architecture → Plan → Build → Audit → Security → Whitebox → Deploy**
+**20 MCP tools** · **729 tests** · **Architecture → Plan → Build → Audit → Security → Whitebox → Deploy**
 
 [![npm version](https://img.shields.io/npm/v/architect-to-product)](https://www.npmjs.com/package/architect-to-product)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Tests: 696 passing](https://img.shields.io/badge/tests-696%20passing-brightgreen)]()
+[![Tests: 729 passing](https://img.shields.io/badge/tests-729%20passing-brightgreen)]()
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue)]()
 
 ---
@@ -119,11 +119,16 @@ Set during onboarding via `a2p_set_architecture`:
 These cannot be bypassed — they are enforced in code, not just in prompts:
 
 - **Build gate**: Cannot leave building phase until all slices are `done`
+- **Build signoff gate**: Cannot proceed to security without human build signoff (`a2p_build_signoff`). Signoff is invalidated by any slice change or new test run — must re-signoff
 - **Evidence gates**: Cannot mark slice as `green` without passing tests, `sast` without SAST scan, `done` without passing tests
 - **Security gate**: Cannot deploy with open CRITICAL/HIGH SAST findings
+- **Full SAST gate**: Cannot deploy without at least one full SAST scan (`a2p_run_sast mode=full`)
 - **Whitebox gate**: Cannot deploy with blocking whitebox findings (confirmed exploitable auth/secrets/tenant issues)
 - **Audit gate**: Cannot deploy with critical release audit findings
+- **Deploy approval gate**: Cannot generate deployment configs without human deploy approval (`a2p_deploy_approval`). Approval is invalidated by new findings, whitebox results, or audit results — must re-approve
 - **Backup gate**: Stateful apps (database or uploads) trigger a warning when deploying without configured backup — visible in deploy approval and build history
+- **Phase guards**: Tools are restricted to appropriate phases (e.g. tests only in building, SAST full only in security, deployment only in deployment phase)
+- **Test command restriction**: Test command override blocked when a test command is configured — prevents fabricated test results
 
 ### Backup Strategy
 
@@ -299,7 +304,7 @@ Add to `.vscode/mcp.json`:
 }
 ```
 
-## MCP Tools (18)
+## MCP Tools (20)
 
 | Tool | Phase | Description |
 |------|-------|-------------|
@@ -319,8 +324,10 @@ Add to `.vscode/mcp.json`:
 | `a2p_run_audit` | 2,6 | Quality audit (dev hygiene) or release audit (pre-publish). Critical release findings block deployment |
 | `a2p_run_whitebox_audit` | 4 | Whitebox security audit — exploitability analysis of SAST findings (reachable paths, guards, trust boundaries). Blocking findings prevent deployment |
 | `a2p_run_active_verification` | 5 | Active verification — runtime gate tests (workflow gates, state recovery, deployment gates) |
+| `a2p_build_signoff` | 2 | Confirm build works (mandatory before security phase, code-enforced) |
+| `a2p_deploy_approval` | 7 | Approve deployment (mandatory before generating configs, code-enforced) |
 | `a2p_generate_deployment` | 7 | Stack-specific deployment guidance |
-| `a2p_get_checklist` | 7 | Pre/post-deployment verification checklist |
+| `a2p_get_checklist` | * | Pre/post-deployment verification checklist |
 
 ## Prompts (9)
 
@@ -449,7 +456,7 @@ git clone https://github.com/BernhardJackiewicz/architect-to-product.git
 cd architect-to-product
 npm install
 npm run typecheck   # Type checking
-npm test            # 696 tests
+npm test            # 729 tests
 npm run build       # Build
 npm run dev         # Dev mode
 ```

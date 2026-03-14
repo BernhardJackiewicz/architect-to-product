@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { handleRunTests } from "../../src/tools/run-tests.js";
 import { StateManager } from "../../src/state/state-manager.js";
-import { makeTmpDir, cleanTmpDir, parse, initWithSlices } from "../helpers/setup.js";
+import { makeTmpDir, cleanTmpDir, parse, initWithSlices, forcePhase } from "../helpers/setup.js";
 
 describe("handleRunTests", () => {
   let tmpDir: string;
@@ -9,6 +9,7 @@ describe("handleRunTests", () => {
   beforeEach(() => {
     tmpDir = makeTmpDir("a2p-runtests");
     initWithSlices(tmpDir, 1, { language: "Python", framework: "FastAPI", testStrategy: "pytest" });
+    forcePhase(tmpDir, "building");
   });
 
   afterEach(() => {
@@ -101,12 +102,12 @@ describe("handleRunTests", () => {
     expect(result.error).toBeTruthy();
   });
 
-  it("command parameter overrides config testCommand", () => {
-    // Set config testCommand to something that would fail
+  it("command parameter override is blocked when config testCommand is set", () => {
+    // Set config testCommand
     const sm = new StateManager(tmpDir);
     sm.updateConfig({ testCommand: "echo config_output" });
 
-    // Pass a different command as parameter
+    // Pass a different command as parameter — should be blocked
     const result = parse(
       handleRunTests({
         projectPath: tmpDir,
@@ -114,8 +115,7 @@ describe("handleRunTests", () => {
         command: "echo override_output",
       })
     );
-    expect(result.output).toContain("override_output");
-    expect(result.output).not.toContain("config_output");
+    expect(result.error).toContain("override not allowed");
   });
 
   it("test result is stored in state", () => {

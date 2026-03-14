@@ -21,6 +21,8 @@ import { getBuildLogSchema, handleGetBuildLog } from "./tools/get-build-log.js";
 import { runAuditSchema, handleRunAudit } from "./tools/run-audit.js";
 import { runWhiteboxAuditSchema, handleRunWhiteboxAudit } from "./tools/run-whitebox-audit.js";
 import { runActiveVerificationSchema, handleRunActiveVerification } from "./tools/run-active-verification.js";
+import { buildSignoffSchema, handleBuildSignoff } from "./tools/build-signoff.js";
+import { deployApprovalSchema, handleDeployApproval } from "./tools/deploy-approval.js";
 
 // Prompts
 import { ONBOARDING_PROMPT } from "./prompts/onboarding.js";
@@ -280,6 +282,26 @@ export function createServer(): McpServer {
       categories: runActiveVerificationSchema.shape.categories,
     },
     wrapTool(handleRunActiveVerification as ToolHandler)
+  );
+
+  server.tool(
+    "a2p_build_signoff",
+    "Confirm build signoff — human verified the product works (mandatory before security phase)",
+    {
+      projectPath: buildSignoffSchema.shape.projectPath,
+      note: buildSignoffSchema.shape.note,
+    },
+    wrapTool(handleBuildSignoff as ToolHandler)
+  );
+
+  server.tool(
+    "a2p_deploy_approval",
+    "Approve deployment — human confirmed ready to deploy (mandatory before generating deployment configs)",
+    {
+      projectPath: deployApprovalSchema.shape.projectPath,
+      note: deployApprovalSchema.shape.note,
+    },
+    wrapTool(handleDeployApproval as ToolHandler)
   );
 
   // ===== PROMPTS =====

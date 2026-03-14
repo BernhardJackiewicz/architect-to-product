@@ -298,6 +298,12 @@ export const ProjectStateSchema = z.object({
   backupStatus: BackupStatusSchema.default({
     configured: false,
   }),
+  lastFullSastAt: z.string().nullable().default(null),
+  lastFullSastFindingCount: z.number().int().min(0).default(0),
+  buildSignoffAt: z.string().nullable().default(null),
+  buildSignoffSliceHash: z.string().nullable().default(null),
+  deployApprovalAt: z.string().nullable().default(null),
+  deployApprovalStateHash: z.string().nullable().default(null),
   createdAt: z.string(),
   updatedAt: z.string(),
 });

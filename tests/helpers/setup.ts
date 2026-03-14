@@ -5,7 +5,8 @@ import { StateManager } from "../../src/state/state-manager.js";
 import { handleInitProject } from "../../src/tools/init-project.js";
 import { handleSetArchitecture } from "../../src/tools/set-architecture.js";
 import { handleCreateBuildPlan } from "../../src/tools/create-build-plan.js";
-import type { TestResult } from "../../src/state/types.js";
+import type { TestResult, Phase } from "../../src/state/types.js";
+import { readFileSync, writeFileSync } from "node:fs";
 
 /** Create a temporary directory for test isolation. */
 export function makeTmpDir(prefix = "a2p-test"): string {
@@ -61,6 +62,17 @@ export function walkSliceToStatus(
     if (step === "done") addPassingTests(sm, sliceId);
     sm.setSliceStatus(sliceId, step);
   }
+}
+
+/**
+ * Force a phase directly in state file (bypasses transition checks).
+ * TEST ONLY — for setting up test preconditions.
+ */
+export function forcePhase(dir: string, phase: Phase): void {
+  const statePath = join(dir, ".a2p", "state.json");
+  const state = JSON.parse(readFileSync(statePath, "utf-8"));
+  state.phase = phase;
+  writeFileSync(statePath, JSON.stringify(state, null, 2), "utf-8");
 }
 
 /** Initialize a project with a basic architecture (no slices). */

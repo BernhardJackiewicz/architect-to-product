@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { requireProject, truncate } from "../utils/tool-helpers.js";
+import { requireProject, requirePhase, truncate } from "../utils/tool-helpers.js";
 import { runProcess } from "../utils/process-runner.js";
 import { generateRunId, sanitizeOutput, truncatePreview } from "../utils/log-sanitizer.js";
 import type { EventMetadata } from "../state/types.js";
@@ -25,6 +25,15 @@ export function handleRunTests(input: RunTestsInput): string {
   if (error) return error;
 
   const state = sm.read();
+  try { requirePhase(state.phase, ["building"], "a2p_run_tests"); }
+  catch (err) { return JSON.stringify({ error: err instanceof Error ? err.message : String(err) }); }
+
+  // Block test command override when a test command is configured
+  if (input.command && state.config.testCommand) {
+    return JSON.stringify({
+      error: `Test command override not allowed. Configured: "${state.config.testCommand}". Remove the command parameter to use the configured test command.`,
+    });
+  }
   const testCommand = input.command ?? state.config.testCommand;
 
   if (!testCommand) {

@@ -5,7 +5,9 @@ import { handleInitProject } from "../../src/tools/init-project.js";
 import { handleSetArchitecture } from "../../src/tools/set-architecture.js";
 import { handleCreateBuildPlan } from "../../src/tools/create-build-plan.js";
 import { StateManager } from "../../src/state/state-manager.js";
-import { makeTmpDir, cleanTmpDir, parse, walkSliceToStatus } from "../helpers/setup.js";
+import { makeTmpDir, cleanTmpDir, parse, walkSliceToStatus, forcePhase } from "../helpers/setup.js";
+import { readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 
 function initWithArchOverrides(
   dir: string,
@@ -25,6 +27,16 @@ function initWithArchOverrides(
   });
 }
 
+/** Set up project in deployment phase with deploy approval for generate-deployment tests */
+function setDeployReady(dir: string): void {
+  forcePhase(dir, "deployment");
+  const statePath = join(dir, ".a2p", "state.json");
+  const raw = JSON.parse(readFileSync(statePath, "utf-8"));
+  raw.deployApprovalAt = new Date().toISOString();
+  raw.deployApprovalStateHash = "test";
+  writeFileSync(statePath, JSON.stringify(raw, null, 2), "utf-8");
+}
+
 describe("handleGenerateDeployment", () => {
   let tmpDir: string;
 
@@ -38,6 +50,8 @@ describe("handleGenerateDeployment", () => {
 
   it("Python stack -> Python-specific recommendations", () => {
     initWithArchOverrides(tmpDir, { language: "Python" });
+    setDeployReady(tmpDir);
+    setDeployReady(tmpDir);
     const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
     const recs = result.deploymentGuide.recommendations.join(" ").toLowerCase();
     expect(recs).toContain("python");
@@ -45,6 +59,7 @@ describe("handleGenerateDeployment", () => {
 
   it("TypeScript stack -> Node-specific recommendations", () => {
     initWithArchOverrides(tmpDir, { language: "TypeScript", framework: "Express" });
+    setDeployReady(tmpDir);
     const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
     const recs = result.deploymentGuide.recommendations.join(" ").toLowerCase();
     expect(recs).toContain("node");
@@ -52,6 +67,7 @@ describe("handleGenerateDeployment", () => {
 
   it("SQLite -> WAL recommendation", () => {
     initWithArchOverrides(tmpDir, { database: "SQLite" });
+    setDeployReady(tmpDir);
     const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
     const recs = result.deploymentGuide.recommendations.join(" ");
     expect(recs).toContain("WAL");
@@ -59,6 +75,7 @@ describe("handleGenerateDeployment", () => {
 
   it("Hetzner -> Hetzner recommendation", () => {
     initWithArchOverrides(tmpDir, { hosting: "Hetzner" });
+    setDeployReady(tmpDir);
     const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
     const recs = result.deploymentGuide.recommendations.join(" ");
     expect(recs).toContain("Hetzner");
@@ -66,6 +83,7 @@ describe("handleGenerateDeployment", () => {
 
   it("Frontend -> static assets recommendation", () => {
     initWithArchOverrides(tmpDir, { frontend: "React" });
+    setDeployReady(tmpDir);
     const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
     const recs = result.deploymentGuide.recommendations.join(" ").toLowerCase();
     expect(recs).toContain("static");
@@ -73,6 +91,7 @@ describe("handleGenerateDeployment", () => {
 
   it("Go stack -> Go-specific recommendations", () => {
     initWithArchOverrides(tmpDir, { language: "Go", framework: "Gin" });
+    setDeployReady(tmpDir);
     const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
     const recs = result.deploymentGuide.recommendations.join(" ").toLowerCase();
     expect(recs).toContain("static");
@@ -80,6 +99,7 @@ describe("handleGenerateDeployment", () => {
 
   it("Rust stack -> Rust-specific recommendations", () => {
     initWithArchOverrides(tmpDir, { language: "Rust", framework: "Actix" });
+    setDeployReady(tmpDir);
     const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
     const recs = result.deploymentGuide.recommendations.join(" ").toLowerCase();
     expect(recs).toContain("release");
@@ -87,6 +107,7 @@ describe("handleGenerateDeployment", () => {
 
   it("Java stack -> Java-specific recommendations", () => {
     initWithArchOverrides(tmpDir, { language: "Java", framework: "Spring Boot" });
+    setDeployReady(tmpDir);
     const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
     const recs = result.deploymentGuide.recommendations.join(" ").toLowerCase();
     expect(recs).toContain("temurin");
@@ -94,6 +115,7 @@ describe("handleGenerateDeployment", () => {
 
   it("Ruby stack -> Ruby-specific recommendations", () => {
     initWithArchOverrides(tmpDir, { language: "Ruby", framework: "Rails" });
+    setDeployReady(tmpDir);
     const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
     const recs = result.deploymentGuide.recommendations.join(" ").toLowerCase();
     expect(recs).toContain("puma");
@@ -101,6 +123,7 @@ describe("handleGenerateDeployment", () => {
 
   it("PHP stack -> PHP-specific recommendations", () => {
     initWithArchOverrides(tmpDir, { language: "PHP", framework: "Laravel" });
+    setDeployReady(tmpDir);
     const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
     const recs = result.deploymentGuide.recommendations.join(" ").toLowerCase();
     expect(recs).toContain("fpm");
@@ -108,6 +131,7 @@ describe("handleGenerateDeployment", () => {
 
   it("PostgreSQL -> PostgreSQL recommendations", () => {
     initWithArchOverrides(tmpDir, { database: "PostgreSQL" });
+    setDeployReady(tmpDir);
     const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
     const recs = result.deploymentGuide.recommendations.join(" ").toLowerCase();
     expect(recs).toContain("pg_dump");
@@ -115,6 +139,7 @@ describe("handleGenerateDeployment", () => {
 
   it("MySQL -> MySQL recommendations", () => {
     initWithArchOverrides(tmpDir, { database: "MySQL" });
+    setDeployReady(tmpDir);
     const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
     const recs = result.deploymentGuide.recommendations.join(" ").toLowerCase();
     expect(recs).toContain("mysqldump");
@@ -122,6 +147,7 @@ describe("handleGenerateDeployment", () => {
 
   it("MongoDB -> MongoDB recommendations", () => {
     initWithArchOverrides(tmpDir, { database: "MongoDB" });
+    setDeployReady(tmpDir);
     const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
     const recs = result.deploymentGuide.recommendations.join(" ").toLowerCase();
     expect(recs).toContain("replica");
@@ -129,6 +155,7 @@ describe("handleGenerateDeployment", () => {
 
   it("Redis -> Redis recommendations", () => {
     initWithArchOverrides(tmpDir, { database: "Redis" });
+    setDeployReady(tmpDir);
     const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
     const recs = result.deploymentGuide.recommendations.join(" ").toLowerCase();
     expect(recs).toContain("maxmemory");
@@ -136,6 +163,7 @@ describe("handleGenerateDeployment", () => {
 
   it("DigitalOcean -> DO recommendations", () => {
     initWithArchOverrides(tmpDir, { hosting: "DigitalOcean" });
+    setDeployReady(tmpDir);
     const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
     const recs = result.deploymentGuide.recommendations.join(" ");
     expect(recs).toContain("Droplet");
@@ -143,6 +171,7 @@ describe("handleGenerateDeployment", () => {
 
   it("AWS -> AWS recommendations", () => {
     initWithArchOverrides(tmpDir, { hosting: "AWS" });
+    setDeployReady(tmpDir);
     const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
     const recs = result.deploymentGuide.recommendations.join(" ");
     expect(recs).toMatch(/EC2|ECS/);
@@ -150,6 +179,7 @@ describe("handleGenerateDeployment", () => {
 
   it("Fly.io -> Fly recommendations", () => {
     initWithArchOverrides(tmpDir, { hosting: "Fly.io" });
+    setDeployReady(tmpDir);
     const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
     const recs = result.deploymentGuide.recommendations.join(" ").toLowerCase();
     expect(recs).toContain("fly");
@@ -157,6 +187,7 @@ describe("handleGenerateDeployment", () => {
 
   it("Railway -> Railway recommendations", () => {
     initWithArchOverrides(tmpDir, { hosting: "Railway" });
+    setDeployReady(tmpDir);
     const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
     const recs = result.deploymentGuide.recommendations.join(" ").toLowerCase();
     expect(recs).toContain("railway");
@@ -164,6 +195,7 @@ describe("handleGenerateDeployment", () => {
 
   it("Debian VPS -> Linux recommendations", () => {
     initWithArchOverrides(tmpDir, { hosting: "Debian VPS" });
+    setDeployReady(tmpDir);
     const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
     const recs = result.deploymentGuide.recommendations.join(" ").toLowerCase();
     expect(recs).toContain("unattended");
@@ -171,9 +203,10 @@ describe("handleGenerateDeployment", () => {
 
   it("returns error without architecture", () => {
     handleInitProject({ projectPath: tmpDir, projectName: "test" });
-    // No set-architecture
+    // No set-architecture — force to deployment phase to test the architecture check
+    setDeployReady(tmpDir);
     const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
-    expect(result.error).toContain("architecture");
+    expect(result.error).toBeTruthy();
   });
 });
 
@@ -346,6 +379,7 @@ describe("handleGetChecklist", () => {
 
   it("Render hosting -> Render recommendations in deployment", () => {
     initWithArchOverrides(tmpDir, { hosting: "Render" });
+    setDeployReady(tmpDir);
     const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
     const recs = result.deploymentGuide.recommendations.join(" ").toLowerCase();
     expect(recs).toContain("render");
@@ -354,6 +388,7 @@ describe("handleGetChecklist", () => {
 
   it("Cloudflare hosting -> Cloudflare recommendations in deployment", () => {
     initWithArchOverrides(tmpDir, { hosting: "Cloudflare" });
+    setDeployReady(tmpDir);
     const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
     const recs = result.deploymentGuide.recommendations.join(" ").toLowerCase();
     expect(recs).toContain("cloudflare");

@@ -108,7 +108,9 @@ describe("handleCompletePhase", () => {
     const sm = new StateManager(tmpDir);
     sm.setPhase("building");
     completeSlice(sm, "s01");
+    sm.setBuildSignoff();
     sm.setPhase("security");
+    sm.markFullSastRun(0);
     sm.setPhase("deployment");
 
     const result = parse(handleCompletePhase({ projectPath: tmpDir }));
@@ -125,7 +127,9 @@ describe("handleCompletePhase", () => {
     const sm = new StateManager(tmpDir);
     sm.setPhase("building");
     completeSlice(sm, "s01");
+    sm.setBuildSignoff();
     sm.setPhase("security");
+    sm.markFullSastRun(0);
     sm.setPhase("deployment");
 
     const result = parse(handleCompletePhase({ projectPath: tmpDir }));
@@ -146,7 +150,9 @@ describe("handleCompletePhase", () => {
     const sm = new StateManager(tmpDir);
     sm.setPhase("building");
     completeSlice(sm, "s01");
+    sm.setBuildSignoff();
     sm.setPhase("security");
+    sm.markFullSastRun(0);
     sm.setPhase("deployment");
 
     // Complete phase 0 → go to phase 1
@@ -171,7 +177,9 @@ describe("handleCompletePhase", () => {
 
     sm.setPhase("building");
     completeSlice(sm, "s02");
+    sm.setBuildSignoff();
     sm.setPhase("security");
+    sm.markFullSastRun(0);
     sm.setPhase("deployment");
 
     const result = parse(handleCompletePhase({ projectPath: tmpDir }));

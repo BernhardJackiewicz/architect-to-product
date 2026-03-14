@@ -107,7 +107,9 @@ describe("StateManager", () => {
       sm.init("test", tmpDir);
       sm.setPhase("planning");
       sm.setPhase("building");
+      sm.setBuildSignoff();
       sm.setPhase("security");
+      sm.markFullSastRun(0);
       sm.setPhase("deployment");
       sm.setPhase("complete");
       expect(() => sm.setPhase("onboarding")).toThrow("Cannot transition");
@@ -647,7 +649,9 @@ describe("StateManager", () => {
       sm.init("test", tmpDir);
       sm.setPhase("planning");
       sm.setPhase("building");
+      sm.setBuildSignoff();
       sm.setPhase("security");
+      sm.markFullSastRun(0);
       sm.setPhase("deployment");
       const state = sm.setPhase("planning");
       expect(state.phase).toBe("planning");

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { makeTmpDir, cleanTmpDir, parse, initWithFindings, initWithStateManager, walkSliceToStatus, addPassingTests } from "../helpers/setup.js";
+import { makeTmpDir, cleanTmpDir, parse, initWithFindings, initWithStateManager, walkSliceToStatus, addPassingTests, forcePhase } from "../helpers/setup.js";
 import { handleRunActiveVerification } from "../../src/tools/run-active-verification.js";
 import { StateManager } from "../../src/state/state-manager.js";
 
@@ -16,6 +16,7 @@ describe("run-active-verification", () => {
 
   it("generates workflow gate tests", () => {
     initWithFindings(dir);
+    forcePhase(dir, "security");
     const result = parse(handleRunActiveVerification({ projectPath: dir, round: 1 }));
     expect(result.success).toBe(true);
     expect(result.testsRun).toBeGreaterThan(0);
@@ -23,6 +24,7 @@ describe("run-active-verification", () => {
 
   it("detects missing test evidence for green transition", () => {
     initWithStateManager(dir);
+    forcePhase(dir, "security");
     const result = parse(handleRunActiveVerification({
       projectPath: dir,
       round: 1,
@@ -35,6 +37,7 @@ describe("run-active-verification", () => {
 
   it("detects missing SAST evidence for sast transition", () => {
     initWithStateManager(dir);
+    forcePhase(dir, "security");
     const result = parse(handleRunActiveVerification({
       projectPath: dir,
       round: 1,
@@ -46,6 +49,7 @@ describe("run-active-verification", () => {
 
   it("detects deployment gate bypass with critical SAST", () => {
     initWithFindings(dir);
+    forcePhase(dir, "security");
     const result = parse(handleRunActiveVerification({
       projectPath: dir,
       round: 1,
@@ -58,6 +62,7 @@ describe("run-active-verification", () => {
 
   it("detects deployment gate bypass with blocking whitebox findings", () => {
     initWithStateManager(dir);
+    forcePhase(dir, "security");
     const result = parse(handleRunActiveVerification({
       projectPath: dir,
       round: 1,
@@ -70,6 +75,7 @@ describe("run-active-verification", () => {
 
   it("passes when all gates function correctly", () => {
     initWithStateManager(dir);
+    forcePhase(dir, "security");
     const result = parse(handleRunActiveVerification({ projectPath: dir, round: 1 }));
     expect(result.success).toBe(true);
     // Most gate tests should pass since the state manager enforces them
@@ -78,6 +84,7 @@ describe("run-active-verification", () => {
 
   it("filters by categories parameter", () => {
     initWithStateManager(dir);
+    forcePhase(dir, "security");
     const allResult = parse(handleRunActiveVerification({ projectPath: dir, round: 1 }));
     const gatesOnly = parse(handleRunActiveVerification({
       projectPath: dir,
@@ -89,6 +96,7 @@ describe("run-active-verification", () => {
 
   it("round 3 + blocking findings → requires_human_review=true", () => {
     const sm = initWithStateManager(dir);
+    forcePhase(dir, "security");
     // Add a whitebox result with blocking findings to make deployment gate test meaningful
     sm.addWhiteboxResult({
       id: "WBA-PRE",
@@ -127,6 +135,7 @@ describe("run-active-verification", () => {
 
   it("round 1-2 + blocking → requires_human_review=false", () => {
     initWithStateManager(dir);
+    forcePhase(dir, "security");
     const result = parse(handleRunActiveVerification({
       projectPath: dir,
       round: 1,
@@ -136,6 +145,7 @@ describe("run-active-verification", () => {
 
   it("stores ActiveVerificationResult in state", () => {
     initWithStateManager(dir);
+    forcePhase(dir, "security");
     handleRunActiveVerification({ projectPath: dir, round: 1 });
     const sm = new StateManager(dir);
     const state = sm.read();
@@ -145,6 +155,7 @@ describe("run-active-verification", () => {
 
   it("increments IDs (AVR-001, AVR-002)", () => {
     initWithStateManager(dir);
+    forcePhase(dir, "security");
     handleRunActiveVerification({ projectPath: dir, round: 1 });
     handleRunActiveVerification({ projectPath: dir, round: 2 });
     const sm = new StateManager(dir);
@@ -156,6 +167,7 @@ describe("run-active-verification", () => {
 
   it("records build event in history", () => {
     initWithStateManager(dir);
+    forcePhase(dir, "security");
     handleRunActiveVerification({ projectPath: dir, round: 1 });
     const sm = new StateManager(dir);
     const state = sm.read();
@@ -165,6 +177,7 @@ describe("run-active-verification", () => {
 
   it("state recovery: round-trip save/load", () => {
     initWithStateManager(dir);
+    forcePhase(dir, "security");
     const result = parse(handleRunActiveVerification({
       projectPath: dir,
       round: 1,
@@ -183,6 +196,7 @@ describe("run-active-verification", () => {
     for (const slice of sm.read().slices) {
       walkSliceToStatus(sm, slice.id, "done");
     }
+    sm.setBuildSignoff();
     sm.setPhase("security");
 
     // Add blocking whitebox result
@@ -211,6 +225,7 @@ describe("run-active-verification", () => {
       blocking_count: 1,
     });
 
+    sm.markFullSastRun(0);
     expect(() => sm.setPhase("deployment")).toThrow(/blocking whitebox/i);
   });
 
@@ -222,7 +237,9 @@ describe("run-active-verification", () => {
     for (const slice of sm.read().slices) {
       walkSliceToStatus(sm, slice.id, "done");
     }
+    sm.setBuildSignoff();
     sm.setPhase("security");
+    sm.markFullSastRun(0);
     // No whitebox results at all — should pass
     expect(() => sm.setPhase("deployment")).not.toThrow();
   });

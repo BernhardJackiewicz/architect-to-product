@@ -175,7 +175,9 @@ describe("handleCreateBuildPlan", () => {
     sm.setPhase("building");
     walkSliceToStatus(sm, "s01", "done");
     walkSliceToStatus(sm, "s02", "done");
+    sm.setBuildSignoff();
     sm.setPhase("security");
+    sm.markFullSastRun(0);
     sm.setPhase("deployment");
 
     const result = parse(
@@ -208,7 +210,9 @@ describe("handleCreateBuildPlan", () => {
     const sm = new StateManager(tmpDir);
     sm.setPhase("building");
     walkSliceToStatus(sm, "s01", "done");
+    sm.setBuildSignoff();
     sm.setPhase("security");
+    sm.markFullSastRun(0);
     sm.setPhase("deployment");
 
     // s03 depends on s01 (existing) — should work
@@ -232,7 +236,9 @@ describe("handleCreateBuildPlan", () => {
     const sm = new StateManager(tmpDir);
     sm.setPhase("building");
     walkSliceToStatus(sm, "s01", "done");
+    sm.setBuildSignoff();
     sm.setPhase("security");
+    sm.markFullSastRun(0);
     sm.setPhase("deployment");
 
     const result = parse(

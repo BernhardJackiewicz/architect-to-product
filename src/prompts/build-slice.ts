@@ -261,7 +261,10 @@ Bestätige mit OK, dann geht's weiter mit Refactoring → Security → Deploy."
 
 3. → **STOP. Warte auf explizite Bestätigung.**
 4. **Auch wenn der User vorher "mach alles" gesagt hat — dieser Checkpoint ist NICHT verhandelbar.**
-5. Erst nach Bestätigung: Weiter zur Refactoring-Phase (a2p_refactor Prompt)
+5. Nach Bestätigung: Rufe \`a2p_build_signoff\` auf mit einer kurzen note (z.B. "User hat App getestet, Happy Path funktioniert").
+6. Erst danach: Weiter zur Refactoring-Phase (a2p_refactor Prompt)
+
+**Wichtig:** Ohne \`a2p_build_signoff\` kann die Security-Phase nicht gestartet werden — das ist ein Code-enforced Gate.
 
 ## Integration-Slices (type: "integration")
 Wenn ein Slice eine externe Library/Service/API integriert:

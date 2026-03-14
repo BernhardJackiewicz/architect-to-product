@@ -3,7 +3,7 @@ import { writeFileSync, mkdirSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
 import { StateManager } from "../../src/state/state-manager.js";
 import { handleRunAudit } from "../../src/tools/run-audit.js";
-import { makeTmpDir, parse, initWithStateManager, walkSliceToStatus } from "../helpers/setup.js";
+import { makeTmpDir, parse, initWithStateManager, walkSliceToStatus, forcePhase } from "../helpers/setup.js";
 import type { AuditResult } from "../../src/state/types.js";
 
 describe("a2p_run_audit", () => {
@@ -22,6 +22,7 @@ describe("a2p_run_audit", () => {
   // 2. Quality: detects TODO in source files
   it("detects TODO comments as LOW findings", () => {
     initWithStateManager(dir);
+    forcePhase(dir, "building");
     mkdirSync(join(dir, "src"), { recursive: true });
     writeFileSync(join(dir, "src/app.ts"), "// TODO: fix this later\nconst x = 1;\n");
 
@@ -35,6 +36,7 @@ describe("a2p_run_audit", () => {
   // 3. Quality: detects console.log
   it("detects console.log as MEDIUM finding", () => {
     initWithStateManager(dir);
+    forcePhase(dir, "building");
     mkdirSync(join(dir, "src"), { recursive: true });
     writeFileSync(join(dir, "src/debug.ts"), "console.log('debug output');\n");
 
@@ -47,6 +49,7 @@ describe("a2p_run_audit", () => {
   // 4. Quality: detects missing .gitignore entries
   it("detects missing .gitignore entries as MEDIUM", () => {
     initWithStateManager(dir);
+    forcePhase(dir, "building");
     writeFileSync(join(dir, ".gitignore"), "# empty\n");
 
     const result = parse(handleRunAudit({ projectPath: dir, mode: "quality", runBuild: false, runTests: false }));
@@ -58,6 +61,7 @@ describe("a2p_run_audit", () => {
   // 5. Quality: detects committed .env
   it("detects committed .env as HIGH finding", () => {
     initWithStateManager(dir);
+    forcePhase(dir, "building");
     writeFileSync(join(dir, ".env"), "SECRET=abc123\n");
 
     const result = parse(handleRunAudit({ projectPath: dir, mode: "quality", runBuild: false, runTests: false }));
@@ -69,6 +73,7 @@ describe("a2p_run_audit", () => {
   // 6. Release: detects missing README
   it("detects missing README in release mode as HIGH", () => {
     initWithStateManager(dir);
+    forcePhase(dir, "security");
 
     const result = parse(handleRunAudit({ projectPath: dir, mode: "release", runBuild: false, runTests: false }));
     const readmeFindings = result.findings.filter((f: any) => f.category === "missing_readme");
@@ -79,6 +84,7 @@ describe("a2p_run_audit", () => {
   // 7. Release: aggregates open SAST findings from state
   it("aggregates open SAST findings in release mode", () => {
     const sm = initWithStateManager(dir);
+    forcePhase(dir, "security");
     sm.addSASTFinding("s1", {
       id: "SG-001",
       tool: "semgrep",
@@ -101,6 +107,7 @@ describe("a2p_run_audit", () => {
   // 8. Release: reports low test coverage ratio
   it("reports low test-to-source ratio", () => {
     initWithStateManager(dir);
+    forcePhase(dir, "building");
     // Create 5 source files, 0 test files
     mkdirSync(join(dir, "src"), { recursive: true });
     for (let i = 0; i < 5; i++) {
@@ -116,6 +123,7 @@ describe("a2p_run_audit", () => {
   // 9. Build/test: buildPassed/testsPassed correct when disabled
   it("reports null for build/test when disabled", () => {
     initWithStateManager(dir);
+    forcePhase(dir, "building");
 
     const result = parse(handleRunAudit({ projectPath: dir, mode: "quality", runBuild: false, runTests: false }));
     expect(result.buildPassed).toBeNull();
@@ -125,6 +133,7 @@ describe("a2p_run_audit", () => {
   // 10. Skips build/test when no command configured
   it("skips build/test when no command configured", () => {
     initWithStateManager(dir);
+    forcePhase(dir, "building");
 
     const result = parse(handleRunAudit({ projectPath: dir, mode: "quality", runBuild: true, runTests: true }));
     // No build/test command configured → null
@@ -135,6 +144,7 @@ describe("a2p_run_audit", () => {
   // 11. Records audit in state
   it("records audit result in state", () => {
     initWithStateManager(dir);
+    forcePhase(dir, "building");
 
     handleRunAudit({ projectPath: dir, mode: "quality", runBuild: false, runTests: false });
 
@@ -151,8 +161,10 @@ describe("a2p_run_audit", () => {
   // 12. Audit ID increments
   it("increments audit IDs", () => {
     initWithStateManager(dir);
+    forcePhase(dir, "building");
 
     handleRunAudit({ projectPath: dir, mode: "quality", runBuild: false, runTests: false });
+    forcePhase(dir, "security");
     handleRunAudit({ projectPath: dir, mode: "release", runBuild: false, runTests: false });
 
     const sm = new StateManager(dir);
@@ -165,6 +177,7 @@ describe("a2p_run_audit", () => {
   // 13. Does NOT flag console.error/console.warn as debug artifacts
   it("does not flag console.error or console.warn", () => {
     initWithStateManager(dir);
+    forcePhase(dir, "building");
     mkdirSync(join(dir, "src"), { recursive: true });
     writeFileSync(join(dir, "src/handler.ts"), "console.error('fatal');\nconsole.warn('warning');\n");
 
@@ -178,6 +191,7 @@ describe("a2p_run_audit", () => {
   // 14. Returns all findings (no truncation)
   it("returns all findings without truncation", () => {
     initWithStateManager(dir);
+    forcePhase(dir, "building");
     mkdirSync(join(dir, "src"), { recursive: true });
     // Create file with 40 TODO lines
     const lines = Array.from({ length: 40 }, (_, i) => `// TODO: item ${i}`).join("\n");
@@ -192,6 +206,7 @@ describe("a2p_run_audit", () => {
   // 15. Skips symlinks in file collection
   it("skips symlinks during file collection", () => {
     initWithStateManager(dir);
+    forcePhase(dir, "building");
     mkdirSync(join(dir, "src"), { recursive: true });
     writeFileSync(join(dir, "src/real.ts"), "const x = 1;\n");
     try {
@@ -218,12 +233,14 @@ describe("Deployment gate: audit critical findings block deploy", () => {
     const sm = initWithStateManager(dir, 1);
 
     // Walk slice to done
+    sm.setPhase("planning");
+    sm.setPhase("building");
     walkSliceToStatus(sm, "s1", "done");
 
     // Transition to security phase
-    sm.setPhase("planning");
-    sm.setPhase("building");
+    sm.setBuildSignoff();
     sm.setPhase("security");
+    sm.markFullSastRun(0);
 
     // Add a release audit with critical findings
     const auditResult: AuditResult = {
@@ -247,10 +264,12 @@ describe("Deployment gate: audit critical findings block deploy", () => {
   it("allows deployment when last release audit has no critical findings", () => {
     const sm = initWithStateManager(dir, 1);
 
-    walkSliceToStatus(sm, "s1", "done");
     sm.setPhase("planning");
     sm.setPhase("building");
+    walkSliceToStatus(sm, "s1", "done");
+    sm.setBuildSignoff();
     sm.setPhase("security");
+    sm.markFullSastRun(0);
 
     // Add a clean release audit
     const auditResult: AuditResult = {
@@ -272,10 +291,12 @@ describe("Deployment gate: audit critical findings block deploy", () => {
   it("ignores quality-mode audits for deployment gate", () => {
     const sm = initWithStateManager(dir, 1);
 
-    walkSliceToStatus(sm, "s1", "done");
     sm.setPhase("planning");
     sm.setPhase("building");
+    walkSliceToStatus(sm, "s1", "done");
+    sm.setBuildSignoff();
     sm.setPhase("security");
+    sm.markFullSastRun(0);
 
     // Add a quality audit with critical findings — should NOT block deployment
     const auditResult: AuditResult = {

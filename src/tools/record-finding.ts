@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { requireProject } from "../utils/tool-helpers.js";
+import { requireProject, requirePhase } from "../utils/tool-helpers.js";
 import type { SASTFinding } from "../state/types.js";
 
 export const recordFindingSchema = z.object({
@@ -22,8 +22,11 @@ export function handleRecordFinding(input: RecordFindingInput): string {
   const { sm, error } = requireProject(input.projectPath);
   if (error) return error;
 
-  // Check for ID collision
   const state = sm.read();
+  try { requirePhase(state.phase, ["building", "security", "deployment"], "a2p_record_finding"); }
+  catch (err) { return JSON.stringify({ error: err instanceof Error ? err.message : String(err) }); }
+
+  // Check for ID collision
   const existingIds = new Set(
     state.slices.flatMap((s) => s.sastFindings).map((f) => f.id)
   );

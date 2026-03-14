@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { requireProject } from "../utils/tool-helpers.js";
+import { requireProject, requirePhase } from "../utils/tool-helpers.js";
 import type { ProjectState } from "../state/types.js";
 
 export const updateSliceSchema = z.object({
@@ -21,6 +21,8 @@ export function handleUpdateSlice(input: UpdateSliceInput): string {
   if (error) return error;
 
   try {
+    const currentState = sm.read();
+    requirePhase(currentState.phase, ["building"], "a2p_update_slice");
     const state = sm.setSliceStatus(input.sliceId, input.status);
     const slice = state.slices.find((s) => s.id === input.sliceId)!;
 

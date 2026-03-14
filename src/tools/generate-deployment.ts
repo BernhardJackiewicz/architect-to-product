@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { requireProject } from "../utils/tool-helpers.js";
+import { requireProject, requirePhase } from "../utils/tool-helpers.js";
 
 export const generateDeploymentSchema = z.object({
   projectPath: z.string().describe("Absolute path to the project directory"),
@@ -16,8 +16,17 @@ export function handleGenerateDeployment(input: GenerateDeploymentInput): string
   if (error) return error;
 
   const state = sm.read();
+  try { requirePhase(state.phase, ["deployment"], "a2p_generate_deployment"); }
+  catch (err) { return JSON.stringify({ error: err instanceof Error ? err.message : String(err) }); }
+
   if (!state.architecture) {
     return JSON.stringify({ error: "No architecture set." });
+  }
+
+  if (!state.deployApprovalAt) {
+    return JSON.stringify({
+      error: "Deploy approval required. Call a2p_deploy_approval first.",
+    });
   }
 
   const tech = state.architecture.techStack;

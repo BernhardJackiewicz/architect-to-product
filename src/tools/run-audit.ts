@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { existsSync, readFileSync, readdirSync, lstatSync } from "node:fs";
 import { join, extname } from "node:path";
-import { requireProject, truncate } from "../utils/tool-helpers.js";
+import { requireProject, requirePhase, truncate } from "../utils/tool-helpers.js";
 import { runProcess } from "../utils/process-runner.js";
 import { generateRunId } from "../utils/log-sanitizer.js";
 import type { AuditFinding, AuditResult, FindingSeverity } from "../state/types.js";
@@ -31,6 +31,15 @@ export function handleRunAudit(input: RunAuditInput): string {
 
   const auditStart = Date.now();
   const state = sm.read();
+  try {
+    if (input.mode === "quality") {
+      requirePhase(state.phase, ["building"], "a2p_run_audit mode=quality");
+    } else {
+      requirePhase(state.phase, ["security", "deployment"], "a2p_run_audit mode=release");
+    }
+  } catch (err) {
+    return JSON.stringify({ error: err instanceof Error ? err.message : String(err) });
+  }
   const findings: AuditFinding[] = [];
 
   // --- Grep-based checks (both modes) ---

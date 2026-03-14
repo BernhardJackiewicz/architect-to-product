@@ -1,4 +1,5 @@
 import { StateManager } from "../state/state-manager.js";
+import type { Phase } from "../state/types.js";
 
 const NO_PROJECT_ERROR = JSON.stringify({
   error: "No project found. Run a2p_init_project first.",
@@ -14,6 +15,19 @@ export function requireProject(projectPath: string): { sm: StateManager; error?:
     return { error: NO_PROJECT_ERROR };
   }
   return { sm };
+}
+
+/** Throw if the current phase is not in the allowed list */
+export function requirePhase(
+  currentPhase: Phase,
+  allowedPhases: Phase[],
+  toolName: string,
+): void {
+  if (!allowedPhases.includes(currentPhase)) {
+    throw new Error(
+      `${toolName} can only be used in phases: ${allowedPhases.join(", ")}. Current phase: ${currentPhase}`
+    );
+  }
 }
 
 /** Truncate a string to maxLen characters, appending a truncation notice. */

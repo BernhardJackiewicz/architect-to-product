@@ -5,7 +5,7 @@ import { handleCreateBuildPlan } from "../../src/tools/create-build-plan.js";
 import { handleCompletePhase } from "../../src/tools/complete-phase.js";
 import { handleUpdateSlice } from "../../src/tools/update-slice.js";
 import { handleRecordFinding } from "../../src/tools/record-finding.js";
-import { makeTmpDir, initWithStateManager, addPassingTests, addSastEvidence, walkSliceToStatus } from "../helpers/setup.js";
+import { makeTmpDir, initWithStateManager, addPassingTests, addSastEvidence, walkSliceToStatus, forcePhase } from "../helpers/setup.js";
 
 // ─── StateManager new methods ───────────────────────────────────────────────
 
@@ -448,7 +448,9 @@ describe("Security gate: setPhase(deployment) blocks on open CRITICAL/HIGH", () 
     sm.setPhase("planning");
     sm.setPhase("building");
     walkSliceToStatus(sm, "s1", "done");
+    sm.setBuildSignoff();
     sm.setPhase("security");
+    sm.markFullSastRun(0);
   });
 
   it("throws when open CRITICAL finding exists", () => {
@@ -536,6 +538,7 @@ describe("update-slice: file tracking persistence", () => {
   beforeEach(() => {
     dir = makeTmpDir("a2p-hardening");
     initWithStateManager(dir, 1);
+    forcePhase(dir, "building");
   });
 
   it("persists files across multiple updates", () => {
@@ -562,6 +565,7 @@ describe("record-finding: hardening", () => {
   beforeEach(() => {
     dir = makeTmpDir("a2p-hardening");
     initWithStateManager(dir, 1);
+    forcePhase(dir, "building");
   });
 
   it("rejects duplicate finding ID", () => {
