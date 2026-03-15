@@ -7,3 +7,6 @@ dist/
 .DS_Store
 *.tsbuildinfo
 .a2p/
+log/
+*-report.xml
+.claude/agent-memory/
