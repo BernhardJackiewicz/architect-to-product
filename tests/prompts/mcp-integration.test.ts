@@ -692,6 +692,39 @@ describe("Anthropic engineering patterns in build-slice", () => {
     expect(explorePos).toBeLessThan(tddPos);
   });
 
+  it("has slice spec section between EXPLORE and RED", () => {
+    const specPos = BUILD_SLICE_PROMPT.indexOf("Slice-Spezifikation");
+    const redPos = BUILD_SLICE_PROMPT.indexOf("### Phase RED");
+    const exploreEnd = BUILD_SLICE_PROMPT.indexOf("Evidence-Driven Development Cycle");
+    expect(specPos).toBeGreaterThan(-1);
+    expect(specPos).toBeLessThan(redPos);
+    expect(specPos).toBeLessThan(exploreEnd);
+  });
+
+  it("slice spec requires spec-test-mapping and initial-rot-hypothese", () => {
+    const specPos = BUILD_SLICE_PROMPT.indexOf("Slice-Spezifikation");
+    const redPos = BUILD_SLICE_PROMPT.indexOf("### Phase RED");
+    const section = BUILD_SLICE_PROMPT.slice(specPos, redPos);
+    expect(section).toContain("Spec-Test-Mapping");
+    expect(section).toContain("Initial-Rot-Hypothese");
+    expect(section).toContain("Minimale grüne Änderung");
+  });
+
+  it("summary template includes TDD-Abweichungen and Spec-Test-Mapping", () => {
+    const summaryPos = BUILD_SLICE_PROMPT.indexOf("Nach jedem abgeschlossenen Slice");
+    const checkpointPos = BUILD_SLICE_PROMPT.indexOf("Checkpoint nach Slice-Completion");
+    const section = BUILD_SLICE_PROMPT.slice(summaryPos, checkpointPos);
+    expect(section).toContain("Spec-Test-Mapping");
+    expect(section).toContain("TDD-Abweichungen");
+  });
+
+  it("invariants section separates code-enforced from prompt-guided", () => {
+    const invPos = BUILD_SLICE_PROMPT.indexOf("## Invarianten");
+    const section = BUILD_SLICE_PROMPT.slice(invPos);
+    expect(section).toContain("Code-enforced");
+    expect(section).toContain("Prompt-guided");
+  });
+
   it("has scope-lock section that prevents feature creep", () => {
     expect(BUILD_SLICE_PROMPT).toContain("Scope-Lock");
     expect(BUILD_SLICE_PROMPT).toContain("Keine neuen Features im GREEN");

@@ -52,6 +52,16 @@ Wenn der Slice Fachlogik enthält (Berechnungen, Steuersätze, rechtliche Regeln
 2. Wenn unklar → Rückfrage an den Menschen
 3. Dokumentiere recherchierte Fakten als Kommentar in den Tests
 
+## Slice-Spezifikation — PFLICHT vor RED
+
+Bevor du Tests oder Code schreibst, halte die Slice-Spezifikation fest (Prompt-Guidance, nicht code-enforced):
+
+1. **Spec-Test-Mapping**: Liste welche Tests du schreiben wirst und welche Akzeptanzkriterien sie abdecken
+2. **Initial-Rot-Hypothese**: Was soll fehlschlagen, bevor die Implementation beginnt?
+3. **Minimale grüne Änderung**: Was ist die kleinstmögliche Änderung, die alle Tests grün macht?
+
+Gib diese Spezifikation als kurzen Block aus, bevor du in die RED-Phase gehst. Das ist kein Code-Gate — aber es macht die Absicht prüfbar und verhindert, dass Tests erst nachträglich an eine fertige Implementation angepasst werden.
+
 ## Evidence-Driven Development Cycle
 
 Die Reihenfolge RED → GREEN → REFACTOR → SAST ist durch Evidence-Gates im Code abgesichert: green erfordert passing Tests, sast erfordert einen SAST-Scan, done erfordert passing Tests. Die chronologische Test-First-Reihenfolge innerhalb einer Phase ist Prompt-Guidance — der Code kann nicht prüfen, ob Tests vor der Implementation geschrieben wurden.
@@ -180,11 +190,17 @@ Erstelle eine kurze Zusammenfassung:
 **Akzeptanzkriterien:**
 - [Was der Slice laut Plan können soll]
 
+**Spec-Test-Mapping:**
+- [Welche Tests decken welche Akzeptanzkriterien ab]
+
 **Tests prüfen:**
 - [Konkrete Testfälle mit Beispielwerten]
 
 **Implementiertes Verhalten:**
 - [Was tatsächlich gebaut wurde, inkl. Annahmen und Einschränkungen]
+
+**TDD-Abweichungen:**
+- [Falls Tests nicht vor der Implementation geschrieben wurden: welche und warum. "Keine" wenn test-first eingehalten]
 
 **Recherchierte Fakten:**
 - [Falls WebSearch genutzt wurde: Quellen und verifizierte Werte]
@@ -325,9 +341,14 @@ Bevor ein Slice als "done" markiert wird — prüfe ob die Tests gegen **echte S
 **Regel:** Wenn alle Tests nur gegen Mocks laufen, markiere den Slice als **teilfertig** in der Summary und benenne explizit was für echtes Done noch fehlt. Markiere ihn NICHT stillschweigend als done.
 
 ## Invarianten
-- NIEMALS Tests und Implementation gleichzeitig schreiben
+**Code-enforced (harte Gates):**
 - NIEMALS einen Slice als "done" markieren ohne grüne Tests
+- NIEMALS einen Slice als "green" markieren ohne passing Tests
+- NIEMALS einen Slice als "sast" markieren ohne SAST-Scan
 - NIEMALS Security-Findings ignorieren
+
+**Prompt-guided (nicht code-enforced, aber wichtig):**
+- Tests und Implementation getrennt schreiben — nicht gleichzeitig. Wenn das nicht eingehalten wurde: in der Summary als TDD-Abweichung dokumentieren
 - NIEMALS einen UI-/Integration-Slice als done markieren wenn nur Mocks getestet wurden
 - Scope bleibt auf aktuellem Slice — Erweiterungen werden neue Slices
 - Bei jedem Fehler: Hypothese → Test → Fix → Verify (Debugging-Workflow)
