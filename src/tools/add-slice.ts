@@ -8,8 +8,8 @@ export const addSliceSchema = z.object({
     id: z.string().describe("Unique slice ID"),
     name: z.string().describe("Human-readable name"),
     description: z.string().describe("What this slice implements"),
-    acceptanceCriteria: z.array(z.string()).describe("When is this slice done?"),
-    testStrategy: z.string().describe("How to test this slice"),
+    acceptanceCriteria: z.array(z.string()).min(1).describe("When is this slice done? At least one concrete, testable criterion"),
+    testStrategy: z.string().min(1).describe("How to test this slice: name the happy-path test, key error cases, and whether integration/real-service tests are needed"),
     dependencies: z.array(z.string()).describe("IDs of slices this depends on"),
     type: z.enum(["feature", "integration", "infrastructure"]).optional().describe("Slice type (default: feature)"),
     productPhaseId: z.string().optional().describe("Product phase this slice belongs to"),
@@ -99,6 +99,7 @@ export function handleAddSlice(input: AddSliceInput): string {
       totalSlices: state.slices.length + 1,
       currentSlicePreserved: true,
       nextStep: `Slice "${newSlice.name}" added at position ${state.slices.length + 1}. Continue building current slice.`,
+      testHint: "When building this slice: define happy-path test, key error cases, and integration/real-service tests before writing code.",
     });
   }
 
@@ -140,5 +141,6 @@ export function handleAddSlice(input: AddSliceInput): string {
     currentSlicePreserved: true,
     insertedBeforeCurrentSlice: insertIndex + 1 <= previousIndex,
     nextStep: `Slice "${newSlice.name}" inserted after "${input.insertAfterSliceId}" at position ${insertIndex + 2}.`,
+    testHint: "When building this slice: define happy-path test, key error cases, and integration/real-service tests before writing code.",
   });
 }

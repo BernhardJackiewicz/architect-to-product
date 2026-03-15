@@ -35,8 +35,12 @@ Orientierung:
 - Kreisabhängigkeiten sind VERBOTEN
 
 ### 4. Jeder Slice braucht
-- **Akzeptanzkriterien**: Wann ist der Slice "done"? (Konkret, testbar)
-- **Test-Strategie**: Welche Tests? (Unit, Integration, E2E)
+- **Akzeptanzkriterien** (min. 1, konkret und testbar): Wann ist der Slice "done"?
+- **Test-Strategie** (strukturiert, nicht nur ein Wort):
+  - Wichtigster Happy-Path-Test: was muss funktionieren?
+  - Wesentliche Fehlerfälle: was darf nicht passieren? (z.B. ungültige Eingabe, fehlende Auth, Timeout)
+  - Falls \`type: "integration"\` oder \`hasUI: true\`: mindestens ein realer Service-/Nutzerfluss-Test benennen (nicht nur Mocks)
+  - Done-Maßstab: was muss grün sein, damit der Slice wirklich fertig ist?
 - **securityNotes**: Welche Security-Aspekte sind relevant? (Auth, Input Validation, Secrets)
 - **deployImpact**: Was ändert sich am Deployment? (neue Env Vars, Migrations, Services)
 
