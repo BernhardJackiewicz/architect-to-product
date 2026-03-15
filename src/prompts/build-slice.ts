@@ -80,6 +80,16 @@ Nutze den test-writer Subagent (.claude/agents/test-writer.md) für Kontext-Isol
 
 **Schreibe KEINE Implementation in dieser Phase!**
 
+### RED-Nachschärfung — PFLICHT vor GREEN
+Bevor du zu GREEN wechselst, prüfe die geschriebenen Tests gegen die Akzeptanzkriterien:
+
+1. **Abdeckung**: Gibt es für jedes Akzeptanzkriterium mindestens einen Test?
+2. **Fehlerfälle**: Ist mindestens ein wesentlicher Fehlerfall getestet (ungültige Eingabe, fehlende Auth, Timeout)?
+3. **Mock-Realismus**: Falls \`type: "integration"\` oder \`hasUI: true\` — gibt es mindestens einen Test der über reine Mocks hinausgeht?
+4. **Lücke gefunden?** → Tests ergänzen und erneut \`a2p_run_tests\` ausführen, bevor zu GREEN gewechselt wird.
+
+Gib das Prüfungsergebnis als kurzen Block aus (1-3 Zeilen: "Alle ACs abgedeckt, Fehlerfall X getestet, kein Mock-Problem" oder "Ergänzt: Fehlerfall Y fehlte").
+
 ### Phase GREEN: Minimale Implementation
 **Ziel**: Tests grün machen mit minimalem Code.
 
