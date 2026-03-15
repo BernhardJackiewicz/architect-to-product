@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { handleSetArchitecture } from "../../src/tools/set-architecture.js";
+import { handleSetArchitecture, inferPlatform } from "../../src/tools/set-architecture.js";
 import { handleInitProject } from "../../src/tools/init-project.js";
 import { StateManager } from "../../src/state/state-manager.js";
 import { OversightConfigSchema } from "../../src/state/validators.js";
@@ -587,4 +587,121 @@ describe("handleSetArchitecture", () => {
     });
     expect(result.uiVerification).toBe(true);
   });
+
+  // ─── Platform auto-detection ──────────────────────────────────────────
+
+  it("auto-detects mobile for Flutter", () => {
+    const result = parse(
+      handleSetArchitecture({
+        projectPath: tmpDir,
+        ...baseInput,
+        framework: "Flutter",
+        language: "Dart",
+      })
+    );
+    expect(result.success).toBe(true);
+    const sm = new StateManager(tmpDir);
+    expect(sm.read().architecture?.techStack.platform).toBe("mobile");
+  });
+
+  it("auto-detects mobile for React Native", () => {
+    const result = parse(
+      handleSetArchitecture({
+        projectPath: tmpDir,
+        ...baseInput,
+        framework: "React Native",
+        language: "TypeScript",
+      })
+    );
+    expect(result.success).toBe(true);
+    const sm = new StateManager(tmpDir);
+    expect(sm.read().architecture?.techStack.platform).toBe("mobile");
+  });
+
+  it("auto-detects mobile for Swift without frontend", () => {
+    const result = parse(
+      handleSetArchitecture({
+        projectPath: tmpDir,
+        ...baseInput,
+        language: "Swift",
+        framework: "SwiftUI",
+      })
+    );
+    const sm = new StateManager(tmpDir);
+    expect(sm.read().architecture?.techStack.platform).toBe("mobile");
+  });
+
+  it("auto-detects cross-platform for Electron", () => {
+    const result = parse(
+      handleSetArchitecture({
+        projectPath: tmpDir,
+        ...baseInput,
+        framework: "Electron",
+        language: "TypeScript",
+      })
+    );
+    const sm = new StateManager(tmpDir);
+    expect(sm.read().architecture?.techStack.platform).toBe("cross-platform");
+  });
+
+  it("auto-detects backend-only for FastAPI without frontend", () => {
+    const result = parse(
+      handleSetArchitecture({ projectPath: tmpDir, ...baseInput })
+    );
+    const sm = new StateManager(tmpDir);
+    expect(sm.read().architecture?.techStack.platform).toBe("backend-only");
+  });
+
+  it("auto-detects web when frontend is set", () => {
+    const result = parse(
+      handleSetArchitecture({
+        projectPath: tmpDir,
+        ...baseInput,
+        frontend: "React",
+      })
+    );
+    const sm = new StateManager(tmpDir);
+    expect(sm.read().architecture?.techStack.platform).toBe("web");
+  });
+
+  it("user-provided platform overrides auto-detection", () => {
+    const result = parse(
+      handleSetArchitecture({
+        projectPath: tmpDir,
+        ...baseInput,
+        platform: "cross-platform",
+      })
+    );
+    expect(result.success).toBe(true);
+    const sm = new StateManager(tmpDir);
+    expect(sm.read().architecture?.techStack.platform).toBe("cross-platform");
+  });
+
+  it("platform null backward-compat: old state without platform loads fine", () => {
+    // Set architecture without platform (simulating old state)
+    handleSetArchitecture({ projectPath: tmpDir, ...baseInput });
+    const sm = new StateManager(tmpDir);
+    const state = sm.read();
+    // Platform should be auto-detected, not null
+    expect(state.architecture?.techStack.platform).toBeDefined();
+  });
+});
+
+describe("inferPlatform", () => {
+  it("Flutter → mobile", () => expect(inferPlatform("Flutter", "Dart", null)).toBe("mobile"));
+  it("React Native → mobile", () => expect(inferPlatform("React Native", "TypeScript", null)).toBe("mobile"));
+  it("SwiftUI → mobile", () => expect(inferPlatform("SwiftUI", "Swift", null)).toBe("mobile"));
+  it("Jetpack Compose → mobile", () => expect(inferPlatform("Jetpack Compose", "Kotlin", null)).toBe("mobile"));
+  it("Kotlin without frontend (non-server fw) → mobile", () => expect(inferPlatform("custom-fw", "Kotlin", null)).toBe("mobile"));
+  it("Kotlin with Ktor (server fw) → backend-only", () => expect(inferPlatform("Ktor", "Kotlin", null)).toBe("backend-only"));
+  it("Kotlin with Spring Boot → backend-only", () => expect(inferPlatform("Spring Boot", "Kotlin", null)).toBe("backend-only"));
+  it("Kotlin with Spring + React → web", () => expect(inferPlatform("Spring Boot", "Kotlin", "React")).toBe("web"));
+  it("Swift with Vapor (server fw) → backend-only", () => expect(inferPlatform("Vapor", "Swift", null)).toBe("backend-only"));
+  it("Electron → cross-platform", () => expect(inferPlatform("Electron", "TypeScript", null)).toBe("cross-platform"));
+  it("Tauri → cross-platform", () => expect(inferPlatform("Tauri", "Rust", null)).toBe("cross-platform"));
+  it("Express without frontend → backend-only", () => expect(inferPlatform("Express", "TypeScript", null)).toBe("backend-only"));
+  it("FastAPI without frontend → backend-only", () => expect(inferPlatform("FastAPI", "Python", null)).toBe("backend-only"));
+  it("Django without frontend → backend-only", () => expect(inferPlatform("Django", "Python", null)).toBe("backend-only"));
+  it("Next.js with React → web", () => expect(inferPlatform("Next.js", "TypeScript", "React")).toBe("web"));
+  it("Express with React → web", () => expect(inferPlatform("Express", "TypeScript", "React")).toBe("web"));
 });

@@ -74,6 +74,36 @@ Wenn der Filesystem MCP konfiguriert ist:
 - Nutze \`write_file\` für konsistente Dateinamen
 - Nutze \`list_directory\` um bestehende Artefakte zu prüfen
 
+## Mobile E2E Testing (wenn platform = mobile / cross-platform)
+Prüfe \`a2p_get_state\` → \`architecture.techStack.platform\`. Wenn "mobile" oder "cross-platform":
+
+Mobile E2E ist **toolchain-dependent** und unterscheidet sich grundlegend von Web E2E:
+
+### Was A2P tut
+- A2P orchestriert den TDD-Workflow und trackt Test-Ergebnisse via \`a2p_run_tests\`
+- Der konfigurierte \`testCommand\` führt die mobilen E2E-Tests aus (z.B. \`flutter test integration_test/\`)
+
+### Was A2P NICHT bereitstellt
+- Kein Emulator / Simulator / physisches Device — muss lokal oder in CI vorhanden sein
+- Kein Xcode / Android Studio / Flutter SDK — Toolchain ist Projekt-Prerequisite
+- Kein Playwright für Mobile — Mobile E2E nutzt framework-eigene Testtools
+
+### Framework-spezifische E2E-Patterns
+- **Flutter**: \`flutter test integration_test/\` mit \`IntegrationTestWidgetsFlutterBinding\`
+- **React Native**: Detox, Maestro oder Appium — projektspezifisch konfigurieren
+- **Swift/SwiftUI**: XCUITest via \`xcodebuild test\`
+- **Kotlin/Compose**: Espresso oder Compose UI Testing via Gradle
+
+### Test-Empfehlungen für Mobile
+- Happy Path der Haupt-User-Journey (z.B. Login → Hauptbildschirm → Kernfunktion)
+- Offline-Verhalten / Netzwerk-Fehler (wenn relevant)
+- Device-Rotation / verschiedene Bildschirmgrössen
+- Permission-Dialoge (Kamera, Standort etc.)
+
+### Ergebnis
+Mobile E2E-Testergebnisse werden über \`a2p_run_tests\` erfasst und im State gespeichert.
+Der Exit-Code und (falls vom Framework unterstützt) Test-Counts werden automatisch geparst.
+
 ## Ergebnisse dokumentieren
 Rufe \`a2p_run_e2e\` auf mit allen Szenarien und Ergebnissen.
 

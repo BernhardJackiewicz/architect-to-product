@@ -34,22 +34,81 @@ export function handleGenerateDeployment(input: GenerateDeploymentInput): string
   const backupConfig = state.backupConfig;
   const hasDbTarget = backupConfig.targets.includes("database");
 
-  const filesToGenerate = [
-    "Dockerfile (multi-stage, non-root user)",
-    "docker-compose.prod.yml (app + reverse proxy, named volumes, log rotation, security_opt)",
-    "Caddyfile (HTTPS, security headers, path blocking for .env/.git/.db)",
-    ".env.production.example (all required env vars with placeholders)",
-    `scripts/backup.sh (${hasDbTarget ? "database + " : ""}deployment artifact backup with retention + manifest)`,
-    "scripts/restore.sh (restore from backup with verification)",
-    "scripts/backup-verify.sh (verify backup integrity + freshness)",
-    "ops/backup.env.example (backup config: paths, retention, offsite)",
-    "docs/BACKUP.md (strategy, schedule, restore, verification)",
+  // Determine if a server/backend deployment context exists
+  const platform = tech.platform;
+  const hasServerContext = platform !== "mobile" || !!tech.hosting || !!tech.database;
+
+  const filesToGenerate: string[] = [];
+  const securityHardening: string[] = [];
+
+  if (hasServerContext) {
+    filesToGenerate.push(
+      "Dockerfile (multi-stage, non-root user)",
+      "docker-compose.prod.yml (app + reverse proxy, named volumes, log rotation, security_opt)",
+      "Caddyfile (HTTPS, security headers, path blocking for .env/.git/.db)",
+      ".env.production.example (all required env vars with placeholders)",
+      `scripts/backup.sh (${hasDbTarget ? "database + " : ""}deployment artifact backup with retention + manifest)`,
+      "scripts/restore.sh (restore from backup with verification)",
+      "scripts/backup-verify.sh (verify backup integrity + freshness)",
+      "ops/backup.env.example (backup config: paths, retention, offsite)",
+      "docs/BACKUP.md (strategy, schedule, restore, verification)",
+    );
+
+    if (backupConfig.offsiteProvider !== "none") {
+      filesToGenerate.push(`scripts/backup-offsite.sh (sync to ${backupConfig.offsiteProvider})`);
+    }
+
+    securityHardening.push(
+      "Docker: read_only filesystem, no-new-privileges, cap_drop ALL",
+      "UFW/Docker patch: add iptables rules to /etc/ufw/after.rules",
+      "SSH: key-only auth, non-standard port, fail2ban",
+      "Docker logging: max-size 10m, max-file 5",
+      "Internal services: expose (not ports) — only reverse proxy is public",
+      "Secrets: Docker secrets or .env (never in image)",
+    );
+  }
+
+  // Always generate deployment docs
+  filesToGenerate.push(
     "docs/DEPLOYMENT.md (step-by-step deployment guide)",
     "docs/LAUNCH_CHECKLIST.md (pre-launch verification checklist)",
-  ];
+  );
 
-  if (backupConfig.offsiteProvider !== "none") {
-    filesToGenerate.push(`scripts/backup-offsite.sh (sync to ${backupConfig.offsiteProvider})`);
+  // Build response
+  const isMobilePlatform = platform === "mobile" || platform === "cross-platform";
+  const deploymentGuide: Record<string, unknown> = {
+    filesToGenerate,
+    ...(securityHardening.length > 0 ? { securityHardening } : {}),
+    recommendations: buildRecommendations(tech, hasServerContext),
+  };
+
+  // Backup guide only when server context exists
+  if (hasServerContext) {
+    deploymentGuide.backupGuide = {
+      config: backupConfig,
+      ...(hasDbTarget ? {
+        dbCommand: getBackupCommand(tech.database),
+        restoreCommand: getRestoreCommand(tech.database),
+      } : {}),
+      schedulerHint: getSchedulerHint(tech.hosting),
+      verifyHint: backupConfig.verifyAfterBackup
+        ? "After each backup: restore to temp, verify integrity."
+        : "Manual verification recommended.",
+      offsiteHint: getOffsiteHint(backupConfig.offsiteProvider),
+    };
+
+    if (backupConfig.required && !state.backupStatus.configured) {
+      deploymentGuide.backupWarning = {
+        message: "BACKUP REQUIRED but not configured. Stateful app — data loss risk.",
+        stateful: true,
+        missingTargets: backupConfig.targets,
+      };
+    }
+  }
+
+  // Mobile deployment note — guidance only, no artifact promises
+  if (isMobilePlatform) {
+    deploymentGuide.mobileDeploymentNote = "Mobile deployment is handled outside A2P via platform-specific toolchains (Xcode, Android Studio, flutter build, eas build). See recommendations for guidance. A2P does not generate mobile build scripts or store configs.";
   }
 
   return JSON.stringify({
@@ -60,38 +119,10 @@ export function handleGenerateDeployment(input: GenerateDeploymentInput): string
       slicesTotal: progress.totalSlices,
       openFindings: progress.openFindings,
     },
-    deploymentGuide: {
-      filesToGenerate,
-      securityHardening: [
-        "Docker: read_only filesystem, no-new-privileges, cap_drop ALL",
-        "UFW/Docker patch: add iptables rules to /etc/ufw/after.rules",
-        "SSH: key-only auth, non-standard port, fail2ban",
-        "Docker logging: max-size 10m, max-file 5",
-        "Internal services: expose (not ports) — only reverse proxy is public",
-        "Secrets: Docker secrets or .env (never in image)",
-      ],
-      recommendations: buildRecommendations(tech),
-      backupGuide: {
-        config: backupConfig,
-        ...(hasDbTarget ? {
-          dbCommand: getBackupCommand(tech.database),
-          restoreCommand: getRestoreCommand(tech.database),
-        } : {}),
-        schedulerHint: getSchedulerHint(tech.hosting),
-        verifyHint: backupConfig.verifyAfterBackup
-          ? "After each backup: restore to temp, verify integrity."
-          : "Manual verification recommended.",
-        offsiteHint: getOffsiteHint(backupConfig.offsiteProvider),
-      },
-      ...(backupConfig.required && !state.backupStatus.configured ? {
-        backupWarning: {
-          message: "BACKUP REQUIRED but not configured. Stateful app — data loss risk.",
-          stateful: true,
-          missingTargets: backupConfig.targets,
-        },
-      } : {}),
-    },
-    hint: "Generate these files dynamically based on the tech stack. Do NOT use templates — adapt to the specific project.",
+    deploymentGuide,
+    hint: hasServerContext
+      ? "Generate these files dynamically based on the tech stack. Do NOT use templates — adapt to the specific project."
+      : "This is a mobile/client project. Server deployment files are only needed if a backend is part of the architecture.",
   });
 }
 
@@ -101,34 +132,35 @@ function buildRecommendations(tech: {
   database: string | null;
   frontend: string | null;
   hosting: string | null;
-}): string[] {
+  platform?: string | null;
+}, hasServerContext: boolean): string[] {
   const recs: string[] = [];
 
-  // Language-specific
+  // Language-specific Docker/container recommendations — only for server deployments
   const lang = tech.language.toLowerCase();
-  if (lang.includes("python")) {
+  if (hasServerContext && lang.includes("python")) {
     recs.push("Use python:3.12-slim (not Alpine — wheel compatibility)");
     recs.push("Single Uvicorn worker with SQLite to avoid write contention");
     recs.push("Use uv for fast dependency installation");
-  } else if (lang.includes("typescript") || lang.includes("node")) {
+  } else if (hasServerContext && (lang.includes("typescript") || lang.includes("node"))) {
     recs.push("Multi-stage build: builder (npm ci) → production (copy node_modules)");
     recs.push("Use node:22-slim as base image");
-  } else if (lang.includes("go")) {
+  } else if (hasServerContext && lang.includes("go")) {
     recs.push("Multi-stage: golang:1.23 → scratch/distroless, CGO_ENABLED=0 for static binary");
     recs.push("Single static binary — no runtime dependencies needed");
-  } else if (lang.includes("rust")) {
+  } else if (hasServerContext && lang.includes("rust")) {
     recs.push("Multi-stage: rust:1.82 → debian:bookworm-slim, cargo build --release");
     recs.push("Strip binary with strip --strip-all to reduce image size");
-  } else if (lang.includes("java") || lang.includes("kotlin")) {
+  } else if (hasServerContext && (lang.includes("java") || lang.includes("kotlin"))) {
     recs.push("Multi-stage: eclipse-temurin:21 → temurin:21-jre (JRE only for production)");
     recs.push("Use Gradle/Maven layer caching for faster rebuilds");
-  } else if (lang.includes("ruby")) {
+  } else if (hasServerContext && lang.includes("ruby")) {
     recs.push("Use ruby:3.3-slim as base image");
     recs.push("bundle install --without development test, use Puma as app server");
-  } else if (lang.includes("php")) {
+  } else if (hasServerContext && lang.includes("php")) {
     recs.push("Use php:8.3-fpm + Caddy (simpler than nginx + php-fpm)");
     recs.push("composer install --no-dev, enable opcache for production performance");
-  } else if (lang.includes("c#") || lang.includes(".net") || lang.includes("csharp")) {
+  } else if (hasServerContext && (lang.includes("c#") || lang.includes(".net") || lang.includes("csharp"))) {
     recs.push("Multi-stage: mcr.microsoft.com/dotnet/sdk → aspnet runtime");
     recs.push("Use PublishTrimmed for smaller image size");
   }
@@ -195,6 +227,26 @@ function buildRecommendations(tech: {
   if (tech.frontend) {
     recs.push("Serve static assets directly from Caddy (not through the app)");
     recs.push("Enable gzip/zstd compression in Caddyfile");
+  }
+
+  // Mobile / cross-platform deployment recommendations
+  const fw = tech.framework.toLowerCase();
+  const platform = tech.platform;
+  const isMobilePlatform = platform === "mobile" || platform === "cross-platform";
+
+  if (isMobilePlatform) {
+    if (fw.includes("flutter")) {
+      recs.push("Backend → Docker-VPS (existing deployment). Mobile: `flutter build ios --release` / `flutter build apk --release`");
+      recs.push("Distribution: TestFlight (iOS) + Play Store Internal Testing (Android)");
+    } else if (fw.includes("react native") || fw.includes("expo")) {
+      recs.push("Backend → Docker-VPS (existing deployment). Mobile: `eas build` or `fastlane` for native builds");
+      recs.push("Distribution: TestFlight (iOS) + Play Store Internal Testing (Android)");
+    } else {
+      recs.push("Backend → Docker-VPS (existing deployment). Mobile: platform-specific release build");
+      recs.push("Distribution: TestFlight (iOS) + Play Store Internal Testing (Android)");
+    }
+    recs.push("Deploy backend first, configure API base URL, then distribute mobile builds");
+    recs.push("Backend + mobile versions must be compatible — API versioning recommended");
   }
 
   recs.push("Use UptimeRobot (free) for /health endpoint monitoring");

@@ -285,6 +285,27 @@ Wenn ein Slice eine externe Library/Service/API integriert:
 - Sind Library-Types nach aussen geleckt?
 - Gibt es unnötige Kopplungen?
 
+## External CLI Validators (KoSIT, veraPDF, Mustangproject etc.)
+Wenn ein Slice einen externen CLI-Validator integriert — behandle ihn wie einen Integration-Slice mit CLI-spezifischem TDD-Pattern.
+A2P orchestriert den TDD-Workflow. Die Validator-Toolchain (JAR, Binary, Config) muss im Projekt oder auf dem System vorhanden sein.
+
+### RED Phase:
+- **Availability prüfen**: Test der prüft ob der Validator aufrufbar ist (\`which validator\` / \`java -jar validator.jar --version\`)
+- **Reject-Cases zuerst**: Tests mit absichtlich ungültigen Inputs die der Validator ablehnen MUSS
+- **Accept-Cases**: Tests mit validen Inputs die der Validator akzeptieren MUSS
+- **Exit-Code / Output**: Tests die den Exit-Code UND die relevante Output-Struktur prüfen (nicht nur "Prozess lief")
+
+### GREEN Phase:
+- **Wrapper/Adapter-Pattern**: Eigene Funktion/Klasse die den Validator aufruft, Exit-Code + Output parst, und ein typisiertes Ergebnis zurückgibt
+- **Validator-Code NUR im Adapter** — Business-Logik ruft den Adapter auf, nie den Validator direkt
+- **Version pinnen**: Validator-Version als Konstante oder Config, nicht implizit "was immer installiert ist"
+- **Konfiguration externalisieren**: Validator-Pfad, Config-Dateien, Scenarios als Parameter, nicht hardcoded
+
+### REFACTOR Phase:
+- Ist der Adapter austauschbar (z.B. Validator-Version-Upgrade)?
+- Sind Validator-spezifische Types nach aussen geleckt?
+- Ist der Validator-Aufruf testbar ohne die echte Binary (für CI wo der Validator evtl. nicht installiert ist)?
+
 ## Invarianten
 - NIEMALS Tests und Implementation gleichzeitig schreiben
 - NIEMALS einen Slice als "done" markieren ohne grüne Tests

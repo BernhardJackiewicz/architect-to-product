@@ -101,6 +101,8 @@ export interface Architecture {
   uiDesign?: UIDesign; // UI description, wireframes, mockups
 }
 
+export type Platform = "web" | "mobile" | "cross-platform" | "backend-only";
+
 export interface TechStack {
   language: string;
   framework: string;
@@ -108,6 +110,7 @@ export interface TechStack {
   frontend: string | null;
   hosting: string | null;
   other: string[];
+  platform?: Platform | null;
 }
 
 export interface Slice {
