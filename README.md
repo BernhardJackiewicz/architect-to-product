@@ -2,11 +2,11 @@
 
 MCP server that turns AI-generated code into production-ready software with TDD, security scanning, and deployment automation. Up to 100 times fewer exploration tokens for claude code.
 
-**21 MCP tools** · **809 tests** · **Architecture → Plan → Build → Quality → Signoff → Security → Whitebox → Verify → Release Audit → Deploy → Backup**
+**21 MCP tools** · **837 tests** · **Architecture → Plan → Build (evidence-gated) → Quality Audit (cadence) → Signoff → Security → Whitebox → Verify → Release Audit → Deploy → Backup**
 
 [![npm version](https://img.shields.io/npm/v/architect-to-product)](https://www.npmjs.com/package/architect-to-product)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Tests: 809 passing](https://img.shields.io/badge/tests-809%20passing-brightgreen)]()
+[![Tests: 837 passing](https://img.shields.io/badge/tests-837%20passing-brightgreen)]()
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue)]()
 
 ---
@@ -212,9 +212,9 @@ Architecture + Oversight Config + Backup Inference
 Planning (vertical slices) ─── [planApproval? → STOP]
      │
      ▼
-Build (TDD loop per slice) ─── [sliceReview? → STOP after each slice]
+Build (evidence-gated slices) ─── [sliceReview? → STOP after each slice]
      │  ← [uiVerification? → STOP for UI screenshot review]
-     │  ← Quality Audit (every ~5-10 commits)
+     │  ← Quality Audit (cadence: every ~3 slices)
      ▼
 BUILD SIGNOFF [MANDATORY] ─── "Does the product actually work?"
      │
@@ -464,7 +464,7 @@ git clone https://github.com/BernhardJackiewicz/architect-to-product.git
 cd architect-to-product
 npm install
 npm run typecheck   # Type checking
-npm test            # 809 tests
+npm test            # 837 tests
 npm run build       # Build
 npm run dev         # Dev mode
 ```
