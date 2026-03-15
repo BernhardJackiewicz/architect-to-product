@@ -2,11 +2,11 @@
 
 MCP server that turns AI-generated code into production-ready software with TDD, security scanning, and deployment automation. Up to 100 times fewer exploration tokens for claude code.
 
-**21 MCP tools** · **759 tests** · **Architecture → Plan → Build → Quality → Signoff → Security → Whitebox → Verify → Release Audit → Deploy → Backup**
+**21 MCP tools** · **807 tests** · **Architecture → Plan → Build → Quality → Signoff → Security → Whitebox → Verify → Release Audit → Deploy → Backup**
 
 [![npm version](https://img.shields.io/npm/v/architect-to-product)](https://www.npmjs.com/package/architect-to-product)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Tests: 759 passing](https://img.shields.io/badge/tests-759%20passing-brightgreen)]()
+[![Tests: 807 passing](https://img.shields.io/badge/tests-807%20passing-brightgreen)]()
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue)]()
 
 ---
@@ -86,7 +86,8 @@ Most AI-generated — and human-built — architectures don't fail because the m
 - **Documentation first** — When the architecture uses unfamiliar tech (exotic auth, new ORMs, niche APIs), Claude reads the official docs via WebSearch + WebFetch instead of hallucinating API signatures. Enforced in every prompt, documented in CLAUDE.md
 - **Model preference** — Configure which Claude model does the programming (`opus`, `sonnet`, `haiku`). Default: opus (Claude Opus 4.6 with maximum effort). Stored in project config, referenced by all prompts
 - **Structured logging** — Build events with log levels, status, duration tracking, run correlation, secret redaction, and output previews. Filter build logs by level, run, phase, or errors
-- **Any stack** — Python, TypeScript, Go, Rust, Java, Ruby, PHP, C#, PostgreSQL, MySQL, MongoDB, Redis
+- **Any stack** — Python, TypeScript, Go, Rust, Java, Ruby, PHP, C#, Dart/Flutter, Swift — PostgreSQL, MySQL, MongoDB, Redis
+- **Mobile / cross-platform** — Platform-aware architecture (`mobile`, `cross-platform`, `backend-only`, `web`). Mobile checklist items (code signing, TestFlight, release hardening). Compliance items (GoBD, GDPR). External validator items (KoSIT, veraPDF). Multi-target deployment guidance (backend first, then mobile distribution). No false artifact promises — A2P orchestrates, toolchains are project-provided
 
 ## Human Oversight
 
@@ -320,7 +321,7 @@ Add to `.vscode/mcp.json`:
 | `a2p_complete_phase` | 7 | Complete current product phase, advance to next |
 | `a2p_get_state` | * | Read current project state (includes phase info) |
 | `a2p_update_slice` | 2 | Update slice status with review checkpoints and slice summaries |
-| `a2p_run_tests` | 2 | Execute test command, parse results (pytest/vitest/jest/go) |
+| `a2p_run_tests` | 2 | Execute test command, parse results (pytest/vitest/jest/go/flutter/dart/xctest/gradle) |
 | `a2p_run_quality` | 2.5 | Code quality analysis — dead code, redundancy, coupling metrics |
 | `a2p_run_e2e` | 2.6 | Record Playwright E2E test results |
 | `a2p_run_sast` | 2,3 | Static code analysis with Semgrep/Bandit, deduplicated findings |
@@ -383,7 +384,7 @@ You don't have to run the full pipeline. Each prompt works standalone — pick w
 
 | Category | Technologies |
 |----------|-------------|
-| **Languages** | Python, TypeScript/Node.js, Go, Rust, Java/Kotlin, Ruby, PHP, C#/.NET |
+| **Languages** | Python, TypeScript/Node.js, Go, Rust, Java/Kotlin, Ruby, PHP, C#/.NET, Dart/Flutter, Swift |
 | **Databases** | SQLite, PostgreSQL, MySQL/MariaDB, MongoDB, Redis |
 | **Hosting** | Hetzner, DigitalOcean, AWS, Fly.io, Railway, Vercel, Cloudflare, Render, any VPS |
 
@@ -398,7 +399,9 @@ You don't have to run the full pipeline. Each prompt works standalone — pick w
 | **Fly.io** | Recommendations (fly.toml, Volumes, TLS). Checklist items (app created, secrets set, TLS cert). |
 | **Render** | Recommendations (render.yaml Blueprint, Private Services). Checklist items (Blueprint deployed, health check, auto-deploy). |
 
-Docker VPS targets get full file generation guidance (Dockerfile, compose, Caddy, backup scripts). PaaS targets (Vercel, Railway, Cloudflare, Fly.io, Render) get stack-specific recommendations and deployment checklists — Claude generates the platform-specific config files based on these recommendations.
+| **Mobile** (Flutter, React Native) | Recommendations only: build commands, TestFlight/Play Store distribution, multi-target coordination (backend first, then mobile). No generated build scripts — mobile toolchains are project-provided. |
+
+Docker VPS targets get full file generation guidance (Dockerfile, compose, Caddy, backup scripts). PaaS targets (Vercel, Railway, Cloudflare, Fly.io, Render) get stack-specific recommendations and deployment checklists — Claude generates the platform-specific config files based on these recommendations. Mobile targets get deployment recommendations and checklists (code signing, release hardening, store submission) but no generated build scripts — A2P orchestrates, mobile toolchains (Xcode, Android Studio, Flutter SDK) are project-provided.
 
 ## Companion MCP Servers
 
@@ -461,7 +464,7 @@ git clone https://github.com/BernhardJackiewicz/architect-to-product.git
 cd architect-to-product
 npm install
 npm run typecheck   # Type checking
-npm test            # 759 tests
+npm test            # 807 tests
 npm run build       # Build
 npm run dev         # Dev mode
 ```
