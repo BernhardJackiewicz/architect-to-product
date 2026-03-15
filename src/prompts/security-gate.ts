@@ -113,6 +113,25 @@ Nutze OWASP als Leitfaden, aber priorisiere nach der Attack Surface aus Phase 0.
 - User-URLs validiert (kein internes Netzwerk)?
 - Kein unkontrolliertes URL-Fetching?
 
+## Phase 2b: Mobile / Desktop / Shipped-Binary Security (wenn platform = mobile / cross-platform)
+
+Prüfe \`a2p_get_state\` → \`architecture.techStack.platform\`. Wenn "mobile" oder "cross-platform":
+
+### Shipped Binary Security
+- **Keine Secrets in Client-Artefakten**: API keys, tokens, signing keys dürfen NICHT im App Bundle sein
+- **Secure Local Storage**: Sensible Daten nur in Keychain (iOS) / EncryptedSharedPreferences (Android) — nicht SharedPreferences / UserDefaults
+- **Certificate Pinning / TLS**: ATS (iOS) aktiviert, Android Network Security Config korrekt, kein trust-all-certs
+- **Deep Links / Intent Handling**: URL-Schemes und Intent-Filter validiert — kein Open Redirect über Deep Links
+
+### Release-Build Hardening
+- **Debug-Flags entfernt**: Kein debuggable=true, keine Dev-Endpoints, keine Test-Backdoors im Release-Build
+- **Obfuscation**: Flutter: --obfuscate + --split-debug-info, Android: R8/ProGuard enabled, iOS: Release-Config ohne Debug-Symbols
+- **Signing**: Release-Signing konfiguriert (nicht Debug-Key), Provisioning Profile für Distribution
+
+### Desktop-Spezifisch (wenn cross-platform mit Desktop)
+- **Release-Packaging**: Keine eingebetteten Secrets, Config-Dateien, Debug-Artefakte
+- **Code Signing / Notarization**: macOS Notarization, Windows Authenticode wenn Zielplattform es erfordert
+
 ## Phase 3: Findings dokumentieren
 Für JEDEN Fund rufe \`a2p_record_finding\` auf mit:
 - Severity (critical/high/medium/low)

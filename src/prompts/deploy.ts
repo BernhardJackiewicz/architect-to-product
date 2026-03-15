@@ -133,12 +133,35 @@ Frage den User:
 - "Hast du eine Domain? Wenn nicht, empfehle ich INWX oder Cloudflare."
 - Biete an, beim konkreten Deployment zu helfen (SSH-Befehle, DNS-Setup, CLI-Commands, etc.)
 
+## Multi-Target Deployment (Backend + Mobile/Desktop)
+Prüfe \`a2p_get_state\` → \`architecture.techStack.platform\`. Wenn "mobile" oder "cross-platform":
+
+Das Projekt hat sowohl einen Server-/Backend-Teil als auch einen Client-/Mobile-Teil. Diese werden GETRENNT deployed:
+
+### Deployment-Reihenfolge
+1. **Backend zuerst**: Server-Deployment über den oben gewählten Deploy-Pfad (Docker-VPS, Vercel, etc.)
+2. **API verifizieren**: Backend-Health-Check, API-Endpunkte erreichbar, Auth funktioniert
+3. **Client/Mobile danach**: Mobile-/Desktop-Builds mit der produktiven API-URL konfigurieren
+4. **API-Kompatibilität sicherstellen**: Backend und Client müssen kompatible API-Versionen verwenden — API-Versionierung empfohlen
+
+### Was A2P hier tut und was nicht
+- A2P generiert **Server-Deployment-Configs** (Dockerfile, docker-compose, etc.) für den Backend-Teil
+- A2P generiert **keine** Mobile-Build-Scripts, Fastlane-Configs, Store-Submissions oder Signing-Configs
+- Mobile-/Desktop-Distribution (TestFlight, Play Store, Notarization) erfolgt über projektspezifische Toolchains
+- Siehe \`a2p_generate_deployment\` → \`recommendations\` und \`mobileDeploymentNote\` für Guidance
+
+### Docs anpassen
+Die generierten \`docs/DEPLOYMENT.md\` und \`docs/LAUNCH_CHECKLIST.md\` sollten beide Pfade dokumentieren:
+- Server-Deployment-Schritte (konkret, mit Commands)
+- Client-/Mobile-Distribution-Schritte (Guidance, projektspezifisch auszufüllen)
+
 ## Multi-Phase Projekte
 Bei Multi-Phase-Projekten: Nach erfolgreichem Deployment \`a2p_complete_phase\` aufrufen,
 falls weitere Phasen ausstehen. Das bringt den Workflow zurück zur Planning-Phase für die nächste Phase.
 
 ## Wichtig
-- ALLE Dateien werden dynamisch generiert — nicht aus Templates kopiert
+- ALLE Server-Deployment-Dateien werden dynamisch generiert — nicht aus Templates kopiert
 - Jede Datei ist spezifisch für dieses Projekt und seinen Tech Stack
-- Teste lokal mit docker compose up vor dem Remote-Deployment
+- Teste lokal mit docker compose up vor dem Remote-Deployment (bei Server-Deployments)
+- Mobile-/Desktop-Releases sind NICHT Teil der A2P-Deployment-Generierung — A2P liefert Guidance, nicht Artefakte
 `;

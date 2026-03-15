@@ -143,4 +143,137 @@ describe("handleRunTests", () => {
     );
     expect(result.output).toContain("from_config");
   });
+
+  // ─── Flutter/Dart test output parsing ─────────────────────────────────
+
+  it("parses Flutter-style output (all passed)", () => {
+    const result = parse(
+      handleRunTests({
+        projectPath: tmpDir,
+        sliceId: "s01",
+        command: "echo '00:05 +10: All tests passed!'",
+      })
+    );
+    expect(result.passed).toBe(10);
+    expect(result.failed).toBe(0);
+    expect(result.skipped).toBe(0);
+  });
+
+  it("parses Flutter-style output (with failures)", () => {
+    const result = parse(
+      handleRunTests({
+        projectPath: tmpDir,
+        sliceId: "s01",
+        command: "printf '00:05 +8 -2: Some tests failed.'; exit 1",
+      })
+    );
+    expect(result.passed).toBe(8);
+    expect(result.failed).toBe(2);
+  });
+
+  it("parses Flutter-style output (with skipped)", () => {
+    const result = parse(
+      handleRunTests({
+        projectPath: tmpDir,
+        sliceId: "s01",
+        command: "echo '00:03 +7 ~2 -1: Some tests failed.'",
+      })
+    );
+    expect(result.passed).toBe(7);
+    expect(result.skipped).toBe(2);
+    expect(result.failed).toBe(1);
+  });
+
+  // ─── XCTest output parsing ────────────────────────────────────────────
+
+  it("parses XCTest-style output (all passed)", () => {
+    const result = parse(
+      handleRunTests({
+        projectPath: tmpDir,
+        sliceId: "s01",
+        command: "echo 'Executed 12 tests, with 0 failures (0 unexpected) in 1.234 (1.345) seconds'",
+      })
+    );
+    expect(result.passed).toBe(12);
+    expect(result.failed).toBe(0);
+  });
+
+  it("parses XCTest-style output (with failures)", () => {
+    const result = parse(
+      handleRunTests({
+        projectPath: tmpDir,
+        sliceId: "s01",
+        command: "printf 'Executed 10 tests, with 3 failures in 2.0 seconds'; exit 1",
+      })
+    );
+    expect(result.passed).toBe(7);
+    expect(result.failed).toBe(3);
+  });
+
+  // ─── Gradle/Kotlin output parsing ─────────────────────────────────────
+
+  it("parses Gradle-style output (with failures)", () => {
+    const result = parse(
+      handleRunTests({
+        projectPath: tmpDir,
+        sliceId: "s01",
+        command: "printf '15 tests completed, 2 failed'; exit 1",
+      })
+    );
+    expect(result.passed).toBe(13);
+    expect(result.failed).toBe(2);
+  });
+
+  it("parses Gradle-style output (all passed)", () => {
+    const result = parse(
+      handleRunTests({
+        projectPath: tmpDir,
+        sliceId: "s01",
+        command: "echo '8 tests completed, 0 failed'",
+      })
+    );
+    expect(result.passed).toBe(8);
+    expect(result.failed).toBe(0);
+  });
+
+  // ─── ANSI / carriage-return robustness ────────────────────────────────
+
+  it("parses Flutter output with ANSI escape codes", () => {
+    const result = parse(
+      handleRunTests({
+        projectPath: tmpDir,
+        sliceId: "s01",
+        command: "printf '\\033[32m+15\\033[0m: All tests passed!'",
+      })
+    );
+    expect(result.passed).toBe(15);
+    expect(result.failed).toBe(0);
+    expect(result.countsParsed).toBe(true);
+  });
+
+  it("parses Flutter output taking last count (not first +0)", () => {
+    const result = parse(
+      handleRunTests({
+        projectPath: tmpDir,
+        sliceId: "s01",
+        command: "printf '+0: loading\\n+10: All tests passed!'",
+      })
+    );
+    expect(result.passed).toBe(10);
+    expect(result.failed).toBe(0);
+    expect(result.countsParsed).toBe(true);
+  });
+
+  it("parses Flutter output with carriage returns", () => {
+    const result = parse(
+      handleRunTests({
+        projectPath: tmpDir,
+        sliceId: "s01",
+        command: "printf '\\r+0: loading\\r+12: All tests passed!'",
+      })
+    );
+    expect(result.passed).toBe(12);
+    expect(result.failed).toBe(0);
+    expect(result.countsParsed).toBe(true);
+  });
 });

@@ -7,6 +7,7 @@ export const TechStackSchema = z.object({
   frontend: z.string().nullable(),
   hosting: z.string().nullable(),
   other: z.array(z.string()),
+  platform: z.enum(["web", "mobile", "cross-platform", "backend-only"]).nullable().optional(),
 });
 
 export const ProductPhaseSchema = z.object({

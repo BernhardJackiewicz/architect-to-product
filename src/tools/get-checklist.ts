@@ -85,6 +85,67 @@ export function handleGetChecklist(input: GetChecklistInput): string {
     }
   }
 
+  // Platform-specific items (mobile / cross-platform / desktop)
+  const platform = tech?.platform;
+  const isMobile = platform === "mobile" || platform === "cross-platform";
+
+  if (isMobile) {
+    checklist.preDeployment.push(
+      { item: "Code signing configured (iOS Provisioning Profile, Android Keystore)", done: false },
+      { item: "App ID / Bundle ID registered (Apple / Google)", done: false },
+      { item: "No secrets in shipped client artifact verified", done: false },
+      { item: "Release build hardening enabled (obfuscation/minification/symbol handling as applicable)", done: false },
+      { item: "Release artifact built in non-debug mode", done: false },
+    );
+    checklist.infrastructure.push(
+      { item: "TestFlight / Play Store Internal Testing configured", done: false },
+    );
+    checklist.postDeployment.push(
+      { item: "App Store / Play Store listing draft prepared", done: false },
+      { item: "Deep links / universal links configured and tested", done: false },
+      { item: "Push notification certificates configured", done: false },
+      { item: "Client local storage for sensitive data reviewed", done: false },
+      { item: "TLS / ATS / Network Security Config reviewed", done: false },
+      { item: "Signing / provisioning / release packaging verified", done: false },
+    );
+  }
+
+  if (platform === "cross-platform") {
+    checklist.preDeployment.push(
+      { item: "Desktop release packaging reviewed for embedded config/secrets", done: false },
+      { item: "Code signing / notarization status reviewed if target platform requires it", done: false },
+    );
+  }
+
+  // Compliance items (GoBD, GDPR) — activated by keywords in features/otherTech
+  const allFeaturesAndTech = [...(tech?.other ?? []), ...(state.architecture?.features ?? [])].map(f => f.toLowerCase()).join(" ");
+  const hasCompliance = /gobd|gdpr|dsgvo|compliance|retention|audit.?trail|archivierung|archiving/.test(allFeaturesAndTech);
+
+  if (hasCompliance) {
+    checklist.preDeployment.push(
+      { item: "Append-only / immutable storage configured for audit data", done: false },
+      { item: "Retention policy documented (duration, deletion, export)", done: false },
+    );
+    checklist.postDeployment.push(
+      { item: "Audit trail immutability verified", done: false },
+      { item: "Data export for GDPR/DSGVO functional", done: false },
+    );
+  }
+
+  // External validator items (KoSIT, veraPDF, etc.) — activated by keywords in otherTech
+  const otherLower = (tech?.other ?? []).map(t => t.toLowerCase()).join(" ");
+  const hasValidator = /kosit|verapdf|mustangproject|e.?invoice.?validat|xml.?validat|pdf.?validat/.test(otherLower);
+
+  if (hasValidator) {
+    checklist.preDeployment.push(
+      { item: "External validator installed and version-pinned", done: false },
+      { item: "Validation test suite covers reject-cases", done: false },
+    );
+    checklist.postDeployment.push(
+      { item: "Validator version documented in release notes", done: false },
+    );
+  }
+
   // Add tech-specific items
   const db = tech?.database?.toLowerCase() ?? "";
   const hosting = tech?.hosting?.toLowerCase() ?? "";

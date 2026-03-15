@@ -401,4 +401,193 @@ describe("handleGetChecklist", () => {
     expect(result.error).toBeTruthy();
     cleanTmpDir(otherDir);
   });
+
+  // ─── Mobile platform checklist items ──────────────────────────────────
+
+  it("mobile platform -> code signing and mobile items", () => {
+    initWithArchOverrides(tmpDir, { language: "Dart", framework: "Flutter", platform: "mobile" });
+    const result = parse(handleGetChecklist({ projectPath: tmpDir }));
+    const preItems = result.checklist.preDeployment.map((i: any) => i.item).join(" ");
+    const infraItems = result.checklist.infrastructure.map((i: any) => i.item).join(" ");
+    const postItems = result.checklist.postDeployment.map((i: any) => i.item).join(" ");
+    expect(preItems).toContain("Code signing");
+    expect(preItems).toContain("App ID");
+    expect(preItems).toContain("No secrets in shipped client artifact");
+    expect(preItems).toContain("Release build hardening");
+    expect(preItems).toContain("non-debug mode");
+    expect(infraItems).toContain("TestFlight");
+    expect(postItems).toContain("Deep links");
+    expect(postItems).toContain("Push notification");
+    expect(postItems).toContain("local storage");
+    expect(postItems).toContain("TLS");
+  });
+
+  it("cross-platform -> mobile + desktop items", () => {
+    initWithArchOverrides(tmpDir, { language: "TypeScript", framework: "Electron", platform: "cross-platform" });
+    const result = parse(handleGetChecklist({ projectPath: tmpDir }));
+    const preItems = result.checklist.preDeployment.map((i: any) => i.item).join(" ");
+    expect(preItems).toContain("Code signing");
+    expect(preItems).toContain("Desktop release packaging");
+    expect(preItems).toContain("notarization");
+  });
+
+  it("web platform -> no mobile items", () => {
+    initWithArchOverrides(tmpDir, { frontend: "React", platform: "web" });
+    const result = parse(handleGetChecklist({ projectPath: tmpDir }));
+    const allItems = [
+      ...result.checklist.preDeployment,
+      ...result.checklist.infrastructure,
+      ...result.checklist.postDeployment,
+    ].map((i: any) => i.item).join(" ");
+    expect(allItems).not.toContain("Code signing");
+    expect(allItems).not.toContain("TestFlight");
+  });
+
+  it("no platform (default web) -> no mobile items", () => {
+    initWithArchOverrides(tmpDir);
+    const result = parse(handleGetChecklist({ projectPath: tmpDir }));
+    const allItems = [
+      ...result.checklist.preDeployment,
+      ...result.checklist.infrastructure,
+      ...result.checklist.postDeployment,
+    ].map((i: any) => i.item).join(" ");
+    expect(allItems).not.toContain("Code signing");
+  });
+
+  // ─── Compliance checklist items ───────────────────────────────────────
+
+  it("GoBD in features -> compliance items", () => {
+    initWithArchOverrides(tmpDir, { features: ["CRUD", "GoBD Archivierung"] });
+    const result = parse(handleGetChecklist({ projectPath: tmpDir }));
+    const preItems = result.checklist.preDeployment.map((i: any) => i.item).join(" ");
+    const postItems = result.checklist.postDeployment.map((i: any) => i.item).join(" ");
+    expect(preItems).toContain("Append-only");
+    expect(preItems).toContain("Retention policy");
+    expect(postItems).toContain("Audit trail");
+    expect(postItems).toContain("GDPR");
+  });
+
+  it("GDPR in otherTech -> compliance items", () => {
+    initWithArchOverrides(tmpDir, { otherTech: ["GDPR Compliance Module"] });
+    const result = parse(handleGetChecklist({ projectPath: tmpDir }));
+    const preItems = result.checklist.preDeployment.map((i: any) => i.item).join(" ");
+    expect(preItems).toContain("Retention policy");
+  });
+
+  it("no compliance keywords -> no compliance items", () => {
+    initWithArchOverrides(tmpDir);
+    const result = parse(handleGetChecklist({ projectPath: tmpDir }));
+    const allItems = [
+      ...result.checklist.preDeployment,
+      ...result.checklist.postDeployment,
+    ].map((i: any) => i.item).join(" ");
+    expect(allItems).not.toContain("Append-only");
+    expect(allItems).not.toContain("Audit trail");
+  });
+
+  it("'architecture' in features does NOT trigger compliance (no false positive)", () => {
+    initWithArchOverrides(tmpDir, { features: ["CRUD", "microservice architecture"] });
+    const result = parse(handleGetChecklist({ projectPath: tmpDir }));
+    const preItems = result.checklist.preDeployment.map((i: any) => i.item).join(" ");
+    expect(preItems).not.toContain("Append-only");
+  });
+
+  // ─── External validator checklist items ───────────────────────────────
+
+  it("KoSIT in otherTech -> validator items", () => {
+    initWithArchOverrides(tmpDir, { otherTech: ["KoSIT XML-Validator"] });
+    const result = parse(handleGetChecklist({ projectPath: tmpDir }));
+    const preItems = result.checklist.preDeployment.map((i: any) => i.item).join(" ");
+    const postItems = result.checklist.postDeployment.map((i: any) => i.item).join(" ");
+    expect(preItems).toContain("External validator installed");
+    expect(preItems).toContain("reject-cases");
+    expect(postItems).toContain("Validator version");
+  });
+
+  it("no validator keywords -> no validator items", () => {
+    initWithArchOverrides(tmpDir);
+    const result = parse(handleGetChecklist({ projectPath: tmpDir }));
+    const allItems = [
+      ...result.checklist.preDeployment,
+      ...result.checklist.postDeployment,
+    ].map((i: any) => i.item).join(" ");
+    expect(allItems).not.toContain("External validator");
+  });
+
+  // ─── Mobile deployment recommendations ────────────────────────────────
+
+  it("Flutter mobile + Hetzner backend -> server artifacts + mobile recs + mobile note", () => {
+    initWithArchOverrides(tmpDir, { language: "Dart", framework: "Flutter", platform: "mobile", hosting: "Hetzner" });
+    setDeployReady(tmpDir);
+    const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
+    const recs = result.deploymentGuide.recommendations.join(" ");
+    expect(recs).toContain("flutter build");
+    expect(recs).toContain("TestFlight");
+    expect(recs).toContain("API base URL");
+    expect(recs).toContain("API versioning");
+    // Server artifacts present because hosting is set
+    const files = result.deploymentGuide.filesToGenerate.join(" ");
+    expect(files).toContain("Dockerfile");
+    expect(files).toContain("DEPLOYMENT.md");
+    // No false mobile artifact promises
+    expect(files.toLowerCase()).not.toContain("fastlane");
+    expect(files.toLowerCase()).not.toContain("build-mobile");
+    // Mobile deployment note present
+    expect(result.deploymentGuide.mobileDeploymentNote).toContain("outside A2P");
+    // Server security hardening present
+    expect(result.deploymentGuide.securityHardening).toBeDefined();
+    expect(result.deploymentGuide.securityHardening.length).toBeGreaterThan(0);
+  });
+
+  it("Flutter mobile-only (no hosting, no DB) -> NO server artifacts, HAS mobile note", () => {
+    initWithArchOverrides(tmpDir, { language: "Dart", framework: "Flutter", platform: "mobile" });
+    setDeployReady(tmpDir);
+    const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
+    const files = result.deploymentGuide.filesToGenerate.join(" ");
+    // No Docker/Caddy/backup server artifacts
+    expect(files).not.toContain("Dockerfile");
+    expect(files).not.toContain("docker-compose");
+    expect(files).not.toContain("Caddyfile");
+    expect(files).not.toContain("backup.sh");
+    // Deployment docs still present
+    expect(files).toContain("DEPLOYMENT.md");
+    expect(files).toContain("LAUNCH_CHECKLIST.md");
+    // No server security hardening
+    expect(result.deploymentGuide.securityHardening).toBeUndefined();
+    // No backup guide
+    expect(result.deploymentGuide.backupGuide).toBeUndefined();
+    // Mobile deployment note present
+    expect(result.deploymentGuide.mobileDeploymentNote).toBeDefined();
+    // Mobile recommendations present
+    const recs = result.deploymentGuide.recommendations.join(" ");
+    expect(recs).toContain("flutter build");
+    // No Docker-specific language recs for mobile-only
+    expect(recs).not.toContain("Multi-stage");
+    // Hint reflects mobile context
+    expect(result.hint).toContain("mobile");
+  });
+
+  it("Kotlin mobile-only -> no JRE/temurin Docker recs", () => {
+    initWithArchOverrides(tmpDir, { language: "Kotlin", framework: "Jetpack Compose", platform: "mobile" });
+    setDeployReady(tmpDir);
+    const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
+    const recs = result.deploymentGuide.recommendations.join(" ");
+    expect(recs).not.toContain("temurin");
+    expect(recs).not.toContain("Multi-stage");
+    expect(recs).toContain("TestFlight");
+  });
+
+  it("web platform -> no mobile recommendations, has server artifacts", () => {
+    initWithArchOverrides(tmpDir, { frontend: "React", platform: "web" });
+    setDeployReady(tmpDir);
+    const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
+    const recs = result.deploymentGuide.recommendations.join(" ");
+    expect(recs).not.toContain("TestFlight");
+    expect(recs).not.toContain("flutter build");
+    // Server artifacts present
+    const files = result.deploymentGuide.filesToGenerate.join(" ");
+    expect(files).toContain("Dockerfile");
+    // No mobile note
+    expect(result.deploymentGuide.mobileDeploymentNote).toBeUndefined();
+  });
 });

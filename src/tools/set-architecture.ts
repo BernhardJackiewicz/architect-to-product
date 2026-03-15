@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { requireProject } from "../utils/tool-helpers.js";
-import type { Architecture, TechStack, ProductPhase, ReviewMode, UIDesign, OversightConfig, BackupTarget, BackupOffsiteProvider } from "../state/types.js";
+import type { Architecture, TechStack, ProductPhase, ReviewMode, UIDesign, OversightConfig, BackupTarget, BackupOffsiteProvider, Platform } from "../state/types.js";
 
 export const setArchitectureSchema = z.object({
   projectPath: z.string().describe("Absolute path to the project directory"),
@@ -54,6 +54,10 @@ export const setArchitectureSchema = z.object({
     })
     .optional()
     .describe("Human oversight configuration — controls where the workflow pauses for human review"),
+  platform: z
+    .enum(["web", "mobile", "cross-platform", "backend-only"])
+    .optional()
+    .describe("Target platform: 'web' (default), 'mobile' (Flutter/RN/Swift/Kotlin), 'cross-platform' (mobile+web/desktop), 'backend-only'. Auto-detected from framework if not set."),
   phases: z
     .array(
       z.object({
@@ -70,9 +74,27 @@ export const setArchitectureSchema = z.object({
 
 export type SetArchitectureInput = z.infer<typeof setArchitectureSchema>;
 
+/** Auto-detect platform from framework/language. User-provided value always wins. */
+export function inferPlatform(framework: string, language: string, frontend: string | null): Platform {
+  const fw = framework.toLowerCase();
+  const lang = language.toLowerCase();
+  const isServerFramework = /express|fastapi|flask|django|gin|echo|actix|spring|rails|phoenix|nest|ktor|micronaut|quarkus|vapor/i.test(fw);
+  // Mobile-native frameworks
+  if (/flutter|react.?native|swiftui|jetpack.?compose|kotlin.?multiplatform|maui|xamarin/.test(fw)) return "mobile";
+  // Language-based mobile heuristic — only when framework is NOT a known server framework
+  if (/swift|kotlin/.test(lang) && !frontend && !isServerFramework) return "mobile";
+  // Cross-platform desktop/mobile
+  if (/electron|tauri|expo/.test(fw)) return "cross-platform";
+  // Backend-only: no frontend, server frameworks
+  if (!frontend && isServerFramework) return "backend-only";
+  return "web";
+}
+
 export function handleSetArchitecture(input: SetArchitectureInput): string {
   const { sm, error } = requireProject(input.projectPath);
   if (error) return error;
+
+  const platform: Platform = input.platform ?? inferPlatform(input.framework, input.language, input.frontend ?? null);
 
   const techStack: TechStack = {
     language: input.language,
@@ -81,6 +103,7 @@ export function handleSetArchitecture(input: SetArchitectureInput): string {
     frontend: input.frontend ?? null,
     hosting: input.hosting ?? null,
     other: input.otherTech ?? [],
+    platform,
   };
 
   const phases: ProductPhase[] | undefined = input.phases?.map((p) => ({

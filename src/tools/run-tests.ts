@@ -102,6 +102,10 @@ function parseTestCounts(output: string): {
   let failed = 0;
   let skipped = 0;
 
+  // Strip ANSI escape codes and normalize \r to \n before parsing
+  // Handles colored output from dart test, flutter test, and other runners
+  output = output.replace(/\u001b\[[0-9;]*[A-Za-z]/g, '').replace(/\r/g, '\n');
+
   // pytest: "5 passed, 2 failed, 1 skipped"
   const pytestMatch = output.match(
     /(\d+)\s+passed(?:.*?(\d+)\s+failed)?(?:.*?(\d+)\s+skipped)?/
@@ -131,6 +135,35 @@ function parseTestCounts(output: string): {
   if (goPassMatch || goFailMatch) {
     passed = goPassMatch?.length ?? 0;
     failed = goFailMatch?.length ?? 0;
+    return { passed, failed, skipped };
+  }
+
+  // Flutter/Dart: "00:05 +10: All tests passed!" or "00:05 +10 -2: Some tests failed."
+  // Use last match — progress output starts with +0 (loading), final line has actual counts
+  const flutterMatches = [...output.matchAll(/\+(\d+)(?:\s+(?:~(\d+)))?(?:\s+-(\d+))?:/g)];
+  const flutterMatch = flutterMatches.length > 0 ? flutterMatches[flutterMatches.length - 1] : null;
+  if (flutterMatch) {
+    passed = parseInt(flutterMatch[1], 10) || 0;
+    skipped = parseInt(flutterMatch[2], 10) || 0;
+    failed = parseInt(flutterMatch[3], 10) || 0;
+    return { passed, failed, skipped };
+  }
+
+  // Swift XCTest: "Executed 5 tests, with 1 failure"
+  const xctestMatch = output.match(/Executed\s+(\d+)\s+tests?,\s+with\s+(\d+)\s+failure/);
+  if (xctestMatch) {
+    const total = parseInt(xctestMatch[1], 10) || 0;
+    failed = parseInt(xctestMatch[2], 10) || 0;
+    passed = total - failed;
+    return { passed, failed, skipped };
+  }
+
+  // Kotlin/Gradle: "5 tests, 4 passed, 1 failed" or "BUILD SUCCESSFUL" with "5 tests completed, 1 failed"
+  const gradleMatch = output.match(/(\d+)\s+tests?\s+completed?,\s*(\d+)\s+failed/);
+  if (gradleMatch) {
+    const total = parseInt(gradleMatch[1], 10) || 0;
+    failed = parseInt(gradleMatch[2], 10) || 0;
+    passed = total - failed;
     return { passed, failed, skipped };
   }
 
