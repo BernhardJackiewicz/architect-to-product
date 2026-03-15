@@ -276,4 +276,33 @@ describe("handleRunTests", () => {
     expect(result.failed).toBe(0);
     expect(result.countsParsed).toBe(true);
   });
+
+  // ─── Gradle JUnit XML parsing ─────────────────────────────────────────
+
+  it("parses Gradle JUnit XML summary", () => {
+    const result = parse(
+      handleRunTests({
+        projectPath: tmpDir,
+        sliceId: "s01",
+        command: `echo '<testsuite tests="14" failures="1" errors="0" skipped="2">'`,
+      })
+    );
+    expect(result.passed).toBe(11);
+    expect(result.failed).toBe(1);
+    expect(result.skipped).toBe(2);
+    expect(result.countsParsed).toBe(true);
+  });
+
+  it("parses Gradle alternative format (N tests, N failures)", () => {
+    const result = parse(
+      handleRunTests({
+        projectPath: tmpDir,
+        sliceId: "s01",
+        command: "echo '22 tests, 0 failures'",
+      })
+    );
+    expect(result.passed).toBe(22);
+    expect(result.failed).toBe(0);
+    expect(result.countsParsed).toBe(true);
+  });
 });

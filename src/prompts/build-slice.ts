@@ -306,10 +306,26 @@ A2P orchestriert den TDD-Workflow. Die Validator-Toolchain (JAR, Binary, Config)
 - Sind Validator-spezifische Types nach aussen geleckt?
 - Ist der Validator-Aufruf testbar ohne die echte Binary (für CI wo der Validator evtl. nicht installiert ist)?
 
+## Mock-vs-Real Check vor Done (Pflicht bei hasUI und integration Slices)
+Bevor ein Slice als "done" markiert wird — prüfe ob die Tests gegen **echte Services** oder nur gegen **Mocks** laufen.
+
+**Bei \`hasUI: true\` Slices:**
+- Testet das UI gegen einen echten Backend-Endpunkt oder nur gegen einen Mock-Service?
+- Kann ein Nutzer den Flow auf einem echten Gerät oder im Browser durchlaufen?
+- Mock-only Widget-Tests sind eine Vorstufe, kein produktnahes Done.
+
+**Bei \`type: "integration"\` Slices:**
+- Wird die echte externe Library/API/CLI aufgerufen oder nur ein Mock-Adapter?
+- Gibt es mindestens einen Test der den echten Service nutzt (auch wenn conditional/skip bei fehlender Toolchain)?
+- Interface + Mock + Test allein ist ein Spike, kein fertiger Integration-Slice.
+
+**Regel:** Wenn alle Tests nur gegen Mocks laufen, markiere den Slice als **teilfertig** in der Summary und benenne explizit was für echtes Done noch fehlt. Markiere ihn NICHT stillschweigend als done.
+
 ## Invarianten
 - NIEMALS Tests und Implementation gleichzeitig schreiben
 - NIEMALS einen Slice als "done" markieren ohne grüne Tests
 - NIEMALS Security-Findings ignorieren
+- NIEMALS einen UI-/Integration-Slice als done markieren wenn nur Mocks getestet wurden
 - Scope bleibt auf aktuellem Slice — Erweiterungen werden neue Slices
 - Bei jedem Fehler: Hypothese → Test → Fix → Verify (Debugging-Workflow)
 `;
