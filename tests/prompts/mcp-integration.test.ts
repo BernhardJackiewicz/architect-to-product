@@ -15,7 +15,7 @@ describe("codebase-memory-mcp integration", () => {
   describe("build-slice", () => {
     it("calls index_repository BEFORE starting TDD cycle", () => {
       const indexPos = BUILD_SLICE_PROMPT.indexOf("index_repository");
-      const tddPos = BUILD_SLICE_PROMPT.indexOf("TDD-Zyklus");
+      const tddPos = BUILD_SLICE_PROMPT.indexOf("Evidence-Driven Development Cycle");
       expect(indexPos).toBeGreaterThan(-1);
       expect(indexPos).toBeLessThan(tddPos);
     });
@@ -687,7 +687,7 @@ describe("Onboarding completeness", () => {
 describe("Anthropic engineering patterns in build-slice", () => {
   it("has explore phase before TDD cycle", () => {
     const explorePos = BUILD_SLICE_PROMPT.indexOf("Phase EXPLORE");
-    const tddPos = BUILD_SLICE_PROMPT.indexOf("TDD-Zyklus");
+    const tddPos = BUILD_SLICE_PROMPT.indexOf("Evidence-Driven Development Cycle");
     expect(explorePos).toBeGreaterThan(-1);
     expect(explorePos).toBeLessThan(tddPos);
   });
@@ -747,7 +747,7 @@ describe("Anthropic engineering patterns in build-slice", () => {
 
   it("explore phase contains all three codebase-memory tools", () => {
     const explorePos = BUILD_SLICE_PROMPT.indexOf("Phase EXPLORE");
-    const tddPos = BUILD_SLICE_PROMPT.indexOf("TDD-Zyklus");
+    const tddPos = BUILD_SLICE_PROMPT.indexOf("Evidence-Driven Development Cycle");
     const section = BUILD_SLICE_PROMPT.slice(explorePos, tddPos);
     expect(section).toContain("index_repository");
     expect(section).toContain("search_code");

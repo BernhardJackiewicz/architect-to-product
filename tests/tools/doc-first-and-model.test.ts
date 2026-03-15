@@ -38,7 +38,7 @@ describe("Documentation-first principle", () => {
   it("build-slice prompt requires doc reading before code", () => {
     // Doc section must come before TDD cycle
     const docPos = BUILD_SLICE_PROMPT.indexOf("Dokumentation LESEN");
-    const tddPos = BUILD_SLICE_PROMPT.indexOf("TDD-Zyklus");
+    const tddPos = BUILD_SLICE_PROMPT.indexOf("Evidence-Driven Development Cycle");
     expect(docPos).toBeGreaterThan(-1);
     expect(tddPos).toBeGreaterThan(-1);
     expect(docPos).toBeLessThan(tddPos);
