@@ -2,11 +2,11 @@
 
 MCP server that turns AI-generated code into production-ready software with TDD, security scanning, and deployment automation. Up to 100 times fewer exploration tokens for claude code.
 
-**21 MCP tools** · **807 tests** · **Architecture → Plan → Build → Quality → Signoff → Security → Whitebox → Verify → Release Audit → Deploy → Backup**
+**21 MCP tools** · **809 tests** · **Architecture → Plan → Build → Quality → Signoff → Security → Whitebox → Verify → Release Audit → Deploy → Backup**
 
 [![npm version](https://img.shields.io/npm/v/architect-to-product)](https://www.npmjs.com/package/architect-to-product)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Tests: 807 passing](https://img.shields.io/badge/tests-807%20passing-brightgreen)]()
+[![Tests: 809 passing](https://img.shields.io/badge/tests-809%20passing-brightgreen)]()
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue)]()
 
 ---
@@ -87,7 +87,7 @@ Most AI-generated — and human-built — architectures don't fail because the m
 - **Model preference** — Configure which Claude model does the programming (`opus`, `sonnet`, `haiku`). Default: opus (Claude Opus 4.6 with maximum effort). Stored in project config, referenced by all prompts
 - **Structured logging** — Build events with log levels, status, duration tracking, run correlation, secret redaction, and output previews. Filter build logs by level, run, phase, or errors
 - **Any stack** — Python, TypeScript, Go, Rust, Java, Ruby, PHP, C#, Dart/Flutter, Swift — PostgreSQL, MySQL, MongoDB, Redis
-- **Mobile / cross-platform** — Platform-aware architecture (`mobile`, `cross-platform`, `backend-only`, `web`). Mobile checklist items (code signing, TestFlight, release hardening). Compliance items (GoBD, GDPR). External validator items (KoSIT, veraPDF). Multi-target deployment guidance (backend first, then mobile distribution). No false artifact promises — A2P orchestrates, toolchains are project-provided
+- **Mobile / cross-platform** — Platform-aware architecture (`mobile`, `cross-platform`, `backend-only`, `web`). Mobile checklist items (code signing, TestFlight, release hardening). Compliance items (GoBD, GDPR). External validator items (KoSIT, veraPDF). Multi-target deployment guidance (backend first, then mobile distribution). No false artifact promises — A2P orchestrates, toolchains are project-provided. Verified with a real Flutter/Dart + Kotlin/Spring Boot project on physical iPhone (14 slices, OCR pipeline, KoSIT validation, GoBD archive). Known limits: Gradle test counts require `--console=plain` or JUnit XML output; mobile E2E runs via `a2p_run_tests`, not the Playwright-based `a2p_run_e2e`
 
 ## Human Oversight
 
@@ -464,7 +464,7 @@ git clone https://github.com/BernhardJackiewicz/architect-to-product.git
 cd architect-to-product
 npm install
 npm run typecheck   # Type checking
-npm test            # 807 tests
+npm test            # 809 tests
 npm run build       # Build
 npm run dev         # Dev mode
 ```

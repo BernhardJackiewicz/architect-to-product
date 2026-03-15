@@ -158,11 +158,31 @@ function parseTestCounts(output: string): {
     return { passed, failed, skipped };
   }
 
-  // Kotlin/Gradle: "5 tests, 4 passed, 1 failed" or "BUILD SUCCESSFUL" with "5 tests completed, 1 failed"
+  // Kotlin/Gradle: multiple patterns — Gradle output varies by version and config
+  // Pattern 1: "5 tests completed, 1 failed" (--console=plain)
   const gradleMatch = output.match(/(\d+)\s+tests?\s+completed?,\s*(\d+)\s+failed/);
   if (gradleMatch) {
     const total = parseInt(gradleMatch[1], 10) || 0;
     failed = parseInt(gradleMatch[2], 10) || 0;
+    passed = total - failed;
+    return { passed, failed, skipped };
+  }
+  // Pattern 2: "BUILD SUCCESSFUL" with "N tests" in task output
+  // Gradle default output: "N tests completed, N failed" or just "> Task :test" with no summary
+  // Parse from JUnit XML summary if present: tests="N" failures="N" errors="N" skipped="N"
+  const junitMatch = output.match(/tests="(\d+)".*?failures="(\d+)"(?:.*?errors="(\d+)")?(?:.*?skipped="(\d+)")?/);
+  if (junitMatch) {
+    const total = parseInt(junitMatch[1], 10) || 0;
+    failed = (parseInt(junitMatch[2], 10) || 0) + (parseInt(junitMatch[3], 10) || 0);
+    skipped = parseInt(junitMatch[4], 10) || 0;
+    passed = total - failed - skipped;
+    return { passed, failed, skipped };
+  }
+  // Pattern 3: Gradle "N tests, N failures" (some Gradle versions)
+  const gradleAltMatch = output.match(/(\d+)\s+tests?,\s*(\d+)\s+failures?/);
+  if (gradleAltMatch) {
+    const total = parseInt(gradleAltMatch[1], 10) || 0;
+    failed = parseInt(gradleAltMatch[2], 10) || 0;
     passed = total - failed;
     return { passed, failed, skipped };
   }
