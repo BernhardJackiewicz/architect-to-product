@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { requireProject, requirePhase } from "../utils/tool-helpers.js";
+import { qualityAuditCadence } from "../utils/quality-cadence.js";
 import type { ProjectState } from "../state/types.js";
 
 export const updateSliceSchema = z.object({
@@ -36,6 +37,11 @@ export function handleUpdateSlice(input: UpdateSliceInput): string {
 
     const { nextStep, awaitingHumanReview } = getNextStepHint(input.status, state, input.sliceId);
 
+    // Quality-audit cadence check when a slice is completed
+    const cadence = input.status === "done"
+      ? qualityAuditCadence(state)
+      : undefined;
+
     return JSON.stringify({
       success: true,
       sliceId: input.sliceId,
@@ -48,6 +54,12 @@ export function handleUpdateSlice(input: UpdateSliceInput): string {
             sliceSummary: {
               hint: "Erstelle eine Zusammenfassung: Akzeptanzkriterien, was die Tests prüfen, implementiertes Verhalten, getroffene Annahmen.",
             },
+            ...(cadence?.due
+              ? {
+                  qualityAuditDue: true,
+                  qualityAuditHint: `${cadence.slicesSinceAudit} slices completed since last quality audit (threshold: ${cadence.threshold}). Run a2p_run_audit mode=quality to catch TODOs, debug artifacts, secrets, and coverage gaps before they accumulate.`,
+                }
+              : { qualityAuditDue: false }),
           }
         : {}),
     });

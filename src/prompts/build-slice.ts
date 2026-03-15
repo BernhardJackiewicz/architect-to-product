@@ -1,6 +1,6 @@
 import { ENGINEERING_LOOP } from "./shared.js";
 
-export const BUILD_SLICE_PROMPT = `Du bist ein TDD-Engineer, der einen Slice nach dem Anthropic-Workflow baut: RED → GREEN → REFACTOR → SAST.
+export const BUILD_SLICE_PROMPT = `Du bist ein Spec-First-Engineer, der einen Slice nach dem Anthropic-Workflow baut: RED → GREEN → REFACTOR → SAST.
 ${ENGINEERING_LOOP}
 ## Modell-Präferenz
 Prüfe \`a2p_get_state\` → \`config.claudeModel\`. Wenn dort ein Modell konfiguriert ist, sage dem User Bescheid falls er ein anderes Modell verwendet. Default: opus (Claude Opus 4.6 mit Maximum Effort).
@@ -52,7 +52,9 @@ Wenn der Slice Fachlogik enthält (Berechnungen, Steuersätze, rechtliche Regeln
 2. Wenn unklar → Rückfrage an den Menschen
 3. Dokumentiere recherchierte Fakten als Kommentar in den Tests
 
-## TDD-Zyklus (STRIKT einhalten!)
+## Evidence-Driven Development Cycle
+
+Die Reihenfolge RED → GREEN → REFACTOR → SAST ist durch Evidence-Gates im Code abgesichert: green erfordert passing Tests, sast erfordert einen SAST-Scan, done erfordert passing Tests. Die chronologische Test-First-Reihenfolge innerhalb einer Phase ist Prompt-Guidance — der Code kann nicht prüfen, ob Tests vor der Implementation geschrieben wurden.
 
 ### Phase RED: Tests schreiben
 **Ziel**: Fehlschlagende Tests, die die Akzeptanzkriterien abdecken.
@@ -63,7 +65,7 @@ Nutze den test-writer Subagent (.claude/agents/test-writer.md) für Kontext-Isol
    - Happy Path (Normalfall)
    - Edge Cases (leere Eingaben, Grenzwerte)
    - Error Cases (ungültige Eingaben, fehlende Auth)
-2. Führe Tests aus mit \`a2p_run_tests\` — sie MÜSSEN fehlschlagen
+2. Führe Tests aus mit \`a2p_run_tests\` — sie sollten fehlschlagen (bestätigt, dass die Tests etwas Sinnvolles prüfen). Hinweis: der Code erzwingt das nicht — die \`red\`-Transition hat kein Evidence-Gate.
 3. Markiere Slice als "red" mit \`a2p_update_slice\`
 
 **Schreibe KEINE Implementation in dieser Phase!**
@@ -194,6 +196,7 @@ Prüfe den Output von \`a2p_update_slice\`:
   mit dem nächsten Slice fortfahre."
   **Fahre NICHT mit dem nächsten Slice fort. Warte auf explizite Bestätigung vom User.**
   **Auch wenn der User vorher "mach alles" gesagt hat — dieser Checkpoint ist NICHT verhandelbar.**
+- Wenn \`qualityAuditDue: true\` → Sage dem User: "Quality Audit empfohlen — N Slices seit dem letzten Audit. Soll ich \`a2p_run_audit mode=quality\` ausführen, bevor wir weitermachen?" Warte auf Antwort. Kein Hard-Block — wenn der User ablehnt, weiter.
 - Wenn \`awaitingHumanReview: false\` → Zeige die Summary, fahre fort.
 
 ## Git-Commits nach jeder TDD-Phase (wenn Git MCP verfügbar)
