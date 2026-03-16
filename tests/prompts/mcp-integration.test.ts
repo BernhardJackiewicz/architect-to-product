@@ -891,14 +891,16 @@ describe("MCP operationalization in prompts", () => {
     expect(BUILD_SLICE_PROMPT).toContain("companionReadiness.database");
   });
 
-  it("planning prompt warns about restartRequired", () => {
-    expect(PLANNING_PROMPT).toContain("restartRequired: true");
-    expect(PLANNING_PROMPT).toContain("neu gestartet");
+  it("planning prompt mentions companion availability as soft hint (not hard block)", () => {
+    expect(PLANNING_PROMPT).toContain("Companion-Tools");
+    expect(PLANNING_PROMPT).toContain("Neustart");
+    expect(PLANNING_PROMPT).toContain("blockiere die Planung NICHT");
   });
 
-  it("build-slice prompt warns about restartRequired", () => {
-    expect(BUILD_SLICE_PROMPT).toContain("restartRequired: true");
-    expect(BUILD_SLICE_PROMPT).toContain("neu gestartet");
+  it("build-slice prompt mentions companion availability as soft hint (not hard block)", () => {
+    expect(BUILD_SLICE_PROMPT).toContain("Companion-Tools");
+    expect(BUILD_SLICE_PROMPT).toContain("Neustart");
+    expect(BUILD_SLICE_PROMPT).toContain("blockiere den Build NICHT");
   });
 });
 

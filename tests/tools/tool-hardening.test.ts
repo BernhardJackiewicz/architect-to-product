@@ -742,8 +742,9 @@ describe("record-finding: hardening", () => {
     expect(finding?.justification).toBe("Replaced raw SQL with parameterized query");
   });
 
-  it("get-state includes restartRequired=true when companions configured in onboarding", () => {
-    // Use a minimal project in onboarding phase
+  it("get-state always returns restartRequired=false (restart detection removed)", () => {
+    // restartRequired was removed because there's no reliable way to detect
+    // whether a restart happened. The onboarding prompt handles the restart message.
     const onboardDir = makeTmpDir("a2p-restart");
     const onboardSm = new StateManager(onboardDir);
     onboardSm.init("test-restart", onboardDir);
@@ -755,20 +756,6 @@ describe("record-finding: hardening", () => {
       config: {},
     });
     const result = JSON.parse(handleGetState({ projectPath: onboardDir }));
-    expect(result.restartRequired).toBe(true);
-  });
-
-  it("get-state includes restartRequired=false when past onboarding", () => {
-    // dir is already in building phase via beforeEach
-    const sm = new StateManager(dir);
-    sm.addCompanion({
-      name: "codebase-memory-mcp",
-      type: "codebase_memory",
-      command: "codebase-memory-mcp",
-      installed: true,
-      config: {},
-    });
-    const result = JSON.parse(handleGetState({ projectPath: dir }));
     expect(result.restartRequired).toBe(false);
   });
 
