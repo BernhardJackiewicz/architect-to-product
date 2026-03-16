@@ -19,17 +19,18 @@ Halte den Scope strikt auf die Akzeptanzkriterien des aktuellen Slice begrenzt.
 Bevor du Code schreibst — verstehe die Situation:
 
 1. Lies State und Akzeptanzkriterien des aktuellen Slice
-2. Wenn codebase-memory-mcp verfügbar:
+2. Prüfe \`a2p_get_state\` → \`companionReadiness.codebaseMemory\`. Wenn true:
    - \`index_repository\` — Index aktualisieren
    - \`search_code\` — existierenden Code finden der zum Slice passt (verhindert doppelte Implementierungen)
    - \`trace_call_path\` — verstehen wie bestehender Code zusammenhängt
 3. Lies betroffene Dateien und angrenzenden Code
 4. Formuliere einen Mini-Plan: Ziel, betroffene Dateien, Risiken
 
-### Dokumentation LESEN, nicht raten — PFLICHT
+### Dokumentation LESEN, nicht raten — EMPFOHLEN
 Wenn der Slice eine Technologie, Library, API oder einen Service verwendet der dir nicht 100% vertraut ist:
-**Du MUSST die offizielle Dokumentation lesen BEVOR du Code schreibst.**
-**Halluziniere KEINE API-Signaturen, Config-Optionen oder Verhaltensweisen.**
+Lies die offizielle Dokumentation bevor du Code schreibst.
+Halluziniere keine API-Signaturen, Config-Optionen oder Verhaltensweisen.
+(Prompt-Guidance, kein Code-Gate — aber halluzinierte APIs führen zu roten Tests und Zeitverlust.)
 
 1. **WebSearch** um die offizielle Doku-URL zu finden
 2. **WebFetch** um die relevanten Doku-Seiten zu lesen (Getting Started, API Reference, Configuration)
@@ -80,8 +81,8 @@ Nutze den test-writer Subagent (.claude/agents/test-writer.md) für Kontext-Isol
 
 **Schreibe KEINE Implementation in dieser Phase!**
 
-### RED-Nachschärfung — PFLICHT vor GREEN
-Bevor du zu GREEN wechselst, prüfe die geschriebenen Tests gegen die Akzeptanzkriterien:
+### RED-Nachschärfung — EMPFOHLEN vor GREEN
+Bevor du zu GREEN wechselst, prüfe die geschriebenen Tests gegen die Akzeptanzkriterien (Prompt-Guidance, kein Code-Gate):
 
 1. **Abdeckung**: Gibt es für jedes Akzeptanzkriterium mindestens einen Test?
 2. **Fehlerfälle**: Ist mindestens ein wesentlicher Fehlerfall getestet (ungültige Eingabe, fehlende Auth, Timeout)?
@@ -100,7 +101,7 @@ Gib das Prüfungsergebnis als kurzen Block aus (1-3 Zeilen: "Alle ACs abgedeckt,
 
 **Ändere NICHT die Tests in dieser Phase!**
 
-### Datenbank-Slices (wenn DB-MCP verfügbar)
+### Datenbank-Slices (wenn companionReadiness.database: true)
 Wenn der Slice Datenbank-Änderungen enthält (Migrations, Schema, CRUD):
 1. Prüfe das aktuelle Schema mit dem DB-MCP (z.B. \`list_tables\`, \`describe_table\`)
 2. Nach Migrations: Verifiziere dass das Schema korrekt angelegt wurde
@@ -118,9 +119,10 @@ Wenn der aktuelle Slice \`hasUI: true\` hat UND \`architecture.uiDesign\` existi
 ### Visual Verification (nur bei Frontend-Slices)
 Wenn der aktuelle Slice \`hasUI: true\` hat (Frontend-Komponenten, Seiten, Formulare):
 
-**PFLICHT nach GREEN, vor REFACTOR — NICHT ÜBERSPRINGEN:**
-Du MUSST die folgenden Playwright-Tools aufrufen. Überspringe diesen Schritt NICHT.
+**EMPFOHLEN nach GREEN, vor REFACTOR:**
+Rufe die folgenden Playwright-Tools auf, wenn Playwright MCP in der Session verfügbar ist.
 Wenn Playwright MCP nicht verfügbar ist, sage dem User dass er es starten soll.
+(Prompt-Guidance, kein Code-Gate — der REFACTOR-Übergang erfordert keine Screenshot-Verifikation.)
 
 1. App starten (oder sicherstellen dass sie läuft)
 2. \`browser_navigate\` zur relevanten Seite
@@ -260,7 +262,7 @@ Wenn der Sentry MCP konfiguriert ist und der Slice einen neuen Service/Endpoint 
 - Prüfe ob Source Maps korrekt hochgeladen werden
 
 ## Nach jedem Slice: Codebase-Index aktualisieren
-Wenn codebase-memory-mcp verfügbar:
+Wenn \`companionReadiness.codebaseMemory: true\`:
 - Rufe \`index_repository\` auf — das hält den Code-Graphen aktuell für:
   - Spätere Slices (finden bestehenden Code statt ihn neu zu schreiben)
   - Die Refactor-Phase (Dead Code Detection braucht aktuellen Index)

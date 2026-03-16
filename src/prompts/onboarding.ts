@@ -73,10 +73,9 @@ Analysiere sie und identifiziere:
 Zeige die Analyse und frage: "Stimmt das so? Fehlt etwas?"
 → STOP. Warte auf Bestätigung.
 
-### CHECKPOINT: UI-Design erfassen — HARD STOP
-Wenn das Produkt ein Frontend hat — überspringe diesen Schritt NICHT!
-**Du MUSST den User nach dem UI-Design fragen BEVOR du \`a2p_set_architecture\` aufrufst.**
-**Auch wenn der User "mach einfach" sagt — dieser Schritt ist PFLICHT bei Frontend-Projekten.**
+### CHECKPOINT: UI-Design erfassen — EMPFOHLEN bei Frontend-Projekten
+Wenn das Produkt ein Frontend hat, frage den User nach dem UI-Design bevor du \`a2p_set_architecture\` aufrufst.
+(Prompt-Guidance, kein Code-Gate — \`a2p_set_architecture\` akzeptiert auch ohne UI-Design.)
 
 Frage den User EXPLIZIT:
 
@@ -125,10 +124,9 @@ uiDesign: {
 }
 \`\`\`
 
-### CHECKPOINT: Human Oversight konfigurieren — HARD STOP
-Bevor du \`a2p_set_architecture\` aufrufst — überspringe diesen Schritt NICHT!
-**Du MUSST den User nach den Oversight-Einstellungen fragen BEVOR du \`a2p_set_architecture\` aufrufst.**
-**Auch wenn der User "mach einfach" sagt — dieser Schritt ist PFLICHT.**
+### CHECKPOINT: Human Oversight konfigurieren — EMPFOHLEN
+Bevor du \`a2p_set_architecture\` aufrufst, frage den User nach den Oversight-Einstellungen.
+(Prompt-Guidance, kein Code-Gate — sinnvolle Defaults greifen auch ohne explizite Antwort.)
 
 Frage den User EXPLIZIT:
 
@@ -171,9 +169,10 @@ Wenn der User von sich aus ein anderes Modell nennt oder wenn Budget ein Thema i
 Rufe \`a2p_init_project\` auf um das Projekt zu initialisieren.
 Dann rufe \`a2p_set_architecture\` mit allen Details auf (inkl. \`oversight\` und \`claudeModel\`).
 
-### Companions SOFORT einrichten — PFLICHT, NICHT ÜBERSPRINGEN
-**Direkt nach \`a2p_set_architecture\` MUSST du \`a2p_setup_companions\` aufrufen.**
+### Companions einrichten — EMPFOHLEN direkt nach Architecture
+Direkt nach \`a2p_set_architecture\` rufe \`a2p_setup_companions\` auf.
 Frage den User NICHT ob er Companions will. Richte sie einfach ein.
+(Prompt-Guidance, kein Code-Gate — der Build funktioniert auch ohne Companions, aber codebase-memory-mcp und DB-MCP verbessern die Qualität erheblich.)
 Wähle die Companions automatisch basierend auf dem Tech Stack aus \`a2p_set_architecture\` Response (\`suggestedCompanions\`).
 
 **IMMER installieren (Core):**

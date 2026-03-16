@@ -5,6 +5,7 @@ import { handleCreateBuildPlan } from "../../src/tools/create-build-plan.js";
 import { handleCompletePhase } from "../../src/tools/complete-phase.js";
 import { handleUpdateSlice } from "../../src/tools/update-slice.js";
 import { handleRecordFinding } from "../../src/tools/record-finding.js";
+import { handleGetState } from "../../src/tools/get-state.js";
 import { makeTmpDir, initWithStateManager, addPassingTests, addSastEvidence, walkSliceToStatus, forcePhase, addQualityAudit, addReleaseAudit, addPassingVerification } from "../helpers/setup.js";
 
 // ─── StateManager new methods ───────────────────────────────────────────────
@@ -606,6 +607,162 @@ describe("record-finding: hardening", () => {
 
     const second = JSON.parse(handleRecordFinding(base));
     expect(second.error).toContain("already exists");
+  });
+
+  it("rejects accepted status without justification", () => {
+    const result = JSON.parse(
+      handleRecordFinding({
+        projectPath: dir,
+        sliceId: "s1",
+        id: "F-nojust-1",
+        tool: "manual",
+        severity: "high",
+        status: "accepted",
+        title: "SQL Injection",
+        file: "a.ts",
+        line: 1,
+        description: "possible sqli",
+      })
+    );
+    expect(result.error).toContain("justification");
+  });
+
+  it("rejects false_positive status without justification", () => {
+    const result = JSON.parse(
+      handleRecordFinding({
+        projectPath: dir,
+        sliceId: "s1",
+        id: "F-nojust-2",
+        tool: "manual",
+        severity: "high",
+        status: "false_positive",
+        title: "SQL Injection",
+        file: "a.ts",
+        line: 1,
+        description: "possible sqli",
+      })
+    );
+    expect(result.error).toContain("justification");
+  });
+
+  it("rejects fixed status without justification", () => {
+    const result = JSON.parse(
+      handleRecordFinding({
+        projectPath: dir,
+        sliceId: "s1",
+        id: "F-nojust-3",
+        tool: "manual",
+        severity: "high",
+        status: "fixed",
+        title: "SQL Injection",
+        file: "a.ts",
+        line: 1,
+        description: "possible sqli",
+      })
+    );
+    expect(result.error).toContain("justification");
+  });
+
+  it("rejects empty justification string", () => {
+    const result = JSON.parse(
+      handleRecordFinding({
+        projectPath: dir,
+        sliceId: "s1",
+        id: "F-nojust-4",
+        tool: "manual",
+        severity: "high",
+        status: "accepted",
+        title: "SQL Injection",
+        file: "a.ts",
+        line: 1,
+        description: "possible sqli",
+        justification: "   ",
+      })
+    );
+    expect(result.error).toContain("justification");
+  });
+
+  it("accepts non-open status with justification", () => {
+    const result = JSON.parse(
+      handleRecordFinding({
+        projectPath: dir,
+        sliceId: "s1",
+        id: "F-just-1",
+        tool: "manual",
+        severity: "high",
+        status: "accepted",
+        title: "SQL Injection",
+        file: "a.ts",
+        line: 1,
+        description: "possible sqli",
+        justification: "Input is validated upstream via allowlist, not user-controlled",
+      })
+    );
+    expect(result.success).toBe(true);
+  });
+
+  it("allows open status without justification", () => {
+    const result = JSON.parse(
+      handleRecordFinding({
+        projectPath: dir,
+        sliceId: "s1",
+        id: "F-open-1",
+        tool: "manual",
+        severity: "high",
+        status: "open",
+        title: "XSS",
+        file: "b.ts",
+        line: 2,
+        description: "possible xss",
+      })
+    );
+    expect(result.success).toBe(true);
+  });
+
+  it("stores justification in finding when provided", () => {
+    const result = JSON.parse(
+      handleRecordFinding({
+        projectPath: dir,
+        sliceId: "s1",
+        id: "F-with-just",
+        tool: "manual",
+        severity: "medium",
+        status: "fixed",
+        title: "Minor fix",
+        file: "c.ts",
+        line: 3,
+        description: "fixed issue",
+        justification: "Replaced raw SQL with parameterized query",
+      })
+    );
+    expect(result.success).toBe(true);
+    const sm = new StateManager(dir);
+    const state = sm.read();
+    const finding = state.slices.flatMap(s => s.sastFindings).find(f => f.id === "F-with-just");
+    expect(finding?.justification).toBe("Replaced raw SQL with parameterized query");
+  });
+
+  it("get-state includes companionReadiness", () => {
+    const sm = new StateManager(dir);
+    sm.addCompanion({
+      name: "codebase-memory-mcp",
+      type: "codebase_memory",
+      command: "codebase-memory-mcp",
+      installed: true,
+      config: {},
+    });
+    sm.addCompanion({
+      name: "mcp-server-git",
+      type: "git",
+      command: "uvx mcp-server-git",
+      installed: false,
+      config: {},
+    });
+    const result = JSON.parse(handleGetState({ projectPath: dir }));
+    expect(result.companionReadiness).toBeDefined();
+    expect(result.companionReadiness.codebaseMemory).toBe(true);
+    expect(result.companionReadiness.git).toBe(false);
+    expect(result.companionReadiness.database).toBe(false);
   });
 
   it("accepts finding without fix field", () => {
