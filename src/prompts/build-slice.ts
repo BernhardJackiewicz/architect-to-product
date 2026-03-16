@@ -118,6 +118,13 @@ Wenn der aktuelle Slice \`hasUI: true\` hat UND \`architecture.uiDesign\` existi
    - Wenn \`type: "description"\` → nutze den Text als Designvorgabe
 3. Implementiere das UI **gemäss diesen Vorgaben** — nicht nach eigenem Ermessen
 
+### UI-Qualitätsregeln (PFLICHT bei allen Frontend-Slices)
+Diese Regeln gelten immer — unabhängig davon ob ein uiDesign existiert:
+
+**Keine Emojis im UI.** Verwende keine Unicode-Emojis (📦, 💰, ✅, 🔍 etc.) in gerendertem HTML/JSX. Emojis wirken unprofessionell. Verwende stattdessen SVG-Icons oder schlichte Text-Labels.
+
+**Keine Lila/Violett/Fuchsia-Farbschemas.** Vermeide \`violet-*\`, \`purple-*\`, \`fuchsia-*\` und \`indigo-*\` als primäre UI-Farben (Tailwind-Klassen und CSS). Diese Farben sind ein typisches Zeichen von ungestalteten AI-generierten Interfaces. Verwende stattdessen \`blue-*\`, \`slate-*\`, \`zinc-*\`, \`neutral-*\` oder die Farben aus dem uiDesign — sofern der User nicht explizit violett/lila gewünscht hat.
+
 ### Visual Verification (nur bei Frontend-Slices)
 Wenn der aktuelle Slice \`hasUI: true\` hat (Frontend-Komponenten, Seiten, Formulare):
 

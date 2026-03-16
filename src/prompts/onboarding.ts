@@ -95,6 +95,8 @@ Erstelle dann eine detaillierte Beschreibung:
 - Layout pro Screen (Header, Sidebar, Content-Bereich)
 - Navigationsstruktur
 - Empfohlener Stil basierend auf Zielgruppe
+- Farbschema: verwende professionelle Farben (blue, slate, zinc, neutral) — KEINE violet/purple/fuchsia/indigo Paletten (typisches AI-Vibe-Coding-Symptom)
+- Keine Emojis als UI-Elemente — verwende SVG-Icons oder Text-Labels
 Speichere das als \`uiDesign.description\` mit einer reference vom type "description".
 
 **Option 3: Bilder/Dateien hochladen**
