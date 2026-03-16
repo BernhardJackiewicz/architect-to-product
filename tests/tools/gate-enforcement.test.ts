@@ -723,6 +723,186 @@ describe("E2E Gate: UI + Playwright enforcement", () => {
 });
 
 // ============================================================================
+// Security Re-Entry: onboarding→security, deployment→security, complete→security
+// ============================================================================
+
+describe("Security Re-Entry: direct transitions", () => {
+  it("ALLOWED: onboarding→security WITH architecture → securityReentryReason=security_only", () => {
+    const sm = new StateManager(dir);
+    sm.init("test", dir);
+    sm.setArchitecture({
+      name: "T", description: "T",
+      techStack: { language: "TypeScript", framework: "Express", database: null, frontend: null, hosting: null, other: [] },
+      features: ["f1"], dataModel: "none", apiDesign: "REST", raw: "",
+    });
+    const state = sm.setPhase("security");
+    expect(state.phase).toBe("security");
+    expect(state.securityReentryReason).toBe("security_only");
+  });
+
+  it("BLOCKED: onboarding→security WITHOUT architecture → throw", () => {
+    const sm = new StateManager(dir);
+    sm.init("test", dir);
+    expect(() => sm.setPhase("security")).toThrow("architecture");
+  });
+
+  it("ALLOWED: deployment→security → securityReentryReason=post_deploy", () => {
+    const sm = initWithStateManager(dir);
+    forcePhase(dir, "deployment");
+    const state = sm.setPhase("security");
+    expect(state.phase).toBe("security");
+    expect(state.securityReentryReason).toBe("post_deploy");
+  });
+
+  it("ALLOWED: complete→security → securityReentryReason=post_complete", () => {
+    const sm = initWithStateManager(dir);
+    forcePhase(dir, "complete");
+    const state = sm.setPhase("security");
+    expect(state.phase).toBe("security");
+    expect(state.securityReentryReason).toBe("post_complete");
+  });
+
+  it("building→security sets NO securityReentryReason (normal flow)", () => {
+    const sm = initWithStateManager(dir);
+    forcePhase(dir, "building");
+    for (const s of sm.read().slices) walkSliceToStatus(sm, s.id, "done");
+    sm.setBuildSignoff();
+    addQualityAudit(sm);
+    const state = sm.setPhase("security");
+    expect(state.phase).toBe("security");
+    expect(state.securityReentryReason).toBeNull();
+  });
+
+  it("securityReentryReason cleared when leaving security", () => {
+    const sm = initWithStateManager(dir);
+    forcePhase(dir, "deployment");
+    sm.setPhase("security");
+    expect(sm.read().securityReentryReason).toBe("post_deploy");
+    // Go back to building
+    sm.setPhase("building");
+    expect(sm.read().securityReentryReason).toBeNull();
+  });
+});
+
+// ============================================================================
+// Security Re-Entry: invalidation of stale approvals
+// ============================================================================
+
+describe("Security Re-Entry: invalidation", () => {
+  it("deployment→security invalidates deployApproval, adversarialReview, lastFullSast", () => {
+    const sm = initWithStateManager(dir);
+    forcePhase(dir, "building");
+    for (const s of sm.read().slices) walkSliceToStatus(sm, s.id, "done");
+    sm.setBuildSignoff();
+    addQualityAudit(sm);
+    sm.setPhase("security");
+    sm.markFullSastRun(0);
+    addPassingWhitebox(sm);
+    addReleaseAudit(sm);
+    addPassingVerification(sm);
+    sm.setPhase("deployment");
+    // Force some approval state
+    forceField(dir, "deployApprovalAt", "2026-01-01T00:00:00Z");
+    forceField(dir, "deployApprovalStateHash", "hash");
+    // Now re-enter security
+    const state = sm.setPhase("security");
+    expect(state.deployApprovalAt).toBeNull();
+    expect(state.deployApprovalStateHash).toBeNull();
+    expect(state.adversarialReviewState).toBeNull();
+    expect(state.lastFullSastAt).toBeNull();
+    expect(state.lastFullSastFindingCount).toBe(0);
+  });
+
+  it("complete→security invalidates deployApproval, adversarialReview, lastFullSast", () => {
+    const sm = initWithStateManager(dir);
+    forcePhase(dir, "complete");
+    // Force some approval state
+    forceField(dir, "deployApprovalAt", "2026-01-01T00:00:00Z");
+    forceField(dir, "adversarialReviewState", { completedAt: "2026-01-01T00:00:00Z", round: 1, totalFindingsRecorded: 0, roundHistory: [] });
+    forceField(dir, "lastFullSastAt", "2026-01-01T00:00:00Z");
+    forceField(dir, "lastFullSastFindingCount", 5);
+    const state = sm.setPhase("security");
+    expect(state.deployApprovalAt).toBeNull();
+    expect(state.deployApprovalStateHash).toBeNull();
+    expect(state.adversarialReviewState).toBeNull();
+    expect(state.lastFullSastAt).toBeNull();
+    expect(state.lastFullSastFindingCount).toBe(0);
+  });
+
+  it("security→deployment after re-entry still enforces all 9 gates", () => {
+    const sm = initWithStateManager(dir);
+    forcePhase(dir, "deployment");
+    sm.setPhase("security");
+    // All gates must be re-satisfied
+    expect(() => sm.setPhase("deployment")).toThrow("full SAST");
+  });
+});
+
+// ============================================================================
+// projectFindings: SAST findings without slice
+// ============================================================================
+
+describe("projectFindings: slice-less findings", () => {
+  it("addSASTFinding(null) persists to projectFindings", () => {
+    const sm = initWithStateManager(dir);
+    forcePhase(dir, "security");
+    sm.addSASTFinding(null, {
+      id: "PF-001", tool: "semgrep", severity: "high", status: "open",
+      title: "SQL Injection", file: "src/db.ts", line: 10,
+      description: "desc", fix: "fix",
+    });
+    const state = sm.read();
+    expect(state.projectFindings).toHaveLength(1);
+    expect(state.projectFindings[0].id).toBe("PF-001");
+  });
+
+  it("open CRITICAL projectFinding blocks security→deployment", () => {
+    const sm = initWithStateManager(dir);
+    forcePhase(dir, "building");
+    for (const s of sm.read().slices) walkSliceToStatus(sm, s.id, "done");
+    sm.setBuildSignoff();
+    addQualityAudit(sm);
+    sm.setPhase("security");
+    // Record finding first, then run SAST after (so SAST isn't stale)
+    sm.addSASTFinding(null, {
+      id: "PF-CRIT", tool: "manual", severity: "critical", status: "open",
+      title: "Critical Bug", file: "src/x.ts", line: 1,
+      description: "desc", fix: "fix",
+    });
+    sm.markFullSastRun(1);
+    addPassingWhitebox(sm);
+    addReleaseAudit(sm);
+    addPassingVerification(sm);
+    expect(() => sm.setPhase("deployment")).toThrow("CRITICAL/HIGH");
+  });
+
+  it("getProgress includes projectFindings in openFindings count", () => {
+    const sm = initWithStateManager(dir);
+    forcePhase(dir, "security");
+    sm.addSASTFinding(null, {
+      id: "PF-002", tool: "manual", severity: "medium", status: "open",
+      title: "Issue", file: "src/y.ts", line: 5, description: "d", fix: "f",
+    });
+    const progress = sm.getProgress();
+    expect(progress.openFindings).toBe(1);
+  });
+});
+
+// ============================================================================
+// Regression: building→security gates unchanged
+// ============================================================================
+
+describe("Regression: building→security gates unchanged", () => {
+  it("BLOCKED: building→security without signoff → still blocked", () => {
+    const sm = initWithStateManager(dir);
+    forcePhase(dir, "building");
+    for (const s of sm.read().slices) walkSliceToStatus(sm, s.id, "done");
+    // No signoff
+    expect(() => sm.setPhase("security")).toThrow("build signoff");
+  });
+});
+
+// ============================================================================
 // Full Gate Sequence: all gates enforce in correct order
 // ============================================================================
 

@@ -355,6 +355,8 @@ export interface AdversarialReviewState {
   roundHistory: AdversarialReviewRound[];
 }
 
+export type SecurityReentryReason = "security_only" | "post_deploy" | "post_complete";
+
 export interface ProjectState {
   version: number;
   projectName: string;
@@ -382,6 +384,8 @@ export interface ProjectState {
   adversarialReviewState: AdversarialReviewState | null;
   deployApprovalAt: string | null;
   deployApprovalStateHash: string | null;
+  projectFindings: SASTFinding[];
+  securityReentryReason: SecurityReentryReason | null;
   createdAt: string;
   updatedAt: string;
 }

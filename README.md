@@ -2,11 +2,11 @@
 
 MCP server that turns AI-generated code into production-ready software with TDD, security scanning, and deployment automation. Up to 100 times fewer exploration tokens for claude code.
 
-**25 MCP tools** · **928 tests** · **Architecture → Plan → Build (evidence-gated) → Quality Audit (cadence) → Code Review → Signoff → E2E Testing → Security → Whitebox → Verify → Release Audit → Deploy → Backup**
+**25 MCP tools** · **941 tests** · **Architecture → Plan → Build (evidence-gated) → Quality Audit (cadence) → Code Review → Signoff → E2E Testing → Security → Whitebox → Verify → Release Audit → Deploy → Backup**
 
 [![npm version](https://img.shields.io/npm/v/architect-to-product)](https://www.npmjs.com/package/architect-to-product)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Tests: 928 passing](https://img.shields.io/badge/tests-928%20passing-brightgreen)]()
+[![Tests: 941 passing](https://img.shields.io/badge/tests-941%20passing-brightgreen)]()
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue)]()
 
 ---
@@ -138,6 +138,7 @@ These cannot be bypassed — they are enforced in code, not just in prompts:
 - **Backup gate**: Stateful apps (database or uploads) are blocked from deploying without configured backup (enforced in code)
 - **Finding justification gate**: Cannot set finding status to `accepted`, `fixed`, or `false_positive` without a justification (code-enforced via `a2p_record_finding`)
 - **Companion restart detection**: `a2p_get_state` reports `restartRequired: true` when companions are configured but session hasn't been restarted
+- **Security re-entry invalidation**: Transitioning to security from deployment or complete automatically nullifies deploy approval, adversarial review, and SAST timestamps — forces a complete security cycle before re-deploying
 - **Phase guards**: Tools are restricted to appropriate phases (e.g. tests only in building, SAST full only in security, deployment only in deployment phase)
 - **Test command restriction**: Test command override blocked when a test command is configured — prevents fabricated test results
 
@@ -245,7 +246,18 @@ DEPLOY APPROVAL [MANDATORY] ─── "Ready to ship?" + backup status
      │  🛑 Blocks deployment if stateful app has no backup configured
      ▼
 Deployment (configs + backup/restore/verify scripts)
+     │
+     ├──→ Security Re-Entry ──→ Security Gate (re-scan after changes)
+     │    (invalidates prior approvals, forces full security cycle)
+     ▼
+Complete
+     │
+     └──→ Security Re-Entry ──→ Security Gate (post-release audit)
 ```
+
+**Security-Only Mode:** For existing repos that just need security scanning, skip the build phase entirely: `init → set_architecture → security`. No slices, no build signoff — findings are stored at project level.
+
+**Post-Deploy / Post-Complete Re-Entry:** After deployment or completion, transition back to security for re-scans. All prior approvals (deploy approval, adversarial review, SAST timestamps) are automatically invalidated — the full security cycle must be re-satisfied before deploying again.
 
 For multi-phase projects (e.g. Phase 0: Spikes, Phase 1: MVP, Phase 2: Scale), this loop repeats per phase automatically.
 
@@ -373,10 +385,15 @@ You don't have to run the full pipeline. Each prompt works standalone — pick w
 `/a2p` → `/a2p_planning` → `/a2p_build_slice` (repeat per slice) → `/a2p_audit` (quality) → `/a2p_e2e_testing` (if UI) → `/a2p_security_gate` → `/a2p_whitebox` → `/a2p_audit` (release) → `/a2p_deploy`
 
 **MVP built with vibe coding, now make it production-ready:**
+- `/a2p` → set architecture → transition directly to security (no slices needed)
 - `/a2p_security_gate` — find the vulnerabilities that vibe coding missed
 - `/a2p_whitebox` — verify which findings are actually exploitable vs. noise
 - `/a2p_refactor` — clean up the spaghetti, remove dead code
 - `/a2p_deploy` — generate Dockerfile, docker-compose, Caddyfile instead of guessing
+
+**Already deployed, need a security re-scan:**
+- Transition back to security from deployment or complete phase — prior approvals are automatically invalidated
+- `/a2p_security_gate` → `/a2p_whitebox` → full security cycle before re-deploying
 
 **SAST reports too many findings, need to triage:**
 - `/a2p_whitebox` — whitebox audit confirms exploitability, active verification tests that gates hold
@@ -496,7 +513,7 @@ git clone https://github.com/BernhardJackiewicz/architect-to-product.git
 cd architect-to-product
 npm install
 npm run typecheck   # Type checking
-npm test            # 928 tests
+npm test            # 941 tests
 npm run build       # Build
 npm run dev         # Dev mode
 ```
