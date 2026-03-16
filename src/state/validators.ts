@@ -295,6 +295,34 @@ export const AdversarialReviewStateSchema = z.object({
   roundHistory: z.array(AdversarialReviewRoundSchema),
 });
 
+export const ShakeBreakCategorySchema = z.enum([
+  "auth_idor", "race_conditions", "state_manipulation",
+  "business_logic", "injection_runtime", "token_session",
+  "file_upload", "webhook_callback",
+]);
+
+export const ShakeBreakSessionSchema = z.object({
+  sandboxPath: z.string(),
+  port: z.number().int(),
+  dbUrl: z.string(),
+  dbType: z.enum(["sqlite", "postgres", "mysql", "none"]),
+  dbFallback: z.boolean(),
+  dockerContainerId: z.string().nullable(),
+  categories: z.array(ShakeBreakCategorySchema),
+  startedAt: z.string(),
+  timeoutMinutes: z.number().int().min(5).max(30),
+  startingFindingIds: z.array(z.string()),
+});
+
+export const ShakeBreakResultSchema = z.object({
+  id: z.string().min(1),
+  timestamp: z.string(),
+  durationMinutes: z.number(),
+  categoriesTested: z.array(ShakeBreakCategorySchema),
+  findingsRecorded: z.number().int().min(0),
+  note: z.string(),
+});
+
 /** Migrate old adversarialReviewCompletedAt (string) → adversarialReviewState (object) */
 function migrateAdversarialReview(data: Record<string, unknown>): Record<string, unknown> {
   if ("adversarialReviewCompletedAt" in data && !("adversarialReviewState" in data)) {
@@ -371,6 +399,8 @@ export const ProjectStateSchema = z.preprocess(
   deployApprovalStateHash: z.string().nullable().default(null),
   projectFindings: z.array(SASTFindingSchema).default([]),
   securityReentryReason: z.enum(["security_only", "post_deploy", "post_complete"]).nullable().default(null),
+  shakeBreakSession: ShakeBreakSessionSchema.nullable().default(null),
+  shakeBreakResults: z.array(ShakeBreakResultSchema).default([]),
   createdAt: z.string(),
   updatedAt: z.string(),
 }));

@@ -207,7 +207,9 @@ export type BuildAction =
   | "slices_added"
   | "slice_advance"
   | "files_updated"
-  | "phase_complete";
+  | "phase_complete"
+  | "shake_break_setup"
+  | "shake_break_teardown";
 
 export type EventStatus = "success" | "failure" | "warning" | "info";
 
@@ -361,6 +363,38 @@ export interface AdversarialReviewState {
 
 export type SecurityReentryReason = "security_only" | "post_deploy" | "post_complete";
 
+export type ShakeBreakCategory =
+  | "auth_idor"
+  | "race_conditions"
+  | "state_manipulation"
+  | "business_logic"
+  | "injection_runtime"
+  | "token_session"
+  | "file_upload"
+  | "webhook_callback";
+
+export interface ShakeBreakSession {
+  sandboxPath: string;
+  port: number;
+  dbUrl: string;
+  dbType: "sqlite" | "postgres" | "mysql" | "none";
+  dbFallback: boolean;
+  dockerContainerId: string | null;
+  categories: ShakeBreakCategory[];
+  startedAt: string;
+  timeoutMinutes: number;
+  startingFindingIds: string[];
+}
+
+export interface ShakeBreakResult {
+  id: string;
+  timestamp: string;
+  durationMinutes: number;
+  categoriesTested: ShakeBreakCategory[];
+  findingsRecorded: number;
+  note: string;
+}
+
 export interface ProjectState {
   version: number;
   projectName: string;
@@ -390,6 +424,8 @@ export interface ProjectState {
   deployApprovalStateHash: string | null;
   projectFindings: SASTFinding[];
   securityReentryReason: SecurityReentryReason | null;
+  shakeBreakSession: ShakeBreakSession | null;
+  shakeBreakResults: ShakeBreakResult[];
   createdAt: string;
   updatedAt: string;
 }
