@@ -17,6 +17,7 @@ import type {
   ActiveVerificationResult,
   BackupConfig,
   BackupStatus,
+  InfrastructureRecord,
   LogLevel,
   EventStatus,
   EventMetadata,
@@ -103,6 +104,7 @@ export class StateManager {
       activeVerificationResults: [],
       buildHistory: [],
       currentProductPhase: 0,
+      infrastructure: null,
       backupConfig: {
         enabled: true, required: false, schedule: "daily", time: "02:00",
         retentionDays: 14, targets: ["deploy_artifacts"],
@@ -844,6 +846,31 @@ export class StateManager {
       `${result.id} round ${result.round}: ${result.tests_passed}/${result.tests_run} passed (blocking: ${result.blocking_count})`,
       { status: result.blocking_count > 0 ? "failure" : result.tests_failed > 0 ? "warning" : "success" },
     );
+    this.write(state);
+    return state;
+  }
+
+  /** Set infrastructure record (server provisioned) */
+  setInfrastructure(record: InfrastructureRecord): ProjectState {
+    const state = this.read();
+    state.infrastructure = record;
+    this.addEvent(state, state.phase, null, "infrastructure_set",
+      `Server provisioned: ${record.serverName} (${record.provider}/${record.serverType} @ ${record.location})`,
+      { level: "info", status: "success" });
+    this.write(state);
+    return state;
+  }
+
+  /** Update lastDeployedAt timestamp on infrastructure */
+  updateLastDeployed(): ProjectState {
+    const state = this.read();
+    if (!state.infrastructure) {
+      throw new Error("No infrastructure recorded. Call a2p_record_server first.");
+    }
+    state.infrastructure.lastDeployedAt = new Date().toISOString();
+    this.addEvent(state, state.phase, null, "deployment_completed",
+      `Deployed to ${state.infrastructure.serverIp}`,
+      { level: "info", status: "success" });
     this.write(state);
     return state;
   }
