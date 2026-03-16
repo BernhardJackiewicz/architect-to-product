@@ -367,6 +367,8 @@ export const ProjectStateSchema = z.preprocess(
   adversarialReviewState: AdversarialReviewStateSchema.nullable().default(null),
   deployApprovalAt: z.string().nullable().default(null),
   deployApprovalStateHash: z.string().nullable().default(null),
+  projectFindings: z.array(SASTFindingSchema).default([]),
+  securityReentryReason: z.enum(["security_only", "post_deploy", "post_complete"]).nullable().default(null),
   createdAt: z.string(),
   updatedAt: z.string(),
 }));

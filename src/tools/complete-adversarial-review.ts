@@ -19,10 +19,11 @@ export function handleCompleteAdversarialReview(input: CompleteAdversarialReview
     const state = sm.completeAdversarialReview(input.findingsRecorded, input.note);
     const reviewState = state.adversarialReviewState!;
 
-    // Aggregate all adversarial-review findings from all slices for deduplication
-    const previousFindings = state.slices
-      .flatMap(s => s.sastFindings)
-      .filter(f => f.tool === "adversarial-review")
+    // Aggregate all adversarial-review findings from all slices + project-level for deduplication
+    const previousFindings = [
+      ...state.slices.flatMap(s => s.sastFindings),
+      ...state.projectFindings,
+    ].filter(f => f.tool === "adversarial-review")
       .map(f => ({
         title: f.title,
         file: f.file,

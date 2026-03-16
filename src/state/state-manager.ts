@@ -22,6 +22,7 @@ import type {
   LogLevel,
   EventStatus,
   EventMetadata,
+  SecurityReentryReason,
 } from "./types.js";
 import { pruneEvents, sanitizeOutput, truncatePreview } from "../utils/log-sanitizer.js";
 
@@ -31,14 +32,14 @@ const STATE_FILE = "state.json";
 
 /** Valid phase transitions */
 const PHASE_TRANSITIONS: Record<Phase, Phase[]> = {
-  onboarding: ["planning"],
+  onboarding: ["planning", "security"],
   planning: ["building"],
   building: ["refactoring", "security"],
   refactoring: ["e2e_testing", "security"],
   e2e_testing: ["security"],
   security: ["deployment", "building"], // back to building if fixes needed
-  deployment: ["complete", "planning"],
-  complete: [],
+  deployment: ["complete", "planning", "security"],
+  complete: ["security"],
 };
 
 /** Valid slice status transitions */
@@ -121,6 +122,8 @@ export class StateManager {
       adversarialReviewState: null,
       deployApprovalAt: null,
       deployApprovalStateHash: null,
+      projectFindings: [],
+      securityReentryReason: null,
       createdAt: now,
       updatedAt: now,
     };
@@ -177,7 +180,10 @@ export class StateManager {
   private computeDeployStateHash(state: ProjectState): string {
     const lastWhitebox = state.whiteboxResults[state.whiteboxResults.length - 1];
     const lastAudit = state.auditResults[state.auditResults.length - 1];
-    const openFindings = state.slices.flatMap(s => s.sastFindings).filter(f => f.status === "open").length;
+    const openFindings = [
+      ...state.slices.flatMap(s => s.sastFindings),
+      ...state.projectFindings,
+    ].filter(f => f.status === "open").length;
     return [
       `sast:${state.lastFullSastAt}`,
       `findings:${openFindings}`,
@@ -285,6 +291,38 @@ export class StateManager {
       }
     }
 
+    // Architecture gate: onboarding→security requires architecture (SAST needs tech stack)
+    if (state.phase === "onboarding" && newPhase === "security") {
+      if (!state.architecture) {
+        throw new Error(
+          "Cannot enter security without architecture. Call a2p_set_architecture first."
+        );
+      }
+    }
+
+    // Security re-entry: invalidate stale approvals + mark reason
+    if (newPhase === "security") {
+      const reentryReasons: Record<string, SecurityReentryReason> = {
+        onboarding: "security_only",
+        deployment: "post_deploy",
+        complete: "post_complete",
+      };
+      const reason = reentryReasons[state.phase];
+      if (reason) {
+        state.securityReentryReason = reason;
+        state.deployApprovalAt = null;
+        state.deployApprovalStateHash = null;
+        state.adversarialReviewState = null;
+        state.lastFullSastAt = null;
+        state.lastFullSastFindingCount = 0;
+      }
+    }
+
+    // Clear reentry reason when leaving security
+    if (state.phase === "security" && newPhase !== "security") {
+      state.securityReentryReason = null;
+    }
+
     // Security→Deployment gates (ordered by workflow sequence)
     if (state.phase === "security" && newPhase === "deployment") {
       // 1. Full SAST gate: at least one full SAST scan must have been run
@@ -304,9 +342,10 @@ export class StateManager {
       }
 
       // 3. Open CRITICAL/HIGH SAST findings block deployment
-      const openBlockers = state.slices
-        .flatMap((s) => s.sastFindings)
-        .filter(
+      const openBlockers = [
+        ...state.slices.flatMap((s) => s.sastFindings),
+        ...state.projectFindings,
+      ].filter(
           (f) =>
             f.status === "open" &&
             (f.severity === "critical" || f.severity === "high")
@@ -540,6 +579,8 @@ export class StateManager {
       const slice = state.slices.find((s) => s.id === sliceId);
       if (!slice) throw new Error(`Slice "${sliceId}" not found`);
       slice.sastFindings.push(finding);
+    } else {
+      state.projectFindings.push(finding);
     }
 
     this.invalidateDeployApproval(state);
@@ -746,9 +787,10 @@ export class StateManager {
       }
     }
 
-    const openFindings = state.slices
-      .flatMap((s) => s.sastFindings)
-      .filter((f) => f.status === "open").length;
+    const openFindings = [
+      ...state.slices.flatMap((s) => s.sastFindings),
+      ...state.projectFindings,
+    ].filter((f) => f.status === "open").length;
 
     const openQuality = state.qualityIssues.filter((q) => q.status === "open").length;
 
