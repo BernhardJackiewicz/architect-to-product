@@ -275,15 +275,15 @@ const PROBE_PATTERNS: ProbePattern[] = [
     title: "Insecure cryptographic function for security-sensitive operation",
     severity: "high",
   },
-  // Mass Assignment: .create(req.body) without validation
+  // Mass Assignment: .create(req.body), spread operator, Object.assign
   {
-    pattern: /\.create\s*\(\s*(?:req\.body|request\.body)/i,
+    pattern: /\.create\s*\(\s*(?:req\.body|request\.body)|\.\.\.\s*req\.body|Object\.assign\s*\([^,]*,\s*req\.body/i,
     title: "Mass assignment via unvalidated request body",
     severity: "high",
   },
-  // Open Redirect: res.redirect with user input
+  // Open Redirect: res.redirect or location assignment with user input
   {
-    pattern: /res\.redirect\s*\(\s*(?:req\.|query\.|params\.)/i,
+    pattern: /res\.redirect\s*\(\s*(?:req\.|query\.|params\.)|(?:window\.)?location(?:\.href)?\s*=\s*(?:req\.|params\.|user)/i,
     title: "Open redirect via user-controlled URL",
     severity: "medium",
   },
@@ -323,6 +323,63 @@ const PROBE_PATTERNS: ProbePattern[] = [
     title: "Cookie set without security flags",
     severity: "medium",
   },
+  // Migration Security: destructive operations
+  {
+    pattern: /DROP\s+TABLE|TRUNCATE\s+TABLE|ALTER\s+TABLE\s+\w+\s+DROP/i,
+    title: "Destructive migration without rollback safeguard",
+    severity: "high",
+    fileFilter: (f) => /migration|migrate|schema/i.test(f),
+  },
+  // CORS Wildcard or permissive configuration
+  {
+    pattern: /(?:Access-Control-Allow-Origin|allow_origins|cors)\s*[:=(\[]\s*["']\*["']|\.use\s*\(\s*cors\s*\(\s*\)\s*\)/i,
+    title: "CORS wildcard or permissive configuration",
+    severity: "medium",
+  },
+  // Secrets in Dockerfile
+  {
+    pattern: /COPY\s+.*\.env|ENV\s+\w*(?:SECRET|PASSWORD|TOKEN|API_KEY)\s*=/i,
+    title: "Secrets exposed in Dockerfile",
+    severity: "high",
+    fileFilter: (f) => /dockerfile/i.test(f),
+  },
+  // Unpinned base image in Dockerfile
+  {
+    pattern: /^FROM\s+\w+(?:\/\w+)?\s*$/m,
+    title: "Unpinned base image in Dockerfile (no tag or digest)",
+    severity: "medium",
+    fileFilter: (f) => /dockerfile/i.test(f),
+  },
+  // CSRF: form POST handler without CSRF token
+  {
+    pattern: /\.post\s*\([^)]*(?:form|submit|action)/i,
+    title: "Form POST handler potentially missing CSRF protection",
+    severity: "medium",
+  },
+  // JWT without expiry
+  {
+    pattern: /jwt\.sign\s*\(/i,
+    title: "JWT signed without explicit expiry",
+    severity: "medium",
+  },
+  // File upload without limits
+  {
+    pattern: /multer\s*\(|formidable\s*\(|busboy/i,
+    title: "File upload handler without size/type limits",
+    severity: "medium",
+  },
+  // PII in logs
+  {
+    pattern: /console\.log\s*\(.*(?:password|secret|token|ssn|creditCard|credit_card)/i,
+    title: "PII or secrets potentially logged to console",
+    severity: "high",
+  },
+  // ORM raw SQL with interpolation
+  {
+    pattern: /\.raw\s*\(\s*(?:`[^`]*\$\{|[^)]*\+\s*(?:req\.|input|params|user))|\.rawQuery\s*\(/i,
+    title: "SQL injection via ORM raw query",
+    severity: "critical",
+  },
 ];
 
 /** Auth patterns that indicate a file has auth guards */
@@ -355,6 +412,11 @@ const XSS_SAFE_PATTERNS = [/DOMPurify/i, /sanitize/i, /escapeHtml/i, /xss/i, /te
 const DESERIAL_SAFE_PATTERNS = [/SafeLoader/i, /safe_load/i, /yaml\.safe/i];
 const NOSQL_SAFE_PATTERNS = [/mongo-sanitize/i, /sanitize/i, /express-mongo-sanitize/i];
 const COOKIE_SAFE_PATTERNS = [/httpOnly/i, /secure\s*:/i, /sameSite/i];
+const CORS_SAFE_PATTERNS = [/credentials\s*:\s*false/i, /origin\s*:\s*["'][^*]/i];
+const CSRF_SAFE_PATTERNS = [/csrf/i, /csrfToken/i, /xsrf/i, /SameSite/i];
+const JWT_SAFE_PATTERNS = [/expiresIn/i, /exp\s*:/];
+const UPLOAD_SAFE_PATTERNS = [/limits/i, /fileSize/i, /maxFileSize/i, /fileFilter/i];
+const LOG_SAFE_PATTERNS = [/redact/i, /mask/i, /scrub/i, /sanitizeLog/i];
 
 // --- Auto-Discovery Fallback ---
 
@@ -533,6 +595,36 @@ function shouldSuppressProbe(probe: ProbePattern, content: string, _filePath: st
   // Suppress cookie warning if security flags are present
   if (title.includes("cookie")) {
     if (COOKIE_SAFE_PATTERNS.some(p => p.test(content))) return true;
+  }
+
+  // Suppress destructive migration if rollback/down/revert pattern exists
+  if (title.includes("destructive migration")) {
+    if (/rollback|\.down\b|function\s+down|revert|backup/i.test(content)) return true;
+  }
+
+  // Suppress CORS wildcard if safe CORS configuration exists
+  if (title.includes("cors")) {
+    if (CORS_SAFE_PATTERNS.some(p => p.test(content))) return true;
+  }
+
+  // Suppress CSRF if CSRF protection is present
+  if (title.includes("csrf")) {
+    if (CSRF_SAFE_PATTERNS.some(p => p.test(content))) return true;
+  }
+
+  // Suppress JWT without expiry if expiry is configured
+  if (title.includes("jwt") && title.includes("expiry")) {
+    if (JWT_SAFE_PATTERNS.some(p => p.test(content))) return true;
+  }
+
+  // Suppress file upload without limits if limits are configured
+  if (title.includes("file upload")) {
+    if (UPLOAD_SAFE_PATTERNS.some(p => p.test(content))) return true;
+  }
+
+  // Suppress PII in logs if redaction/masking is present
+  if (title.includes("pii") || title.includes("logged to console")) {
+    if (LOG_SAFE_PATTERNS.some(p => p.test(content))) return true;
   }
 
   return false;

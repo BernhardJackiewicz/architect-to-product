@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { requireProject, requirePhaseAndMode, truncate } from "../utils/tool-helpers.js";
 import { runProcess } from "../utils/process-runner.js";
 import { generateRunId, sanitizeOutput } from "../utils/log-sanitizer.js";
@@ -50,6 +52,14 @@ export function handleRunSast(input: RunSastInput): string {
     if (lang.includes("python")) {
       const banditResult = runBandit(input);
       results.push(banditResult);
+    }
+  }
+
+  // Dependency scanning (npm audit / pip-audit)
+  if (input.mode === "full") {
+    const depResults = runDependencyScanning(input.projectPath);
+    for (const dr of depResults) {
+      results.push(dr);
     }
   }
 
@@ -257,5 +267,158 @@ function mapBanditSeverity(sev: string): FindingSeverity {
     default:
       return "info";
   }
+}
+
+function mapNpmAuditSeverity(sev: string): FindingSeverity {
+  switch (sev.toLowerCase()) {
+    case "critical":
+      return "critical";
+    case "high":
+      return "high";
+    case "moderate":
+      return "medium";
+    case "low":
+      return "low";
+    case "info":
+      return "info";
+    default:
+      return "info";
+  }
+}
+
+function mapPipAuditSeverity(sev: string): FindingSeverity {
+  switch (sev.toUpperCase()) {
+    case "CRITICAL":
+      return "critical";
+    case "HIGH":
+      return "high";
+    case "MEDIUM":
+      return "medium";
+    case "LOW":
+      return "low";
+    default:
+      return "info";
+  }
+}
+
+export function runDependencyScanning(projectPath: string): Array<{
+  tool: string;
+  available: boolean;
+  findings: SASTFinding[];
+  rawOutput: string;
+  durationMs?: number;
+}> {
+  const results: Array<{
+    tool: string;
+    available: boolean;
+    findings: SASTFinding[];
+    rawOutput: string;
+    durationMs?: number;
+  }> = [];
+
+  // npm audit
+  const hasPackageLock = existsSync(join(projectPath, "package-lock.json"));
+  const hasPackageJson = existsSync(join(projectPath, "package.json"));
+  if (hasPackageLock || hasPackageJson) {
+    const npmCheck = runProcess("which npm", projectPath, 5000);
+    if (npmCheck.exitCode === 0) {
+      const npmResult = runProcess("npm audit --json 2>/dev/null", projectPath, 60_000);
+      let findings: SASTFinding[] = [];
+      try {
+        const parsed = JSON.parse(npmResult.stdout);
+        const vulnerabilities = parsed.vulnerabilities ?? {};
+        let idx = 0;
+        for (const [pkgName, vuln] of Object.entries<any>(vulnerabilities)) {
+          idx++;
+          const severity = mapNpmAuditSeverity(vuln.severity ?? "info");
+          const viaStr = Array.isArray(vuln.via)
+            ? vuln.via
+                .filter((v: any) => typeof v === "object")
+                .map((v: any) => v.title ?? v.name ?? "")
+                .filter(Boolean)
+                .join("; ")
+            : "";
+          findings.push({
+            id: `NPM-${String(idx).padStart(3, "0")}`,
+            tool: "npm-audit",
+            severity,
+            status: "open" as const,
+            title: `Vulnerable dependency: ${pkgName} (${vuln.range ?? "unknown version"})`,
+            file: "package.json",
+            line: 0,
+            description: viaStr || `${pkgName}: ${vuln.severity ?? "unknown"} severity vulnerability`,
+            fix: vuln.fixAvailable ? "Fix available via npm audit fix" : "No automatic fix available",
+          });
+        }
+      } catch {
+        // npm audit may not return valid JSON (e.g., no lock file)
+      }
+      results.push({
+        tool: "npm-audit",
+        available: true,
+        findings,
+        rawOutput: sanitizeOutput(truncate(npmResult.stdout, 3000)),
+        durationMs: npmResult.durationMs,
+      });
+    } else {
+      results.push({
+        tool: "npm-audit",
+        available: false,
+        findings: [],
+        rawOutput: "npm not available",
+      });
+    }
+  }
+
+  // pip-audit
+  const hasRequirements = existsSync(join(projectPath, "requirements.txt"));
+  const hasPipfile = existsSync(join(projectPath, "Pipfile.lock"));
+  if (hasRequirements || hasPipfile) {
+    const pipCheck = runProcess("which pip-audit", projectPath, 5000);
+    if (pipCheck.exitCode === 0) {
+      const pipResult = runProcess("pip-audit --format json 2>/dev/null", projectPath, 120_000);
+      let findings: SASTFinding[] = [];
+      try {
+        const parsed = JSON.parse(pipResult.stdout);
+        const deps = Array.isArray(parsed) ? parsed : (parsed.dependencies ?? []);
+        let idx = 0;
+        for (const dep of deps) {
+          if (!dep.vulns || dep.vulns.length === 0) continue;
+          for (const vuln of dep.vulns) {
+            idx++;
+            findings.push({
+              id: `PIP-${String(idx).padStart(3, "0")}`,
+              tool: "pip-audit",
+              severity: mapPipAuditSeverity(vuln.fix_versions?.[0] ? "high" : "medium"),
+              status: "open" as const,
+              title: `Vulnerable dependency: ${dep.name} ${dep.version} (${vuln.id})`,
+              file: hasRequirements ? "requirements.txt" : "Pipfile.lock",
+              line: 0,
+              description: vuln.description ?? `${vuln.id}: vulnerability in ${dep.name}`,
+              fix: vuln.fix_versions?.length ? `Upgrade to ${vuln.fix_versions.join(" or ")}` : "No fix available",
+            });
+          }
+        }
+      } catch {
+        // pip-audit may not return valid JSON
+      }
+      results.push({
+        tool: "pip-audit",
+        available: true,
+        findings,
+        rawOutput: sanitizeOutput(truncate(pipResult.stdout, 3000)),
+        durationMs: pipResult.durationMs,
+      });
+    } else {
+      results.push({
+        tool: "pip-audit",
+        available: false,
+        findings: [],
+        rawOutput: "pip-audit not installed. Install: pip install pip-audit",
+      });
+    }
+  }
+
+  return results;
 }
 
