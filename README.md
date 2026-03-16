@@ -2,11 +2,11 @@
 
 MCP server that turns AI-generated code into production-ready software with TDD, security scanning, and deployment automation. Up to 100 times fewer exploration tokens for claude code.
 
-**24 MCP tools** · **890 tests** · **Architecture → Plan → Build (evidence-gated) → Quality Audit (cadence) → Code Review → Signoff → Security → Whitebox → Verify → Release Audit → Deploy → Backup**
+**25 MCP tools** · **895 tests** · **Architecture → Plan → Build (evidence-gated) → Quality Audit (cadence) → Code Review → Signoff → E2E Testing → Security → Whitebox → Verify → Release Audit → Deploy → Backup**
 
 [![npm version](https://img.shields.io/npm/v/architect-to-product)](https://www.npmjs.com/package/architect-to-product)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Tests: 890 passing](https://img.shields.io/badge/tests-890%20passing-brightgreen)]()
+[![Tests: 895 passing](https://img.shields.io/badge/tests-895%20passing-brightgreen)]()
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue)]()
 
 ---
@@ -128,6 +128,7 @@ These cannot be bypassed — they are enforced in code, not just in prompts:
 
 - **Build gate**: Cannot leave building phase until all slices are `done`
 - **Build signoff gate**: Cannot proceed to security without human build signoff (`a2p_build_signoff`). Signoff is invalidated by any slice change or new test run — must re-signoff
+- **E2E gate**: Projects with UI slices (`hasUI: true`) and Playwright installed cannot skip E2E testing — `building→security` and `refactoring→security` are blocked. Must go through `e2e_testing` phase first
 - **Evidence gates**: Cannot mark slice as `green` without passing tests, `sast` without SAST scan, `done` without passing tests
 - **Security gate**: Cannot deploy with open CRITICAL/HIGH SAST findings
 - **Full SAST gate**: Cannot deploy without at least one full SAST scan (`a2p_run_sast mode=full`)
@@ -225,6 +226,9 @@ Build (evidence-gated slices) ─── [sliceReview? → STOP after each slice]
 BUILD SIGNOFF [MANDATORY] ─── "Does the product actually work?"
      │
      ▼
+E2E Testing (Playwright) ─── [if UI slices + Playwright: MANDATORY]
+     │
+     ▼
 Security Gate (SAST + OWASP) ─── [securitySignoff? → STOP]
      │
      ▼
@@ -246,8 +250,8 @@ Deployment (configs + backup/restore/verify scripts)
 For multi-phase projects (e.g. Phase 0: Spikes, Phase 1: MVP, Phase 2: Scale), this loop repeats per phase automatically.
 
 ```
-Phase 0: Plan → Build → BUILD SIGNOFF → Security → Whitebox → Release Audit → DEPLOY APPROVAL (+ backup check) → Deploy → complete_phase
-Phase 1: Plan → Build → BUILD SIGNOFF → Security → Whitebox → Release Audit → DEPLOY APPROVAL (+ backup check) → Deploy → complete_phase
+Phase 0: Plan → Build → BUILD SIGNOFF → E2E Testing → Security → Whitebox → Release Audit → DEPLOY APPROVAL (+ backup check) → Deploy → complete_phase
+Phase 1: Plan → Build → BUILD SIGNOFF → E2E Testing → Security → Whitebox → Release Audit → DEPLOY APPROVAL (+ backup check) → Deploy → complete_phase
 ...
 ```
 
@@ -315,7 +319,7 @@ Add to `.vscode/mcp.json`:
 }
 ```
 
-## MCP Tools (24)
+## MCP Tools (25)
 
 | Tool | Phase | Description |
 |------|-------|-------------|
@@ -324,7 +328,8 @@ Add to `.vscode/mcp.json`:
 | `a2p_setup_companions` | 0 | Register companion MCP servers |
 | `a2p_create_build_plan` | 1 | Architecture → ordered vertical slices (supports `append` for multi-phase) |
 | `a2p_add_slice` | 1,2 | Insert a single slice mid-project (e.g. integration discovered during build) |
-| `a2p_complete_phase` | 7 | Complete current product phase, advance to next |
+| `a2p_set_phase` | * | Transition to a new workflow phase (enforces all gates: E2E, build signoff, quality audit, etc.) |
+| `a2p_complete_phase` | 7 | Complete current product phase, advance to next (multi-phase projects) |
 | `a2p_get_state` | * | Read current project state (includes phase info) |
 | `a2p_update_slice` | 2 | Update slice status with review checkpoints and slice summaries |
 | `a2p_run_tests` | 2 | Execute test command, parse results (pytest/vitest/jest/go/flutter/dart/xctest/gradle) |
@@ -365,7 +370,7 @@ MCP prompts are invoked with `/` in Claude Code:
 You don't have to run the full pipeline. Each prompt works standalone — pick what you need:
 
 **Full project from scratch:**
-`/a2p` → `/a2p_planning` → `/a2p_build_slice` (repeat per slice) → `/a2p_audit` (quality) → `/a2p_security_gate` → `/a2p_whitebox` → `/a2p_audit` (release) → `/a2p_deploy`
+`/a2p` → `/a2p_planning` → `/a2p_build_slice` (repeat per slice) → `/a2p_audit` (quality) → `/a2p_e2e_testing` (if UI) → `/a2p_security_gate` → `/a2p_whitebox` → `/a2p_audit` (release) → `/a2p_deploy`
 
 **MVP built with vibe coding, now make it production-ready:**
 - `/a2p_security_gate` — find the vulnerabilities that vibe coding missed
@@ -491,7 +496,7 @@ git clone https://github.com/BernhardJackiewicz/architect-to-product.git
 cd architect-to-product
 npm install
 npm run typecheck   # Type checking
-npm test            # 890 tests
+npm test            # 895 tests
 npm run build       # Build
 npm run dev         # Dev mode
 ```
