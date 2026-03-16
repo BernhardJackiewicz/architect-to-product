@@ -35,6 +35,22 @@ Das ist ein defensives Code-Review — kein Exploit-Building.
 6. **Trust Boundary Violations**: Client-Daten serverseitig vertraut? Webhook-Payloads verifiziert?
 7. **State Manipulation**: App-State durch unerwartete API-Call-Sequenzen korrumpierbar?
 8. **Denial of Service**: Unbounded Input (grosse Uploads, unbegrenzte Pagination)?
+9. **XSS / Output Encoding**: innerHTML, dangerouslySetInnerHTML, Template-Rendering ohne Escaping,
+   fehlende CSP. Pruefe ob User-Input vor der Ausgabe escaped/sanitized wird.
+10. **Insecure Deserialization**: pickle.loads, yaml.load (ohne SafeLoader), eval/new Function mit
+    externem Input, JSON.parse → exec Chains. Code lesen und belegen.
+11. **IDOR / Ownership Checks**: Mutations ohne Ownership-Pruefung (DELETE/PUT/PATCH ohne WHERE
+    user_id), direkte ID-Parameter in URLs ohne Berechtigungspruefung. Folge jeder Mutation und
+    pruefe ob WHERE user_id/owner_id/tenant_id vorhanden ist.
+12. **Cookie Security**: Fehlende HttpOnly/Secure/SameSite Flags auf Session-Cookies,
+    Cookies mit sensiblen Daten ohne Flags.
+13. **CORS Misconfiguration**: allow_origins=["*"] mit credentials, dynamische Origin-Reflection.
+14. **Deployment Config Weaknesses**: Debug-Flags in Production, fehlende Security Headers in
+    Reverse-Proxy-Config, offene Ports.
+15. **Backup/Restore Security**: Unverschluesselte Backups, Backup-Credentials in Plaintext,
+    Restore ohne Integritaets-Check.
+
+Domaenen 9-15 erfordern evidence-backed oder hard-to-verify Findings — Code lesen und belegen, nicht nur vermuten.
 
 **Inline-Verifikation (PFLICHT fuer jeden Verdacht):**
 Fuer JEDEN potentiellen Fund musst du den Verdacht am Code verifizieren:
