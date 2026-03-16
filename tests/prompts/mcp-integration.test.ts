@@ -3,6 +3,7 @@ import { BUILD_SLICE_PROMPT } from "../../src/prompts/build-slice.js";
 import { PLANNING_PROMPT } from "../../src/prompts/planning.js";
 import { REFACTOR_PROMPT } from "../../src/prompts/refactor.js";
 import { SECURITY_GATE_PROMPT } from "../../src/prompts/security-gate.js";
+import { AUDIT_PROMPT } from "../../src/prompts/audit.js";
 import { E2E_TESTING_PROMPT } from "../../src/prompts/e2e-testing.js";
 import { DEPLOY_PROMPT } from "../../src/prompts/deploy.js";
 import { ONBOARDING_PROMPT } from "../../src/prompts/onboarding.js";
@@ -888,5 +889,39 @@ describe("MCP operationalization in prompts", () => {
 
   it("build-slice prompt references companionReadiness for database", () => {
     expect(BUILD_SLICE_PROMPT).toContain("companionReadiness.database");
+  });
+});
+
+// ─── Code Review integration ─────────────────────────────────────────────────
+
+describe("Code Review integration in build-signoff and release audit", () => {
+  it("build-slice has Code Review section before signoff summary", () => {
+    const reviewPos = BUILD_SLICE_PROMPT.indexOf("Code Review vor Signoff");
+    const summaryPos = BUILD_SLICE_PROMPT.indexOf("Signoff-Summary");
+    expect(reviewPos).toBeGreaterThan(-1);
+    expect(summaryPos).toBeGreaterThan(-1);
+    expect(reviewPos).toBeLessThan(summaryPos);
+  });
+
+  it("build-signoff code review checks cross-slice consistency", () => {
+    const reviewPos = BUILD_SLICE_PROMPT.indexOf("Code Review vor Signoff");
+    const summaryPos = BUILD_SLICE_PROMPT.indexOf("### Signoff-Summary");
+    const section = BUILD_SLICE_PROMPT.slice(reviewPos, summaryPos);
+    expect(section).toContain("Cross-Slice-Konsistenz");
+    expect(section).toContain("Error Handling");
+    expect(section).toContain("Review-Ergebnis");
+  });
+
+  it("release audit pass 2 is framed as Code Review", () => {
+    expect(AUDIT_PROMPT).toContain("Code Review (Claude prüft)");
+  });
+
+  it("release audit code review checks cross-file consistency and API coherence", () => {
+    const reviewPos = AUDIT_PROMPT.indexOf("Code Review (Claude prüft)");
+    const section = AUDIT_PROMPT.slice(reviewPos);
+    expect(section).toContain("Cross-File-Konsistenz");
+    expect(section).toContain("API-Kohärenz");
+    expect(section).toContain("Unused Code");
+    expect(section).toContain("Review-Punkte gefunden");
   });
 });

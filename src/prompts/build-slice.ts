@@ -275,11 +275,27 @@ Dann:
 Wenn ALLE Slices den Status "done" haben — überspringe diesen Schritt NICHT!
 **Dieser Checkpoint ist NICHT abschaltbar, auch nicht über oversight config.**
 
+### Code Review vor Signoff
+Bevor du die Signoff-Summary zeigst, führe einen kompakten Code Review über alle gebauten Slices durch:
+
+1. **Cross-Slice-Konsistenz**: Passen die Slices zusammen? Gleiche Naming-Konventionen, gleiche Error-Handling-Patterns, konsistente API-Struktur?
+2. **Offene Enden**: Gibt es TODOs, auskommentierte Code-Blöcke, Placeholder-Werte die vergessen wurden?
+3. **Import/Export-Hygiene**: Gibt es unused imports, dead exports, zirkuläre Abhängigkeiten?
+4. **Error Handling**: Gibt es Silent Failures (leere catch-Blöcke, verschluckte Errors)?
+5. **Wenn \`companionReadiness.codebaseMemory: true\`**: Nutze \`search_graph\` für Dead-Code-Erkennung und \`trace_call_path\` für Abhängigkeitsanalyse.
+
+Gib das Review-Ergebnis als kurzen Block in der Signoff-Summary aus. Format:
+- **Review-Ergebnis**: [Keine Probleme gefunden / N Punkte gefunden]
+- **Gefundene Punkte**: [Liste, falls vorhanden]
+- **Empfehlung**: [Signoff empfohlen / Fixes empfohlen vor Signoff]
+
+### Signoff-Summary
 1. Zeige eine Zusammenfassung:
    - Wie viele Slices gebaut
    - Wie viele Tests insgesamt bestanden
    - Wie viele Dateien erstellt/geändert
    - Offene SAST-Findings (falls vorhanden)
+   - Code-Review-Ergebnis (von oben)
 
 2. Sage dem User EXPLIZIT:
 
