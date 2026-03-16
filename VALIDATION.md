@@ -1,8 +1,8 @@
 # Validation Summary
 
-> Last validated: 2026-03-14 | A2P v0.1.1 | 759 tests passing
+> Last validated: 2026-03-16 | A2P v0.1.1 | 859 tests passing
 
-## Code-Enforced (verified by 759 unit/integration tests)
+## Code-Enforced (verified by 859 unit/integration tests)
 
 All workflow gates are implemented in `state-manager.ts` and tested:
 
@@ -16,6 +16,10 @@ All workflow gates are implemented in `state-manager.ts` and tested:
 - **Test command restriction**: override blocked when configured
 - **Backup inference**: database/uploads auto-detected, stack-specific commands (pg_dump, mysqldump, mongodump, sqlite3)
 - **Build logging**: structured events with levels, status, duration, run correlation, secret redaction
+- **Finding justification**: accepted/fixed/false_positive require justification (code-enforced via `a2p_record_finding`)
+- **Code review integration**: build signoff includes code review pass, release audit includes code review
+- **Companion restart detection**: `a2p_get_state` reports `restartRequired` when companions configured but session not restarted
+- **Quality audit cadence**: evidence-gated claims require audit evidence, cadence tracking
 - **Multi-phase lifecycle**: phase completion, append build plans, signoff required per phase
 - **State recovery**: JSON persistence with automatic backup, schema validation on read
 
