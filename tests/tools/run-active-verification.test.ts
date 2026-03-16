@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { makeTmpDir, cleanTmpDir, parse, initWithFindings, initWithStateManager, walkSliceToStatus, addPassingTests, forcePhase, addQualityAudit, addReleaseAudit, addPassingVerification } from "../helpers/setup.js";
+import { makeTmpDir, cleanTmpDir, parse, initWithFindings, initWithStateManager, walkSliceToStatus, addPassingTests, forcePhase, addQualityAudit, addReleaseAudit, addPassingVerification, addPassingWhitebox } from "../helpers/setup.js";
 import { handleRunActiveVerification } from "../../src/tools/run-active-verification.js";
 import { StateManager } from "../../src/state/state-manager.js";
 
@@ -217,7 +217,7 @@ describe("run-active-verification", () => {
     expect(() => sm.setPhase("deployment")).toThrow(/blocking whitebox/i);
   });
 
-  it("deployment gate allows when no blocking findings or no whitebox results", () => {
+  it("deployment gate allows when whitebox has no blocking findings", () => {
     const sm = initWithStateManager(dir);
     sm.setPhase("planning");
     sm.setPhase("building");
@@ -228,6 +228,7 @@ describe("run-active-verification", () => {
     addQualityAudit(sm);
     sm.setPhase("security");
     sm.markFullSastRun(0);
+    addPassingWhitebox(sm);
     addReleaseAudit(sm);
     addPassingVerification(sm);
     expect(() => sm.setPhase("deployment")).not.toThrow();

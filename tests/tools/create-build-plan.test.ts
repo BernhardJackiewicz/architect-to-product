@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { handleCreateBuildPlan } from "../../src/tools/create-build-plan.js";
 import { handleInitProject } from "../../src/tools/init-project.js";
 import { StateManager } from "../../src/state/state-manager.js";
-import { makeTmpDir, cleanTmpDir, parse, initWithArch, walkSliceToStatus, addQualityAudit, addReleaseAudit, addPassingVerification } from "../helpers/setup.js";
+import { makeTmpDir, cleanTmpDir, parse, initWithArch, walkSliceToStatus, addQualityAudit, addReleaseAudit, addPassingVerification, addPassingWhitebox } from "../helpers/setup.js";
 
 function makeSliceInput(id: string, deps: string[] = []) {
   return {
@@ -179,6 +179,7 @@ describe("handleCreateBuildPlan", () => {
     addQualityAudit(sm);
     sm.setPhase("security");
     sm.markFullSastRun(0);
+    addPassingWhitebox(sm);
     addReleaseAudit(sm);
     addPassingVerification(sm);
     sm.setPhase("deployment");
@@ -217,6 +218,7 @@ describe("handleCreateBuildPlan", () => {
     addQualityAudit(sm);
     sm.setPhase("security");
     sm.markFullSastRun(0);
+    addPassingWhitebox(sm);
     addReleaseAudit(sm);
     addPassingVerification(sm);
     sm.setPhase("deployment");
@@ -246,6 +248,7 @@ describe("handleCreateBuildPlan", () => {
     addQualityAudit(sm);
     sm.setPhase("security");
     sm.markFullSastRun(0);
+    addPassingWhitebox(sm);
     addReleaseAudit(sm);
     addPassingVerification(sm);
     sm.setPhase("deployment");

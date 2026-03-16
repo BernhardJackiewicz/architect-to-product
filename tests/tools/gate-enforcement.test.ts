@@ -3,6 +3,7 @@ import { StateManager } from "../../src/state/state-manager.js";
 import {
   makeTmpDir, cleanTmpDir, initWithStateManager, walkSliceToStatus,
   forcePhase, forceField, addQualityAudit, addReleaseAudit, addPassingVerification,
+  addPassingWhitebox,
 } from "../helpers/setup.js";
 import { handleInitProject } from "../../src/tools/init-project.js";
 import { handleSetArchitecture } from "../../src/tools/set-architecture.js";
@@ -105,6 +106,7 @@ describe("Release Audit Gate: security -> deployment", () => {
     addQualityAudit(sm);
     sm.setPhase("security");
     sm.markFullSastRun(0);
+    addPassingWhitebox(sm);
     addPassingVerification(sm);
     // No release audit
     expect(() => sm.setPhase("deployment")).toThrow("release audit");
@@ -118,6 +120,7 @@ describe("Release Audit Gate: security -> deployment", () => {
     addQualityAudit(sm);
     sm.setPhase("security");
     sm.markFullSastRun(0);
+    addPassingWhitebox(sm);
     addPassingVerification(sm);
     // Release audit with critical findings
     sm.addAuditResult({
@@ -138,6 +141,7 @@ describe("Release Audit Gate: security -> deployment", () => {
     addQualityAudit(sm);
     sm.setPhase("security");
     sm.markFullSastRun(0);
+    addPassingWhitebox(sm);
     addReleaseAudit(sm);
     addPassingVerification(sm);
     const state = sm.setPhase("deployment");
@@ -158,6 +162,7 @@ describe("Verification Gate: security -> deployment", () => {
     addQualityAudit(sm);
     sm.setPhase("security");
     sm.markFullSastRun(0);
+    addPassingWhitebox(sm);
     addReleaseAudit(sm);
     // No verification
     expect(() => sm.setPhase("deployment")).toThrow("active verification");
@@ -171,6 +176,7 @@ describe("Verification Gate: security -> deployment", () => {
     addQualityAudit(sm);
     sm.setPhase("security");
     sm.markFullSastRun(0);
+    addPassingWhitebox(sm);
     addReleaseAudit(sm);
     // Verification with blocking findings
     sm.addActiveVerificationResult({
@@ -198,6 +204,7 @@ describe("Verification Gate: security -> deployment", () => {
     addQualityAudit(sm);
     sm.setPhase("security");
     sm.markFullSastRun(0);
+    addPassingWhitebox(sm);
     addReleaseAudit(sm);
     addPassingVerification(sm);
     const state = sm.setPhase("deployment");
@@ -212,6 +219,7 @@ describe("Verification Gate: security -> deployment", () => {
     addQualityAudit(sm);
     sm.setPhase("security");
     sm.markFullSastRun(0);
+    addPassingWhitebox(sm);
     addReleaseAudit(sm);
     // First verification: blocking
     sm.addActiveVerificationResult({
@@ -241,6 +249,7 @@ describe("Verification Gate: staleness check", () => {
     addQualityAudit(sm);
     sm.setPhase("security");
     sm.markFullSastRun(0);
+    addPassingWhitebox(sm);
     addReleaseAudit(sm);
     addPassingVerification(sm);
     // Simulate code change AFTER verification
@@ -259,6 +268,7 @@ describe("Verification Gate: staleness check", () => {
     addQualityAudit(sm);
     sm.setPhase("security");
     sm.markFullSastRun(0);
+    addPassingWhitebox(sm);
     addReleaseAudit(sm);
     // Set change timestamp in the past, then add fresh verification
     forceField(dir, "lastSecurityRelevantChangeAt", new Date(Date.now() - 10000).toISOString());
@@ -312,6 +322,7 @@ describe("Backup Gate: stateful app deployment", () => {
     addQualityAudit(sm);
     sm.setPhase("security");
     sm.markFullSastRun(0);
+    addPassingWhitebox(sm);
     addReleaseAudit(sm);
     addPassingVerification(sm);
     expect(() => sm.setPhase("deployment")).toThrow("backup configuration");
@@ -332,6 +343,7 @@ describe("Backup Gate: stateful app deployment", () => {
     addQualityAudit(sm);
     sm.setPhase("security");
     sm.markFullSastRun(0);
+    addPassingWhitebox(sm);
     addReleaseAudit(sm);
     addPassingVerification(sm);
     const state = sm.setPhase("deployment");
@@ -352,6 +364,7 @@ describe("Backup Gate: stateful app deployment", () => {
     addQualityAudit(sm);
     sm.setPhase("security");
     sm.markFullSastRun(0);
+    addPassingWhitebox(sm);
     addReleaseAudit(sm);
     addPassingVerification(sm);
     // Stateless app: backupConfig.required is false, so no backup gate
@@ -376,8 +389,12 @@ describe("Full Gate Sequence: correct order enforcement", () => {
     // No SAST -> should fail on SAST first
     expect(() => sm.setPhase("deployment")).toThrow("full SAST");
 
-    // Add SAST -> should fail on release audit next
+    // Add SAST -> should fail on whitebox next
     sm.markFullSastRun(0);
+    expect(() => sm.setPhase("deployment")).toThrow("whitebox");
+
+    // Add whitebox -> should fail on release audit next
+    addPassingWhitebox(sm);
     expect(() => sm.setPhase("deployment")).toThrow("release audit");
 
     // Add release audit -> should fail on verification next

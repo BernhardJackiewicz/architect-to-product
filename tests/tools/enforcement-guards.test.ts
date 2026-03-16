@@ -20,6 +20,7 @@ import {
   makeTmpDir, cleanTmpDir, parse, forcePhase,
   initWithStateManager, walkSliceToStatus, addPassingTests,
   forceField, addQualityAudit, addReleaseAudit, addPassingVerification,
+  addPassingWhitebox,
 } from "../helpers/setup.js";
 
 describe("Enforcement Guards", () => {
@@ -247,7 +248,7 @@ describe("Enforcement Guards", () => {
       expect(() => sm.setPhase("deployment")).toThrow("full SAST");
     });
 
-    it("security→deployment with full SAST + release audit + verification → OK", () => {
+    it("security→deployment with full SAST + whitebox + release audit + verification → OK", () => {
       const sm = initWithStateManager(dir);
       forcePhase(dir, "building");
       for (const s of sm.read().slices) walkSliceToStatus(sm, s.id, "done");
@@ -255,6 +256,7 @@ describe("Enforcement Guards", () => {
       addQualityAudit(sm);
       sm.setPhase("security");
       sm.markFullSastRun(0);
+      addPassingWhitebox(sm);
       addReleaseAudit(sm);
       addPassingVerification(sm);
       expect(() => sm.setPhase("deployment")).not.toThrow();
@@ -266,6 +268,43 @@ describe("Enforcement Guards", () => {
       const state = sm.read();
       expect(state.lastFullSastAt).toBeTruthy();
       expect(state.lastFullSastFindingCount).toBe(5);
+    });
+  });
+
+  // === Whitebox "must run" gate ===
+
+  describe("whitebox must-run gate", () => {
+    it("security→deployment without whitebox audit → throw", () => {
+      const sm = initWithStateManager(dir);
+      forcePhase(dir, "building");
+      for (const s of sm.read().slices) walkSliceToStatus(sm, s.id, "done");
+      sm.setBuildSignoff();
+      addQualityAudit(sm);
+      sm.setPhase("security");
+      sm.markFullSastRun(0);
+      addReleaseAudit(sm);
+      addPassingVerification(sm);
+      // No whitebox audit added
+      expect(() => sm.setPhase("deployment")).toThrow("whitebox");
+    });
+
+    it("security→deployment with whitebox that has blocking findings → throw", () => {
+      const sm = initWithStateManager(dir);
+      forcePhase(dir, "building");
+      for (const s of sm.read().slices) walkSliceToStatus(sm, s.id, "done");
+      sm.setBuildSignoff();
+      addQualityAudit(sm);
+      sm.setPhase("security");
+      sm.markFullSastRun(0);
+      sm.addWhiteboxResult({
+        id: "WBA-BLOCK", mode: "full", timestamp: new Date().toISOString(),
+        candidates_evaluated: 5, findings: [],
+        summary: { critical: 1, high: 0, medium: 0, low: 0 },
+        blocking_count: 1,
+      });
+      addReleaseAudit(sm);
+      addPassingVerification(sm);
+      expect(() => sm.setPhase("deployment")).toThrow("blocking whitebox");
     });
   });
 

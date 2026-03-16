@@ -5,7 +5,7 @@ import { handleInitProject } from "../../src/tools/init-project.js";
 import { handleSetArchitecture } from "../../src/tools/set-architecture.js";
 import { StateManager } from "../../src/state/state-manager.js";
 import { ProjectStateSchema } from "../../src/state/validators.js";
-import { makeTmpDir, cleanTmpDir, parse, walkSliceToStatus, addPassingTests, addSastEvidence, forcePhase, addQualityAudit, addReleaseAudit, addPassingVerification } from "../helpers/setup.js";
+import { makeTmpDir, cleanTmpDir, parse, walkSliceToStatus, addPassingTests, addSastEvidence, forcePhase, addQualityAudit, addReleaseAudit, addPassingVerification, addPassingWhitebox } from "../helpers/setup.js";
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -281,6 +281,7 @@ describe("Backup Integration", () => {
       addQualityAudit(sm);
       sm.setPhase("security");
       sm.markFullSastRun(0);
+      addPassingWhitebox(sm);
       addReleaseAudit(sm);
       addPassingVerification(sm);
 
@@ -305,6 +306,7 @@ describe("Backup Integration", () => {
       addQualityAudit(sm);
       sm.setPhase("security");
       sm.markFullSastRun(0);
+      addPassingWhitebox(sm);
       addReleaseAudit(sm);
       addPassingVerification(sm);
       sm.setPhase("deployment");

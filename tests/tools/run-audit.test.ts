@@ -3,7 +3,7 @@ import { writeFileSync, mkdirSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
 import { StateManager } from "../../src/state/state-manager.js";
 import { handleRunAudit } from "../../src/tools/run-audit.js";
-import { makeTmpDir, parse, initWithStateManager, walkSliceToStatus, forcePhase, addQualityAudit, addReleaseAudit, addPassingVerification } from "../helpers/setup.js";
+import { makeTmpDir, parse, initWithStateManager, walkSliceToStatus, forcePhase, addQualityAudit, addReleaseAudit, addPassingVerification, addPassingWhitebox } from "../helpers/setup.js";
 import type { AuditResult } from "../../src/state/types.js";
 
 describe("a2p_run_audit", () => {
@@ -278,6 +278,7 @@ describe("Deployment gate: audit critical findings block deploy", () => {
     addQualityAudit(sm);
     sm.setPhase("security");
     sm.markFullSastRun(0);
+    addPassingWhitebox(sm);
     addPassingVerification(sm);
 
     // Add a release audit with critical findings
@@ -309,6 +310,7 @@ describe("Deployment gate: audit critical findings block deploy", () => {
     addQualityAudit(sm);
     sm.setPhase("security");
     sm.markFullSastRun(0);
+    addPassingWhitebox(sm);
     addPassingVerification(sm);
 
     // Add a clean release audit
@@ -338,6 +340,7 @@ describe("Deployment gate: audit critical findings block deploy", () => {
     addQualityAudit(sm);
     sm.setPhase("security");
     sm.markFullSastRun(0);
+    addPassingWhitebox(sm);
 
     // Add a quality audit with critical findings — should NOT block deployment
     const auditResult: AuditResult = {

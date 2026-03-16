@@ -130,6 +130,19 @@ export function addPassingVerification(sm: StateManager): void {
   });
 }
 
+/** Add a passing whitebox audit result (evidence for security->deployment gate). */
+export function addPassingWhitebox(sm: StateManager): void {
+  sm.addWhiteboxResult({
+    id: `WBA-${Date.now()}`,
+    mode: "full",
+    timestamp: new Date().toISOString(),
+    candidates_evaluated: 0,
+    findings: [],
+    summary: { critical: 0, high: 0, medium: 0, low: 0 },
+    blocking_count: 0,
+  });
+}
+
 /** Initialize a project with a basic architecture (no slices). */
 export function initWithArch(dir: string, opts?: { language?: string; framework?: string }): void {
   handleInitProject({ projectPath: dir, projectName: "test" });

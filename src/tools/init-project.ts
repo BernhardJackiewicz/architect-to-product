@@ -96,6 +96,18 @@ For each finding:
 
 const SETTINGS_JSON = {
   hooks: {
+    PreToolUse: [
+      {
+        matcher: "Write|Edit",
+        hooks: [
+          {
+            type: "command" as const,
+            command:
+              "if echo \"$TOOL_INPUT\" | grep -q '\\.a2p/state\\.json'; then echo 'BLOCKED: Direct edits to .a2p/state.json are not allowed. Use a2p_ tools to modify project state.'; exit 2; fi",
+          },
+        ],
+      },
+    ],
     PostToolUse: [
       {
         matcher: "Write|Edit",

@@ -6,7 +6,7 @@ import { handleCompletePhase } from "../../src/tools/complete-phase.js";
 import { handleUpdateSlice } from "../../src/tools/update-slice.js";
 import { handleRecordFinding } from "../../src/tools/record-finding.js";
 import { handleGetState } from "../../src/tools/get-state.js";
-import { makeTmpDir, initWithStateManager, addPassingTests, addSastEvidence, walkSliceToStatus, forcePhase, addQualityAudit, addReleaseAudit, addPassingVerification } from "../helpers/setup.js";
+import { makeTmpDir, initWithStateManager, addPassingTests, addSastEvidence, walkSliceToStatus, forcePhase, addQualityAudit, addReleaseAudit, addPassingVerification, addPassingWhitebox } from "../helpers/setup.js";
 
 // ─── StateManager new methods ───────────────────────────────────────────────
 
@@ -453,6 +453,7 @@ describe("Security gate: setPhase(deployment) blocks on open CRITICAL/HIGH", () 
     addQualityAudit(sm);
     sm.setPhase("security");
     sm.markFullSastRun(0);
+    addPassingWhitebox(sm);
     addReleaseAudit(sm);
     addPassingVerification(sm);
   });
