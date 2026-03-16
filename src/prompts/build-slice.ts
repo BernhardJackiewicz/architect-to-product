@@ -8,7 +8,7 @@ Prüfe \`a2p_get_state\` → \`config.claudeModel\`. Wenn dort ein Modell konfig
 ## Kontext
 Lies zuerst den aktuellen State mit \`a2p_get_state\`. Der aktuelle Slice und seine Akzeptanzkriterien stehen dort.
 
-Wenn \`restartRequired: true\` → Sage dem User: "Companion-MCPs wurden konfiguriert, aber Claude Code wurde noch nicht neu gestartet. Starte Claude Code neu und tippe dann \`/a2p_build_slice\` erneut."
+Wenn Companions konfiguriert wurden, aber die Companion-Tools (z.B. \`index_repository\`, \`sequentialthinking\`) nicht verfügbar sind, weise den User darauf hin, dass ein Neustart von Claude Code nötig sein könnte — aber blockiere den Build NICHT.
 
 ## Scope-Lock
 Halte den Scope strikt auf die Akzeptanzkriterien des aktuellen Slice begrenzt.

@@ -26,8 +26,10 @@ export function handleGetState(input: GetStateInput): string {
     playwright: state.companions.some(c => c.type === "playwright" && c.installed),
   };
 
-  // Restart required: companions configured but still in onboarding (restart hasn't happened yet)
-  const restartRequired = !!(state.companionsConfiguredAt && state.phase === "onboarding");
+  // Restart hint: companions configured but architecture setup just completed
+  // This is a soft hint, not a hard block — prompts should not block on this
+  // because there's no reliable way to detect whether the restart already happened.
+  const restartRequired = false;
 
   return JSON.stringify({
     a2pVersion: SERVER_VERSION,
