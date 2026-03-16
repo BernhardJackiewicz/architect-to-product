@@ -399,6 +399,9 @@ Two ways to add work during or after the build:
 | "Phase 0 is done, start Phase 1" | `/a2p_planning` — plan all Phase 1 slices |
 | "I want to add a webhook integration" | `a2p_add_slice` — one integration slice |
 | "The architecture changed significantly" | `/a2p_planning` — re-plan remaining work |
+| "Existing repo, I want to add a feature" | `/a2p` → `/a2p_planning` → `/a2p_build_slice` |
+
+**Adding a feature to an existing project:** If you have a repo that wasn't built with a2p, you can still use it. Run `/a2p` to onboard the existing codebase, then `/a2p_planning` to create slices for the new feature. A2p detects existing code via codebase-memory and only plans slices for what's missing — it won't rebuild what's already there. The new feature goes through the full pipeline: TDD, SAST, security gate, and deployment.
 
 ## Supported Stacks
 
