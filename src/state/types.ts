@@ -340,6 +340,7 @@ export interface ProjectState {
   currentProductPhase: number; // Index in architecture.phases[], default 0
   backupConfig: BackupConfig;
   backupStatus: BackupStatus;
+  companionsConfiguredAt: string | null;
   lastSecurityRelevantChangeAt: string | null;
   lastFullSastAt: string | null;
   lastFullSastFindingCount: number;

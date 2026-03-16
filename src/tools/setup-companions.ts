@@ -88,6 +88,7 @@ export function handleSetupCompanions(input: SetupCompanionsInput): string {
     companions: results,
     mcpJsonWritten: true,
     mcpJsonPath,
+    restartRequired: true,
     nextStep:
       ".mcp.json wurde geschrieben. Starte Claude Code neu — danach sind alle Companion-MCPs automatisch verfügbar. Dann weiter mit a2p_create_build_plan.",
   });

@@ -890,6 +890,16 @@ describe("MCP operationalization in prompts", () => {
   it("build-slice prompt references companionReadiness for database", () => {
     expect(BUILD_SLICE_PROMPT).toContain("companionReadiness.database");
   });
+
+  it("planning prompt warns about restartRequired", () => {
+    expect(PLANNING_PROMPT).toContain("restartRequired: true");
+    expect(PLANNING_PROMPT).toContain("neu gestartet");
+  });
+
+  it("build-slice prompt warns about restartRequired", () => {
+    expect(BUILD_SLICE_PROMPT).toContain("restartRequired: true");
+    expect(BUILD_SLICE_PROMPT).toContain("neu gestartet");
+  });
 });
 
 // ─── Code Review integration ─────────────────────────────────────────────────
