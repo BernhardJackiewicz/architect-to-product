@@ -784,6 +784,7 @@ describe("E2E Workflow: Full project lifecycle", () => {
         line: 10,
         description: "Debug endpoint exists",
         fix: "Remove before production",
+        justification: "Debug endpoint is behind auth and only accessible in dev mode",
       });
 
       // Phase 4: Deployment

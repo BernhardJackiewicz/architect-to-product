@@ -63,14 +63,16 @@ Wenn \`a2p_get_state\` Phasen anzeigt:
 - Nach Phase-Abschluss: \`a2p_complete_phase\` → nächste Phase planen
 
 ## Bevor du Slices planst: Bestehenden Code analysieren
-Wenn codebase-memory-mcp verfügbar UND es bereits Code im Projekt gibt:
+Prüfe \`a2p_get_state\` → \`companionReadiness\`.
+
+Wenn \`companionReadiness.codebaseMemory: true\` UND es bereits Code im Projekt gibt:
 1. Rufe \`index_repository\` auf
 2. Nutze \`search_graph\` mit type="function" um bestehende Funktionen zu finden
 3. Berücksichtige bei der Slice-Planung was schon existiert
    — Keine Slices für Funktionalität die bereits gebaut ist
 
-Wenn ein DB-MCP verfügbar ist:
-1. Prüfe das aktuelle DB-Schema
+Wenn \`companionReadiness.database: true\`:
+1. Prüfe das aktuelle DB-Schema über den DB-MCP
 2. Berücksichtige bei der Planung welche Tabellen schon existieren
 
 ## Sequential Thinking für komplexe Abhängigkeitsgraphen

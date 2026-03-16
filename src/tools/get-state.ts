@@ -16,6 +16,15 @@ export function handleGetState(input: GetStateInput): string {
   const phases = state.architecture?.phases;
   const currentProductPhase = sm.getCurrentProductPhase();
 
+  // Companion readiness: structured signal for core MCPs
+  const companionReadiness = {
+    codebaseMemory: state.companions.some(c => c.type === "codebase_memory" && c.installed),
+    git: state.companions.some(c => c.type === "git" && c.installed),
+    filesystem: state.companions.some(c => c.type === "filesystem" && c.installed),
+    database: state.companions.some(c => c.type === "database" && c.installed),
+    playwright: state.companions.some(c => c.type === "playwright" && c.installed),
+  };
+
   return JSON.stringify({
     projectName: state.projectName,
     phase: state.phase,
@@ -29,6 +38,7 @@ export function handleGetState(input: GetStateInput): string {
       type: c.type,
       installed: c.installed,
     })),
+    companionReadiness,
     config: state.config,
     ...(phases && phases.length > 0
       ? {

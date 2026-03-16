@@ -73,6 +73,7 @@ export const SASTFindingSchema = z.object({
   line: z.number().int().min(0),
   description: z.string(),
   fix: z.string(),
+  justification: z.string().optional(),
 });
 
 export const SliceSchema = z.object({

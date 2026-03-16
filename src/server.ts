@@ -198,6 +198,7 @@ export function createServer(): McpServer {
       line: recordFindingSchema.shape.line,
       description: recordFindingSchema.shape.description,
       fix: recordFindingSchema.shape.fix,
+      justification: recordFindingSchema.shape.justification,
     },
     wrapTool(handleRecordFinding as ToolHandler)
   );

@@ -802,12 +802,12 @@ describe("Enforcement rules in build-slice", () => {
     expect(section).toMatch(/NICHT.*[Üü]berspringen|PFLICHT/);
   });
 
-  it("Visual Verification enforces Playwright tools as mandatory for hasUI slices", () => {
+  it("Visual Verification is recommended for hasUI slices — honest about enforcement", () => {
     const visualSection = BUILD_SLICE_PROMPT.indexOf("Visual Verification");
     const refactorSection = BUILD_SLICE_PROMPT.indexOf("Phase REFACTOR");
     const section = BUILD_SLICE_PROMPT.slice(visualSection, refactorSection);
-    expect(section).toContain("MUSST");
-    expect(section).toMatch(/NICHT.*[Üü]berspringen|PFLICHT/);
+    expect(section).toContain("EMPFOHLEN");
+    expect(section).toContain("kein Code-Gate");
     expect(section).toContain("browser_take_screenshot");
     expect(section).toContain("browser_navigate");
   });
@@ -827,22 +827,22 @@ describe("Enforcement rules in build-slice", () => {
 // ─── Enforcement rules in onboarding ────────────────────────────────────────
 
 describe("Enforcement rules in onboarding", () => {
-  it("UI-Design checkpoint is a hard stop for frontend projects", () => {
+  it("UI-Design checkpoint is recommended for frontend projects (honest about enforcement)", () => {
     const uiSection = ONBOARDING_PROMPT.indexOf("UI-Design erfassen");
-    const nextSection = ONBOARDING_PROMPT.indexOf("Frage den User EXPLIZIT", uiSection);
+    expect(uiSection).toBeGreaterThan(-1);
+    const nextSection = ONBOARDING_PROMPT.indexOf("Frage den User", uiSection);
     const section = ONBOARDING_PROMPT.slice(uiSection, nextSection);
-    expect(section).toContain("HARD STOP");
-    expect(section).toContain("MUSST");
-    expect(section).toContain("PFLICHT");
+    expect(section).toContain("EMPFOHLEN");
+    expect(section).toContain("kein Code-Gate");
   });
 
-  it("companions setup is mandatory — not optional", () => {
-    const companionSection = ONBOARDING_PROMPT.indexOf("Companions SOFORT");
+  it("companions setup is recommended — honest about enforcement", () => {
+    const companionSection = ONBOARDING_PROMPT.indexOf("Companions einrichten");
+    expect(companionSection).toBeGreaterThan(-1);
     const nextSection = ONBOARDING_PROMPT.indexOf("**IMMER installieren", companionSection);
     const section = ONBOARDING_PROMPT.slice(companionSection, nextSection);
-    expect(section).toContain("PFLICHT");
-    expect(section).toContain("NICHT ÜBERSPRINGEN");
-    expect(section).toContain("MUSST");
+    expect(section).toContain("EMPFOHLEN");
+    expect(section).toContain("kein Code-Gate");
   });
 
   it("prerequisites check analyzes architecture for required local services", () => {
@@ -861,15 +861,32 @@ describe("Enforcement rules in onboarding", () => {
     expect(prereqPos).toBeLessThan(handoffPos);
   });
 
-  it("Oversight checkpoint is a hard stop — not negotiable", () => {
+  it("Oversight checkpoint is recommended — honest about enforcement", () => {
     const reviewSection = ONBOARDING_PROMPT.indexOf("Human Oversight konfigurieren");
     expect(reviewSection).toBeGreaterThan(-1);
     const sectionEnd = ONBOARDING_PROMPT.indexOf("### Architektur festhalten", reviewSection);
     const section = ONBOARDING_PROMPT.slice(reviewSection, sectionEnd);
-    expect(section).toContain("HARD STOP");
-    expect(section).toContain("MUSST");
-    expect(section).toContain("PFLICHT");
-    // Must explicitly say: don't skip even if user says "just do it"
-    expect(section).toMatch(/auch wenn.*User/i);
+    expect(section).toContain("EMPFOHLEN");
+    expect(section).toContain("kein Code-Gate");
+  });
+});
+
+// ─── MCP operationalization in prompts ───────────────────────────────────────
+
+describe("MCP operationalization in prompts", () => {
+  it("planning prompt references companionReadiness for codebase-memory", () => {
+    expect(PLANNING_PROMPT).toContain("companionReadiness.codebaseMemory");
+  });
+
+  it("planning prompt references companionReadiness for database", () => {
+    expect(PLANNING_PROMPT).toContain("companionReadiness.database");
+  });
+
+  it("build-slice prompt references companionReadiness for codebase-memory", () => {
+    expect(BUILD_SLICE_PROMPT).toContain("companionReadiness.codebaseMemory");
+  });
+
+  it("build-slice prompt references companionReadiness for database", () => {
+    expect(BUILD_SLICE_PROMPT).toContain("companionReadiness.database");
   });
 });

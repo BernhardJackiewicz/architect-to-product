@@ -150,6 +150,7 @@ export interface SASTFinding {
   line: number;
   description: string;
   fix: string;
+  justification?: string; // Required when status is accepted/fixed/false_positive
 }
 
 export interface QualityIssue {
