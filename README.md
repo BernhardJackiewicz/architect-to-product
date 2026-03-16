@@ -2,11 +2,11 @@
 
 MCP server that turns AI-generated code into production-ready software with TDD, security scanning, and deployment automation. Up to 100 times fewer exploration tokens for claude code.
 
-**25 MCP tools** · **951 tests** · **Architecture → Plan → Build (evidence-gated) → Quality Audit (cadence) → Code Review → Signoff → E2E Testing → Security → Whitebox → Verify → Release Audit → Deploy → Backup**
+**25 MCP tools** · **959 tests** · **Architecture → Plan → Build (evidence-gated) → Quality Audit (cadence) → Code Review → Signoff → E2E Testing → Security → Whitebox → Verify → Release Audit → Deploy → Backup**
 
 [![npm version](https://img.shields.io/npm/v/architect-to-product)](https://www.npmjs.com/package/architect-to-product)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Tests: 951 passing](https://img.shields.io/badge/tests-951%20passing-brightgreen)]()
+[![Tests: 951 passing](https://img.shields.io/badge/tests-959%20passing-brightgreen)]()
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue)]()
 
 ---
@@ -514,7 +514,7 @@ git clone https://github.com/BernhardJackiewicz/architect-to-product.git
 cd architect-to-product
 npm install
 npm run typecheck   # Type checking
-npm test            # 951 tests
+npm test            # 959 tests
 npm run build       # Build
 npm run dev         # Dev mode
 ```

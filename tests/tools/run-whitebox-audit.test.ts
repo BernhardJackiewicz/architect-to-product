@@ -610,3 +610,166 @@ describe("adversarial review enforcement", () => {
     expect(result.adversarialReviewInstructions).toContain("adversarial-review");
   });
 });
+
+describe("PRIO-1 probes (Block B)", () => {
+  it("XSS probe: innerHTML with user input → detected", () => {
+    const sm = initWithStateManager(dir);
+    forcePhase(dir, "security");
+    sm.markFullSastRun(0);
+    const sliceId = sm.read().slices[0].id;
+    mkdirSync(join(dir, "src"), { recursive: true });
+    writeFileSync(join(dir, "src/render.ts"), `
+      export function render(userInput: string) {
+        document.getElementById("output").innerHTML = userInput;
+      }
+    `);
+    sm.updateSliceFiles(sliceId, ["src/render.ts"]);
+    const result = parse(handleRunWhiteboxAudit({ projectPath: dir, mode: "full" }));
+    const xssFinding = result.findings.find((f: any) =>
+      f.root_cause.toLowerCase().includes("xss")
+    );
+    expect(xssFinding).toBeDefined();
+    expect(xssFinding.severity).toBe("high");
+  });
+
+  it("XSS probe: innerHTML with DOMPurify → suppressed", () => {
+    const sm = initWithStateManager(dir);
+    forcePhase(dir, "security");
+    sm.markFullSastRun(0);
+    const sliceId = sm.read().slices[0].id;
+    mkdirSync(join(dir, "src"), { recursive: true });
+    writeFileSync(join(dir, "src/safe-render.ts"), `
+      import DOMPurify from 'dompurify';
+      export function render(userInput: string) {
+        document.getElementById("output").innerHTML = DOMPurify.sanitize(userInput);
+      }
+    `);
+    sm.updateSliceFiles(sliceId, ["src/safe-render.ts"]);
+    const result = parse(handleRunWhiteboxAudit({ projectPath: dir, mode: "full" }));
+    const xssFinding = result.findings.find((f: any) =>
+      f.root_cause.toLowerCase().includes("xss")
+    );
+    expect(xssFinding).toBeUndefined();
+  });
+
+  it("Deserialization probe: pickle.loads → detected", () => {
+    const sm = initWithStateManager(dir);
+    forcePhase(dir, "security");
+    sm.markFullSastRun(0);
+    const sliceId = sm.read().slices[0].id;
+    mkdirSync(join(dir, "src"), { recursive: true });
+    writeFileSync(join(dir, "src/loader.py"), `
+import pickle
+
+def load_data(raw_bytes):
+    return pickle.loads(raw_bytes)
+    `);
+    sm.updateSliceFiles(sliceId, ["src/loader.py"]);
+    const result = parse(handleRunWhiteboxAudit({ projectPath: dir, mode: "full" }));
+    const deserialFinding = result.findings.find((f: any) =>
+      f.root_cause.toLowerCase().includes("deserialization")
+    );
+    expect(deserialFinding).toBeDefined();
+    expect(deserialFinding.severity).toBe("critical");
+  });
+
+  it("Deserialization probe: yaml.safe_load → suppressed", () => {
+    const sm = initWithStateManager(dir);
+    forcePhase(dir, "security");
+    sm.markFullSastRun(0);
+    const sliceId = sm.read().slices[0].id;
+    mkdirSync(join(dir, "src"), { recursive: true });
+    writeFileSync(join(dir, "src/safe-loader.py"), `
+import yaml
+
+def load_config(path):
+    with open(path) as f:
+        return yaml.safe_load(f)
+    `);
+    sm.updateSliceFiles(sliceId, ["src/safe-loader.py"]);
+    const result = parse(handleRunWhiteboxAudit({ projectPath: dir, mode: "full" }));
+    const deserialFinding = result.findings.find((f: any) =>
+      f.root_cause.toLowerCase().includes("deserialization")
+    );
+    expect(deserialFinding).toBeUndefined();
+  });
+
+  it("NoSQL probe: find with $where from req.body → detected", () => {
+    const sm = initWithStateManager(dir);
+    forcePhase(dir, "security");
+    sm.markFullSastRun(0);
+    const sliceId = sm.read().slices[0].id;
+    mkdirSync(join(dir, "src"), { recursive: true });
+    writeFileSync(join(dir, "src/search.ts"), `
+      export function search(req: any) {
+        return db.collection("users").find(req.body);
+      }
+    `);
+    sm.updateSliceFiles(sliceId, ["src/search.ts"]);
+    const result = parse(handleRunWhiteboxAudit({ projectPath: dir, mode: "full" }));
+    const nosqlFinding = result.findings.find((f: any) =>
+      f.root_cause.toLowerCase().includes("nosql")
+    );
+    expect(nosqlFinding).toBeDefined();
+    expect(nosqlFinding.severity).toBe("high");
+  });
+
+  it("Cookie probe: res.cookie without flags → detected", () => {
+    const sm = initWithStateManager(dir);
+    forcePhase(dir, "security");
+    sm.markFullSastRun(0);
+    const sliceId = sm.read().slices[0].id;
+    mkdirSync(join(dir, "src"), { recursive: true });
+    writeFileSync(join(dir, "src/session.ts"), `
+      export function login(req: any, res: any) {
+        res.cookie("session", token);
+      }
+    `);
+    sm.updateSliceFiles(sliceId, ["src/session.ts"]);
+    const result = parse(handleRunWhiteboxAudit({ projectPath: dir, mode: "full" }));
+    const cookieFinding = result.findings.find((f: any) =>
+      f.root_cause.toLowerCase().includes("cookie")
+    );
+    expect(cookieFinding).toBeDefined();
+    expect(cookieFinding.severity).toBe("medium");
+  });
+
+  it("Cookie probe: res.cookie with httpOnly + secure → suppressed", () => {
+    const sm = initWithStateManager(dir);
+    forcePhase(dir, "security");
+    sm.markFullSastRun(0);
+    const sliceId = sm.read().slices[0].id;
+    mkdirSync(join(dir, "src"), { recursive: true });
+    writeFileSync(join(dir, "src/safe-session.ts"), `
+      export function login(req: any, res: any) {
+        res.cookie("session", token, { httpOnly: true, secure: true, sameSite: "strict" });
+      }
+    `);
+    sm.updateSliceFiles(sliceId, ["src/safe-session.ts"]);
+    const result = parse(handleRunWhiteboxAudit({ projectPath: dir, mode: "full" }));
+    const cookieFinding = result.findings.find((f: any) =>
+      f.root_cause.toLowerCase().includes("cookie")
+    );
+    expect(cookieFinding).toBeUndefined();
+  });
+
+  it("eval probe: eval with user input → detected", () => {
+    const sm = initWithStateManager(dir);
+    forcePhase(dir, "security");
+    sm.markFullSastRun(0);
+    const sliceId = sm.read().slices[0].id;
+    mkdirSync(join(dir, "src"), { recursive: true });
+    writeFileSync(join(dir, "src/calculator.ts"), `
+      export function calculate(req: any) {
+        return eval(req.body.expression);
+      }
+    `);
+    sm.updateSliceFiles(sliceId, ["src/calculator.ts"]);
+    const result = parse(handleRunWhiteboxAudit({ projectPath: dir, mode: "full" }));
+    const evalFinding = result.findings.find((f: any) =>
+      f.root_cause.toLowerCase().includes("eval") || f.root_cause.toLowerCase().includes("code execution")
+    );
+    expect(evalFinding).toBeDefined();
+    expect(evalFinding.severity).toBe("critical");
+  });
+});

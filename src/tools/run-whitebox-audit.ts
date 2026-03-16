@@ -293,6 +293,36 @@ const PROBE_PATTERNS: ProbePattern[] = [
     title: "Information disclosure via error details in response",
     severity: "medium",
   },
+  // XSS: innerHTML/dangerouslySetInnerHTML/.html() with user input
+  {
+    pattern: /innerHTML\s*=|dangerouslySetInnerHTML|\.html\(\s*(?:req\.|user\.|input)/i,
+    title: "XSS via unsafe DOM manipulation",
+    severity: "high",
+  },
+  // Insecure Deserialization: pickle.loads, yaml.load without SafeLoader
+  {
+    pattern: /pickle\.loads?\(|yaml\.load\(\s*[^,)]*(?!Loader)|yaml\.unsafe_load/i,
+    title: "Insecure deserialization of untrusted data",
+    severity: "critical",
+  },
+  // Code execution via eval/Function with user input
+  {
+    pattern: /eval\s*\(\s*(?:req\.|input\.|params\.|user)|new\s+Function\s*\([^)]*(?:req\.|input)/i,
+    title: "Code execution via eval/Function with user input",
+    severity: "critical",
+  },
+  // NoSQL injection via unvalidated query operators
+  {
+    pattern: /\.(?:find|findOne|aggregate)\s*\(\s*(?:req\.body|req\.query|\{[^}]*\$(?:where|regex|gt|lt|ne))/i,
+    title: "NoSQL injection via unvalidated query operators",
+    severity: "high",
+  },
+  // Cookie set without security flags
+  {
+    pattern: /(?:res\.cookie|setCookie|set-cookie)\s*\(/i,
+    title: "Cookie set without security flags",
+    severity: "medium",
+  },
 ];
 
 /** Auth patterns that indicate a file has auth guards */
@@ -321,6 +351,10 @@ const CRYPTO_SAFE_PATTERNS = [/bcrypt/i, /argon2/i, /randomBytes/i, /scrypt/i];
 const MASS_ASSIGN_SAFE_PATTERNS = [/z\.\w+\(/, /\.parse\(/, /\.safeParse\(/, /joi\./i, /validate\(/i];
 const REDIRECT_SAFE_PATTERNS = [/allowlist/i, /whitelist/i, /safePaths/i, /allowedUrls/i];
 const ERROR_SAFE_PATTERNS = [/NODE_ENV.*production/i, /process\.env\.NODE_ENV/i];
+const XSS_SAFE_PATTERNS = [/DOMPurify/i, /sanitize/i, /escapeHtml/i, /xss/i, /textContent\s*=/];
+const DESERIAL_SAFE_PATTERNS = [/SafeLoader/i, /safe_load/i, /yaml\.safe/i];
+const NOSQL_SAFE_PATTERNS = [/mongo-sanitize/i, /sanitize/i, /express-mongo-sanitize/i];
+const COOKIE_SAFE_PATTERNS = [/httpOnly/i, /secure\s*:/i, /sameSite/i];
 
 // --- Auto-Discovery Fallback ---
 
@@ -481,6 +515,26 @@ function shouldSuppressProbe(probe: ProbePattern, content: string, _filePath: st
     if (ERROR_SAFE_PATTERNS.some(p => p.test(content))) return true;
   }
 
+  // Suppress XSS if sanitization is present
+  if (title.includes("xss")) {
+    if (XSS_SAFE_PATTERNS.some(p => p.test(content))) return true;
+  }
+
+  // Suppress insecure deserialization if safe loader is used
+  if (title.includes("deserialization")) {
+    if (DESERIAL_SAFE_PATTERNS.some(p => p.test(content))) return true;
+  }
+
+  // Suppress NoSQL injection if sanitization is present
+  if (title.includes("nosql")) {
+    if (NOSQL_SAFE_PATTERNS.some(p => p.test(content))) return true;
+  }
+
+  // Suppress cookie warning if security flags are present
+  if (title.includes("cookie")) {
+    if (COOKIE_SAFE_PATTERNS.some(p => p.test(content))) return true;
+  }
+
   return false;
 }
 
@@ -631,8 +685,8 @@ function classifyToCategory(candidate: { title: string; source: string }): White
   if (title.includes("secret") || title.includes("password") || title.includes("api_key") || title.includes("token")) return "Secrets";
   if (title.includes("crypto") || title.includes("hash") || title.includes("md5")) return "Secrets";
   if (title.includes("tenant") || title.includes("isolation") || title.includes("multi-tenant")) return "TenantIsolation";
-  if (title.includes("sql") || title.includes("injection") || title.includes("xss") || title.includes("input")) return "InputOutputSafety";
-  if (title.includes("ssrf") || title.includes("redirect") || title.includes("mass assignment")) return "InputOutputSafety";
+  if (title.includes("sql") || title.includes("injection") || title.includes("xss") || title.includes("input") || title.includes("deserialization")) return "InputOutputSafety";
+  if (title.includes("ssrf") || title.includes("redirect") || title.includes("mass assignment") || title.includes("cookie")) return "InputOutputSafety";
   if (title.includes("exec") || title.includes("command") || title.includes("file") || title.includes("path")) return "FilesystemProcessCmd";
   if (title.includes("deploy") || title.includes("artifact") || title.includes("docker")) return "DeploymentArtifactSafety";
   if (title.includes("stack") || title.includes("information disclosure")) return "DeploymentArtifactSafety";
