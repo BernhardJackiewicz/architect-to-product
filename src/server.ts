@@ -28,6 +28,8 @@ import { planInfrastructureSchema, handlePlanInfrastructure } from "./tools/plan
 import { recordServerSchema, handleRecordServer } from "./tools/record-server.js";
 import { deployToServerSchema, handleDeployToServer } from "./tools/deploy-to-server.js";
 import { setPhaseSchema, handleSetPhase } from "./tools/set-phase.js";
+import { shakeBreakSetupSchema, handleShakeBreakSetup } from "./tools/shake-break-setup.js";
+import { shakeBreakTeardownSchema, handleShakeBreakTeardown } from "./tools/shake-break-teardown.js";
 
 // Prompts
 import { ONBOARDING_PROMPT } from "./prompts/onboarding.js";
@@ -371,6 +373,29 @@ export function createServer(): McpServer {
       projectPath: deployToServerSchema.shape.projectPath,
     },
     wrapTool(handleDeployToServer as ToolHandler)
+  );
+
+  server.tool(
+    "a2p_shake_break_setup",
+    "Set up an isolated sandbox for active runtime security testing (Shake & Break). Creates worktree, generates safe .env, allocates port. Optional — requires adversarial review completed first.",
+    {
+      projectPath: shakeBreakSetupSchema.shape.projectPath,
+      categories: shakeBreakSetupSchema.shape.categories,
+      timeoutMinutes: shakeBreakSetupSchema.shape.timeoutMinutes,
+      force: shakeBreakSetupSchema.shape.force,
+    },
+    wrapTool(handleShakeBreakSetup as ToolHandler)
+  );
+
+  server.tool(
+    "a2p_shake_break_teardown",
+    "Tear down the Shake & Break sandbox: remove worktree, stop processes, clean up DB. Automatically calculates findings recorded during the session.",
+    {
+      projectPath: shakeBreakTeardownSchema.shape.projectPath,
+      categoriesTested: shakeBreakTeardownSchema.shape.categoriesTested,
+      note: shakeBreakTeardownSchema.shape.note,
+    },
+    wrapTool(handleShakeBreakTeardown as ToolHandler)
   );
 
   // ===== PROMPTS =====

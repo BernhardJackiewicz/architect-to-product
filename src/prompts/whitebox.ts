@@ -134,6 +134,50 @@ Sage dem User:
 Jede weitere Runde kann zusaetzliche Schwachstellen aufdecken. Noch eine Runde?"
 → Wenn ja: Wiederhole Phase 1b (previousFindings werden automatisch mitgegeben)
 → Wenn nein: Weiter zu Phase 2
+→ Oder: Shake & Break fuer aktive Runtime-Tests verfuegbar.
+
+### Phase 2b: Shake & Break (Optional — Runtime Adversarial Testing)
+
+Nach Abschluss von Phase 2: Frage den User:
+"Shake & Break verfuegbar: Soll ich die App in einer isolierten Sandbox starten
+und mit echten HTTP-Requests testen? Empfohlen fuer Apps mit Auth, Payments,
+oder Multi-User Features. Welche Bereiche sollen getestet werden?"
+
+Biete Kategorien basierend auf Attack Surface an:
+- Auth → auth_idor, token_session
+- Payments/Inventory → race_conditions, business_logic
+- File Upload → file_upload
+- Webhooks → webhook_callback
+- SAST Injection-Verdacht → injection_runtime
+- Multi-Step Flows → state_manipulation
+
+**Wenn ja:**
+1. \`a2p_shake_break_setup\` mit 2-4 Kategorien aufrufen
+2. **PFLICHT:** Zeige dem User die \`terminalWarningAnsi\` aus dem Response WOERTLICH.
+   Warte auf explizite Bestaetigung bevor du fortfaehrst.
+3. App im Sandbox-Verzeichnis starten (generierte .env laden, startHint folgen)
+4. Pruefe vor App-Start ob hardcoded externe URLs in Config-Files existieren
+5. Pro Kategorie 3-5 Tests: curl/Bash-Scripts schreiben und ausfuehren
+6. Temporaere Testskripte in der Sandbox sind OK (kein Produktcode aendern)
+7. Jeden Fund via a2p_record_finding mit tool="shake-break",
+   confidence="evidence-backed", evidence="HTTP Request + Response"
+8. Bei SQLite-Fallback + race_conditions/injection_runtime:
+   confidence="hard-to-verify", evidence muss "[environment-limited]" Tag enthalten
+9. Bestehende adversarial Findings bestaetigen: description="Confirms ADV-xxx"
+10. \`a2p_shake_break_teardown\` aufrufen
+
+**Finding-Format (PFLICHT):**
+evidence MUSS Request + Response enthalten:
+"DELETE /api/items/42 with auth=user_b_token → 200 OK (expected 403).
+ curl -X DELETE localhost:PORT/api/items/42 -H 'Authorization: Bearer TOKEN'
+ Response: {\"deleted\": true}"
+confidence ist IMMER "evidence-backed" (ausser bei environment-limited).
+
+**Regeln:**
+- Maximal timeoutMinutes pro Session
+- Kein Produktcode aendern (Testskripte sind ok)
+- Findings auf dem ECHTEN projectPath melden (nicht Sandbox-Pfad)
+- Nur localhost-Requests, keine externen Ziele
 
 ### Phase 2: Active Verification (Gate-Tests)
 1. Rufe \`a2p_run_active_verification round=1\` auf

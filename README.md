@@ -2,11 +2,11 @@
 
 MCP server that turns AI-generated code into production-ready software with TDD, security scanning, and deployment automation. Up to 100 times fewer exploration tokens for claude code.
 
-**25 MCP tools** · **977 tests** · **Architecture → Plan → Build (evidence-gated) → Quality Audit (cadence) → Code Review → Signoff → E2E Testing → Security → Whitebox → Verify → Release Audit → Deploy → Backup**
+**27 MCP tools** · **993 tests** · **Architecture → Plan → Build (evidence-gated) → Quality Audit (cadence) → Code Review → Signoff → E2E Testing → Security → Whitebox → Verify → [Shake & Break] → Release Audit → Deploy → Backup**
 
 [![npm version](https://img.shields.io/npm/v/architect-to-product)](https://www.npmjs.com/package/architect-to-product)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Tests: 951 passing](https://img.shields.io/badge/tests-977%20passing-brightgreen)]()
+[![Tests: 993 passing](https://img.shields.io/badge/tests-993%20passing-brightgreen)]()
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue)]()
 
 ---
@@ -41,6 +41,7 @@ It coordinates:
 - **Static code analysis** — Semgrep + Bandit scan for vulnerabilities automatically
 - **Whitebox security audit** — verifies whether SAST findings are actually exploitable (reachable paths, guards, trust boundaries)
 - **Active verification** — runtime gate tests that prove workflow invariants hold (state transitions, deployment gates, recovery)
+- **Shake & Break** (optional) — active runtime adversarial testing in an isolated sandbox. Starts the app, sends real HTTP requests to test for IDOR, race conditions, auth bypasses, business logic abuse. Findings are evidence-backed with actual request/response proof, not speculative
 - **Code audits** — Quality audits during development, release audits before publish (TODOs, debug artifacts, secrets, .gitignore, test coverage, README)
 - **Security reviews** — OWASP Top 10 review before deploy
 - **Structured build log** — every tool run tracked with log levels, duration, status, run correlation, and automatic secret redaction. Composable filters by phase, slice, level, time range, or errors
@@ -60,8 +61,8 @@ Most AI-generated — and human-built — architectures don't fail because the m
 |---|---|
 | Vibe code a feature | Architecture-driven vertical slices |
 | Manually write some tests (maybe) | Evidence-gated slices: RED → GREEN → REFACTOR (green requires passing tests, done requires passing tests + SAST) |
-| Miss security vulnerabilities | Automated SAST + OWASP Top 10 review + whitebox exploitability analysis |
-| SAST reports 50 findings, most are noise | Whitebox audit confirms which findings are actually exploitable |
+| Miss security vulnerabilities | Automated SAST + OWASP Top 10 review + whitebox exploitability analysis + optional runtime adversarial testing |
+| SAST reports 50 findings, most are noise | Whitebox audit confirms which findings are actually exploitable. Shake & Break proves them with real HTTP requests |
 | Ship with TODOs, console.logs, .env in repo | Quality + release audits catch hygiene issues, block deploy on critical findings |
 | AI runs without stopping | Mandatory build signoff + deploy approval, UI screenshot review, configurable oversight at every phase |
 | AI hallucinates API signatures for unfamiliar libraries | Documentation-first: reads official docs via WebSearch + WebFetch before writing code |
@@ -78,6 +79,7 @@ Most AI-generated — and human-built — architectures don't fail because the m
 - **Ship secure** — Static code analysis (Semgrep + Bandit) + OWASP Top 10 review + whitebox exploitability analysis built into the AI coding workflow
 - **Whitebox audit** — SAST finds patterns, whitebox proves exploitability: reachable code paths, missing guards, prompt-only enforcement. Blocking findings prevent deployment (enforced in code)
 - **Active verification** — Runtime gate tests prove that workflow invariants actually hold: state transitions require evidence, deployment gates block on critical findings, state survives round-trips
+- **Shake & Break** (optional) — Active runtime adversarial testing in an isolated sandbox. Creates a git worktree, generates safe .env with neutralized external services, allocates an ephemeral port, and optionally spins up a Docker DB. Claude starts the app and sends real HTTP requests testing 8 categories: auth/IDOR, race conditions, state manipulation, business logic, injection, token/session, file upload, webhook security. Findings include actual request/response evidence. Requires adversarial review completion. Terminal warning enforced before testing
 - **Human oversight** — Mandatory build signoff (before wasting tokens on audit/security) and deploy approval. Configurable plan approval, slice review, UI screenshot verification, and security signoff. Two gates are always on, the rest you control
 - **Code review** — Structured code review at build signoff (cross-slice consistency) and release audit (cross-file consistency, API coherence)
 - **Finding justification** — Security findings can't be silently dismissed — accepted/fixed/false_positive require justification (code-enforced)
@@ -91,6 +93,83 @@ Most AI-generated — and human-built — architectures don't fail because the m
 - **Structured logging** — Build events with log levels, status, duration tracking, run correlation, secret redaction, and output previews. Filter build logs by level, run, phase, or errors
 - **Any stack** — Python, TypeScript, Go, Rust, Java, Ruby, PHP, C#, Dart/Flutter, Swift — PostgreSQL, MySQL, MongoDB, Redis
 - **Mobile / cross-platform** — Platform-aware architecture (`mobile`, `cross-platform`, `backend-only`, `web`). Mobile checklist items (code signing, TestFlight, release hardening). Compliance items (GoBD, GDPR). External validator items (KoSIT, veraPDF). Multi-target deployment guidance (backend first, then mobile distribution). No false artifact promises — A2P orchestrates, toolchains are project-provided. Verified with a real Flutter/Dart + Kotlin/Spring Boot project on physical iPhone (14 slices, OCR pipeline, KoSIT validation, GoBD archive). Known limits: Gradle test counts require `--console=plain` or JUnit XML output; mobile E2E runs via `a2p_run_tests`, not the Playwright-based `a2p_run_e2e`
+
+## Security Coverage
+
+A2P layers multiple security mechanisms — from deterministic pattern matching to LLM-guided code review to active runtime testing. Each mechanism operates at a different enforcement level, and every finding produces verifiable evidence.
+
+**Legend:**
+- **Probe** — Deterministic regex/AST pattern matching (zero false negatives for covered patterns)
+- **Adversarial** — LLM-guided code review with confidence tracking and file:line evidence
+- **SAST** — Semgrep + Bandit static analysis
+- **Shake & Break** — Runtime adversarial testing with real HTTP requests in an isolated sandbox
+- **Artifact Validation** — Security checks on generated deployment files
+- **Active Verification** — Runtime gate tests proving workflow invariants hold
+- **Checklist** — Pre/post-deployment verification items
+
+| Security Domain | Mechanism | Enforcement | Evidence |
+|---|---|---|---|
+| **Injection** | | | |
+| SQL injection (interpolation, ORM raw queries) | Probe + SAST + Shake & Break | Code-enforced + Runtime-tested | Pattern match + SAST finding + HTTP request/response |
+| Command injection | Probe + SAST | Code-enforced | Pattern match + SAST finding |
+| NoSQL injection (query operators) | Probe | Code-enforced | Pattern match with context |
+| XSS (DOM manipulation, output encoding) | Probe + Adversarial | Code-enforced + Prompt-guided | Pattern match + file:line evidence |
+| Path traversal | Probe + Shake & Break | Code-enforced + Runtime-tested | Pattern match + HTTP proof |
+| SSRF (user-controlled URLs) | Probe | Code-enforced | Pattern match with context |
+| Insecure deserialization | Probe + Adversarial | Code-enforced + Prompt-guided | Pattern match + confidence level |
+| Code execution (eval/Function) | Probe + SAST | Code-enforced | Pattern match + SAST finding |
+| **Auth & Access Control** | | | |
+| Missing auth middleware | Probe + Adversarial | Code-enforced + Prompt-guided | Pattern match + file:line evidence |
+| IDOR / missing ownership checks | Adversarial + Shake & Break | Prompt-guided + Runtime-tested | Confidence level + HTTP proof |
+| Privilege escalation | Adversarial + Shake & Break | Prompt-guided + Runtime-tested | file:line evidence + HTTP proof |
+| Auth bypasses | Adversarial + Shake & Break | Prompt-guided + Runtime-tested | Confidence level + HTTP proof |
+| Mass assignment (spread/Object.assign) | Probe | Code-enforced | Pattern match with context suppression |
+| Missing rate limiting | Probe + Adversarial | Code-enforced + Prompt-guided | Pattern match + file:line evidence |
+| **Secrets & Credentials** | | | |
+| Hardcoded passwords | Probe + SAST | Code-enforced | Pattern match + SAST finding |
+| Hardcoded API keys/secrets | Probe + SAST | Code-enforced | Pattern match + SAST finding |
+| Base64-encoded secrets | Probe | Code-enforced | Pattern match |
+| Seed/default credentials | Probe | Code-enforced | Pattern match with production guard check |
+| Secrets in Dockerfiles | Probe + Artifact Validation | Code-enforced | Pattern match + artifact check |
+| PII/secrets in logs | Probe | Code-enforced | Pattern match |
+| **Session & Token Security** | | | |
+| Cookie security flags (HttpOnly/Secure/SameSite) | Probe + Adversarial + Checklist | Code-enforced + Prompt-guided | Pattern match + checklist verification |
+| JWT without expiry | Probe + Adversarial | Code-enforced + Prompt-guided | Pattern match + file:line evidence |
+| Session fixation/regeneration | Adversarial + Shake & Break | Prompt-guided + Runtime-tested | Confidence level + HTTP proof |
+| CSRF protection | Probe + Adversarial | Code-enforced + Prompt-guided | Pattern match + file:line evidence |
+| Password reset flow weaknesses | Adversarial | Prompt-guided | Confidence level + file:line evidence |
+| **Web Security** | | | |
+| CORS misconfiguration | Probe + Adversarial + Checklist | Code-enforced + Prompt-guided | Pattern match + checklist verification |
+| Open redirects | Probe | Code-enforced | Pattern match |
+| Missing security headers | Artifact Validation + Checklist | Code-enforced | Artifact check + checklist |
+| Cache-control (auth responses) | Adversarial | Prompt-guided | file:line evidence |
+| **Deployment & Infrastructure** | | | |
+| Dockerfile security (non-root, multi-stage, no secrets) | Artifact Validation | Code-enforced | Artifact validation pass/fail |
+| docker-compose hardening (security_opt, cap_drop) | Artifact Validation | Code-enforced | Artifact validation pass/fail |
+| Unpinned base images | Probe | Code-enforced | Pattern match |
+| Debug mode in production | Adversarial + Checklist | Prompt-guided | file:line evidence + checklist |
+| Internal endpoint exposure | Adversarial + Checklist | Prompt-guided | file:line evidence + checklist |
+| DB connection security (TLS/SSL) | Adversarial + Checklist | Prompt-guided | Confidence level + checklist |
+| **Data Protection** | | | |
+| Tenant isolation gaps | Adversarial | Prompt-guided | Confidence level + file:line evidence |
+| Soft delete access control | Adversarial | Prompt-guided | file:line evidence |
+| Backup encryption | Adversarial + Checklist | Prompt-guided | file:line evidence + checklist |
+| File upload without limits | Probe + Adversarial + Shake & Break | Code-enforced + Runtime-tested | Pattern match + HTTP proof |
+| Destructive migrations without rollback | Probe | Code-enforced | Pattern match |
+| Insecure crypto functions | Probe | Code-enforced | Pattern match |
+| **Runtime Adversarial (Shake & Break)** | | | |
+| Race conditions (double-spend, state inconsistency) | Shake & Break | Runtime-tested | Concurrent HTTP requests + response proof |
+| State manipulation (unexpected API sequences) | Shake & Break | Runtime-tested | Multi-step HTTP request/response proof |
+| Business logic bypasses (price manipulation, flow skipping) | Shake & Break | Runtime-tested | HTTP request/response proof |
+| Webhook replay/signature bypass | Adversarial + Shake & Break | Prompt-guided + Runtime-tested | Confidence level + HTTP proof |
+| **Workflow Integrity** | | | |
+| Evidence gates (tests required for green/done) | Active Verification | Code-enforced + Runtime-tested | Gate violation = critical finding |
+| Deployment gates (SAST/whitebox/audit blocking) | Active Verification | Code-enforced + Runtime-tested | Gate violation = critical finding |
+| State persistence (round-trip integrity) | Active Verification | Runtime-tested | Serialization verification |
+| **Dependencies** | | | |
+| Known vulnerabilities (npm, pip) | SAST (`npm audit` / `pip-audit`) | Code-enforced | Severity-mapped findings |
+
+**Coverage by numbers:** 32 deterministic probes · 25 adversarial review domains · 8 runtime test categories · 2 active verification categories · deployment artifact validation · dependency scanning · pre/post-deployment checklists
 
 ## Human Oversight
 
@@ -240,6 +319,9 @@ Whitebox Audit (exploitability analysis)
 Active Verification (gate-enforced)
      │
      ▼
+[Shake & Break] (optional — runtime adversarial testing in sandbox)
+     │
+     ▼
 Release Audit (code review + pre-publish checks)
      │
      ▼
@@ -263,8 +345,8 @@ Complete
 For multi-phase projects (e.g. Phase 0: Spikes, Phase 1: MVP, Phase 2: Scale), this loop repeats per phase automatically.
 
 ```
-Phase 0: Plan → Build → BUILD SIGNOFF → E2E Testing → Security → Whitebox → Release Audit → DEPLOY APPROVAL (+ backup check) → Deploy → complete_phase
-Phase 1: Plan → Build → BUILD SIGNOFF → E2E Testing → Security → Whitebox → Release Audit → DEPLOY APPROVAL (+ backup check) → Deploy → complete_phase
+Phase 0: Plan → Build → BUILD SIGNOFF → E2E Testing → Security → Whitebox → [Shake & Break] → Release Audit → DEPLOY APPROVAL (+ backup check) → Deploy → complete_phase
+Phase 1: Plan → Build → BUILD SIGNOFF → E2E Testing → Security → Whitebox → [Shake & Break] → Release Audit → DEPLOY APPROVAL (+ backup check) → Deploy → complete_phase
 ...
 ```
 
@@ -274,6 +356,7 @@ Phase 1: Plan → Build → BUILD SIGNOFF → E2E Testing → Security → White
 4. **Security Gate**: Full SAST scan (static code analysis via Semgrep + Bandit), dependency scanning (`npm audit`/`pip-audit`), OWASP Top 10 manual review. Acts as an AI code review tool and AI code scanner for your entire codebase. Fix all critical/high findings.
 5. **Whitebox Audit**: Analyzes whether SAST findings are actually exploitable — checks reachable code paths, missing guards, trust boundaries, prompt-only enforcement. Blocking findings prevent deployment (enforced in code, not just prompts). **30 deterministic probes** detect hardcoded secrets, SQL/command/NoSQL injection, XSS, insecure deserialization, eval with user input, SSRF, path traversal, mass assignment (including spread/Object.assign), open redirects, insecure crypto, cookie security, CORS misconfiguration, CSRF, JWT without expiry, file upload without limits, PII in logs, ORM raw queries, destructive migrations, secrets in Dockerfiles, unpinned base images, missing auth/rate limiting/input validation — each with context-aware suppression to reduce false positives. **Dependency scanning** via `npm audit` and `pip-audit` with automatic severity mapping. **Evidence-based adversarial review** across 25 domains (business logic, auth bypasses, race conditions, IDOR/ownership, XSS, deserialization, cookie/CORS security, deployment config, backup security, tenant isolation, session/JWT security, password reset flows, file upload, webhook security, cache-control, DB connection security, soft delete access, internal endpoint exposure): high/critical findings require confidence level and file:line evidence. Hypotheses are auto-downgraded to medium. Confidence stats track evidence quality across rounds.
 6. **Active Verification** (gate-enforced): Runtime gate tests that prove workflow invariants hold — state transitions require evidence, deployment gates block correctly, state survives round-trips. Deployment is blocked without a passing active verification.
+6b. **Shake & Break** (optional): Active runtime adversarial testing. Creates an isolated sandbox (git worktree + generated .env with neutralized external services + ephemeral port + optional Docker DB). Claude starts the app and sends real HTTP requests across 8 categories: auth/IDOR, race conditions, state manipulation, business logic, injection, token/session, file upload, webhook security. Findings are `evidence-backed` with actual request/response proof. Requires adversarial review completion. ANSI-red terminal warning before testing. SQLite fallback available when Docker is unavailable (with confidence downgrade for race conditions and injection tests).
 7. **Release Audit**: Code review pass (cross-file consistency, API coherence) + pre-publish verification — README completeness, temp file cleanup, aggregated SAST/quality findings, build/test pass, .gitignore coverage. Critical findings in the release audit block deployment (enforced in code).
 8. **Deployment**: **Mandatory deploy approval** before generating configs. Stack-specific Dockerfile, docker-compose, Caddyfile, backup/restore/verify scripts, backup strategy docs, hardening guides. **Artifact security validation** checks every generated file (Dockerfile non-root/multi-stage/no secrets copy, docker-compose security_opt/cap_drop, Caddyfile security headers/CORS, backup script credentials/encryption). Stateful apps are blocked from deployment if no backup is configured. Stack-specific launch checklist with cookie security, CORS, and backup encryption items. **Automated Hetzner Cloud deployment**: infrastructure planning (server sizing, cloud-init, firewall), provisioning via API, and deployment (rsync + docker compose) — all executed by Claude.
 
@@ -332,7 +415,7 @@ Add to `.vscode/mcp.json`:
 }
 ```
 
-## MCP Tools (25)
+## MCP Tools (27)
 
 | Tool | Phase | Description |
 |------|-------|-------------|
@@ -359,6 +442,8 @@ Add to `.vscode/mcp.json`:
 | `a2p_record_server` | 7 | Record provisioned server details in project state |
 | `a2p_deploy_to_server` | 7 | Generate rsync/ssh/docker deployment commands for a provisioned server |
 | `a2p_generate_deployment` | 7 | Stack-specific deployment guidance |
+| `a2p_shake_break_setup` | 5 | Set up isolated sandbox for runtime adversarial testing (worktree, safe .env, port, DB) |
+| `a2p_shake_break_teardown` | 5 | Tear down sandbox, auto-calculate finding count, record results |
 | `a2p_get_build_log` | * | Query structured build log (filter by phase, slice, level, run, time range, errors) |
 | `a2p_get_checklist` | * | Pre/post-deployment verification checklist |
 
@@ -383,7 +468,7 @@ MCP prompts are invoked with `/` in Claude Code:
 You don't have to run the full pipeline. Each prompt works standalone — pick what you need:
 
 **Full project from scratch:**
-`/a2p` → `/a2p_planning` → `/a2p_build_slice` (repeat per slice) → `/a2p_audit` (quality) → `/a2p_e2e_testing` (if UI) → `/a2p_security_gate` → `/a2p_whitebox` → `/a2p_audit` (release) → `/a2p_deploy`
+`/a2p` → `/a2p_planning` → `/a2p_build_slice` (repeat per slice) → `/a2p_audit` (quality) → `/a2p_e2e_testing` (if UI) → `/a2p_security_gate` → `/a2p_whitebox` → [Shake & Break optional] → `/a2p_audit` (release) → `/a2p_deploy`
 
 **MVP built with vibe coding, now make it production-ready:**
 - `/a2p` → set architecture → transition directly to security (no slices needed)
@@ -514,7 +599,7 @@ git clone https://github.com/BernhardJackiewicz/architect-to-product.git
 cd architect-to-product
 npm install
 npm run typecheck   # Type checking
-npm test            # 977 tests
+npm test            # 993 tests
 npm run build       # Build
 npm run dev         # Dev mode
 ```

@@ -23,6 +23,8 @@ import type {
   EventStatus,
   EventMetadata,
   SecurityReentryReason,
+  ShakeBreakSession,
+  ShakeBreakResult,
 } from "./types.js";
 import { pruneEvents, sanitizeOutput, truncatePreview } from "../utils/log-sanitizer.js";
 
@@ -124,6 +126,8 @@ export class StateManager {
       deployApprovalStateHash: null,
       projectFindings: [],
       securityReentryReason: null,
+      shakeBreakSession: null,
+      shakeBreakResults: [],
       createdAt: now,
       updatedAt: now,
     };
@@ -1013,6 +1017,36 @@ export class StateManager {
       outputTruncated: wasTruncated || undefined,
     });
     this.write(state);
+  }
+
+  /** Set the active shake-break session */
+  setShakeBreakSession(session: ShakeBreakSession): ProjectState {
+    const state = this.read();
+    state.shakeBreakSession = session;
+    this.addEvent(state, state.phase, null, "shake_break_setup",
+      `Shake & Break session started: ${session.categories.join(", ")} on port ${session.port}`,
+      { level: "info", status: "info" });
+    this.write(state);
+    return state;
+  }
+
+  /** Clear the active shake-break session */
+  clearShakeBreakSession(): ProjectState {
+    const state = this.read();
+    state.shakeBreakSession = null;
+    this.write(state);
+    return state;
+  }
+
+  /** Add a shake-break result */
+  addShakeBreakResult(result: ShakeBreakResult): ProjectState {
+    const state = this.read();
+    state.shakeBreakResults.push(result);
+    this.addEvent(state, state.phase, null, "shake_break_teardown",
+      `Shake & Break completed: ${result.categoriesTested.join(", ")} — ${result.findingsRecorded} finding(s) in ${result.durationMinutes}min`,
+      { level: "info", status: result.findingsRecorded > 0 ? "warning" : "success" });
+    this.write(state);
+    return state;
   }
 
   private addEvent(
