@@ -365,6 +365,7 @@ export interface ProjectState {
   lastFullSastFindingCount: number;
   buildSignoffAt: string | null;
   buildSignoffSliceHash: string | null;
+  adversarialReviewCompletedAt: string | null;
   deployApprovalAt: string | null;
   deployApprovalStateHash: string | null;
   createdAt: string;

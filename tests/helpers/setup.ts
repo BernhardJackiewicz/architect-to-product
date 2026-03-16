@@ -130,7 +130,7 @@ export function addPassingVerification(sm: StateManager): void {
   });
 }
 
-/** Add a passing whitebox audit result (evidence for security->deployment gate). */
+/** Add a passing whitebox audit result + adversarial review completion (evidence for security->deployment gate). */
 export function addPassingWhitebox(sm: StateManager): void {
   sm.addWhiteboxResult({
     id: `WBA-${Date.now()}`,
@@ -141,6 +141,25 @@ export function addPassingWhitebox(sm: StateManager): void {
     summary: { critical: 0, high: 0, medium: 0, low: 0 },
     blocking_count: 0,
   });
+  sm.completeAdversarialReview(0, "test: no findings");
+}
+
+/** Add ONLY the whitebox audit result without adversarial review completion. */
+export function addWhiteboxOnly(sm: StateManager): void {
+  sm.addWhiteboxResult({
+    id: `WBA-${Date.now()}`,
+    mode: "full",
+    timestamp: new Date().toISOString(),
+    candidates_evaluated: 0,
+    findings: [],
+    summary: { critical: 0, high: 0, medium: 0, low: 0 },
+    blocking_count: 0,
+  });
+}
+
+/** Complete ONLY the adversarial review (requires whitebox audit first). */
+export function completeAdversarialReview(sm: StateManager): void {
+  sm.completeAdversarialReview(0, "test: no findings");
 }
 
 /** Initialize a project with a basic architecture (no slices). */
