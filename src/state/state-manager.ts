@@ -258,6 +258,30 @@ export class StateManager {
       }
     }
 
+    // E2E gate: block building→security if project has UI slices + Playwright
+    if (state.phase === "building" && newPhase === "security") {
+      const hasUISlices = state.slices.some(s => s.hasUI === true);
+      const hasPlaywright = state.companions.some(c => c.type === "playwright" && c.installed);
+      if (hasUISlices && hasPlaywright) {
+        throw new Error(
+          "Cannot skip E2E testing: project has UI slices and Playwright is installed. " +
+          "Transition to refactoring or e2e_testing first, then to security."
+        );
+      }
+    }
+
+    // E2E gate: block refactoring→security if project has UI slices + Playwright
+    if (state.phase === "refactoring" && newPhase === "security") {
+      const hasUISlices = state.slices.some(s => s.hasUI === true);
+      const hasPlaywright = state.companions.some(c => c.type === "playwright" && c.installed);
+      if (hasUISlices && hasPlaywright) {
+        throw new Error(
+          "Cannot skip E2E testing: project has UI slices and Playwright is installed. " +
+          "Transition to e2e_testing first, then to security."
+        );
+      }
+    }
+
     // Security→Deployment gates (ordered by workflow sequence)
     if (state.phase === "security" && newPhase === "deployment") {
       // 1. Full SAST gate: at least one full SAST scan must have been run

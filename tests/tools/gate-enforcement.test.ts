@@ -1,4 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { StateManager } from "../../src/state/state-manager.js";
 import {
   makeTmpDir, cleanTmpDir, initWithStateManager, walkSliceToStatus,
@@ -370,6 +372,87 @@ describe("Backup Gate: stateful app deployment", () => {
     // Stateless app: backupConfig.required is false, so no backup gate
     const state = sm.setPhase("deployment");
     expect(state.phase).toBe("deployment");
+  });
+});
+
+// ============================================================================
+// E2E Gate: UI projects with Playwright must go through e2e_testing
+// ============================================================================
+
+describe("E2E Gate: UI + Playwright enforcement", () => {
+  function addPlaywright(sm: StateManager): void {
+    sm.addCompanion({
+      name: "Playwright", type: "playwright",
+      command: "npx playwright test", installed: true, config: {},
+    });
+  }
+
+  function markSlicesHasUI(dir: string): void {
+    const statePath = join(dir, ".a2p", "state.json");
+    const state = JSON.parse(readFileSync(statePath, "utf-8"));
+    for (const s of state.slices) s.hasUI = true;
+    writeFileSync(statePath, JSON.stringify(state, null, 2), "utf-8");
+  }
+
+  it("BLOCKED: UI + Playwright -> building→security blocked", () => {
+    const sm = initWithStateManager(dir);
+    addPlaywright(sm);
+    markSlicesHasUI(dir);
+    forcePhase(dir, "building");
+    for (const s of sm.read().slices) walkSliceToStatus(sm, s.id, "done");
+    sm.setBuildSignoff();
+    addQualityAudit(sm);
+    expect(() => sm.setPhase("security")).toThrow("Cannot skip E2E testing");
+  });
+
+  it("ALLOWED: UI + Playwright -> building→refactoring→e2e_testing→security", () => {
+    const sm = initWithStateManager(dir);
+    addPlaywright(sm);
+    markSlicesHasUI(dir);
+    forcePhase(dir, "building");
+    for (const s of sm.read().slices) walkSliceToStatus(sm, s.id, "done");
+    sm.setBuildSignoff();
+    addQualityAudit(sm);
+    // Correct path: building → refactoring → e2e_testing → security
+    const s1 = sm.setPhase("refactoring");
+    expect(s1.phase).toBe("refactoring");
+    const s2 = sm.setPhase("e2e_testing");
+    expect(s2.phase).toBe("e2e_testing");
+    const s3 = sm.setPhase("security");
+    expect(s3.phase).toBe("security");
+  });
+
+  it("ALLOWED: backend-only project -> building→security allowed", () => {
+    const sm = initWithStateManager(dir);
+    // No hasUI slices, no Playwright
+    forcePhase(dir, "building");
+    for (const s of sm.read().slices) walkSliceToStatus(sm, s.id, "done");
+    sm.setBuildSignoff();
+    addQualityAudit(sm);
+    const state = sm.setPhase("security");
+    expect(state.phase).toBe("security");
+  });
+
+  it("ALLOWED: UI project without Playwright -> building→security allowed", () => {
+    const sm = initWithStateManager(dir);
+    markSlicesHasUI(dir);
+    // No Playwright companion
+    forcePhase(dir, "building");
+    for (const s of sm.read().slices) walkSliceToStatus(sm, s.id, "done");
+    sm.setBuildSignoff();
+    addQualityAudit(sm);
+    const state = sm.setPhase("security");
+    expect(state.phase).toBe("security");
+  });
+
+  it("BLOCKED: UI + Playwright -> refactoring→security blocked", () => {
+    const sm = initWithStateManager(dir);
+    addPlaywright(sm);
+    markSlicesHasUI(dir);
+    forcePhase(dir, "building");
+    for (const s of sm.read().slices) walkSliceToStatus(sm, s.id, "done");
+    sm.setPhase("refactoring");
+    expect(() => sm.setPhase("security")).toThrow("Cannot skip E2E testing");
   });
 });
 
