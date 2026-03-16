@@ -742,6 +742,55 @@ describe("record-finding: hardening", () => {
     expect(finding?.justification).toBe("Replaced raw SQL with parameterized query");
   });
 
+  it("get-state includes restartRequired=true when companions configured in onboarding", () => {
+    // Use a minimal project in onboarding phase
+    const onboardDir = makeTmpDir("a2p-restart");
+    const onboardSm = new StateManager(onboardDir);
+    onboardSm.init("test-restart", onboardDir);
+    onboardSm.addCompanion({
+      name: "codebase-memory-mcp",
+      type: "codebase_memory",
+      command: "codebase-memory-mcp",
+      installed: true,
+      config: {},
+    });
+    const result = JSON.parse(handleGetState({ projectPath: onboardDir }));
+    expect(result.restartRequired).toBe(true);
+  });
+
+  it("get-state includes restartRequired=false when past onboarding", () => {
+    // dir is already in building phase via beforeEach
+    const sm = new StateManager(dir);
+    sm.addCompanion({
+      name: "codebase-memory-mcp",
+      type: "codebase_memory",
+      command: "codebase-memory-mcp",
+      installed: true,
+      config: {},
+    });
+    const result = JSON.parse(handleGetState({ projectPath: dir }));
+    expect(result.restartRequired).toBe(false);
+  });
+
+  it("get-state includes restartRequired=false when no companions configured", () => {
+    const result = JSON.parse(handleGetState({ projectPath: dir }));
+    expect(result.restartRequired).toBe(false);
+  });
+
+  it("companionsConfiguredAt is set when companion is added", () => {
+    const sm = new StateManager(dir);
+    const stateBefore = sm.read();
+    // companionsConfiguredAt may already be set from initWithStateManager, check after fresh add
+    sm.addCompanion({
+      name: "test-mcp",
+      type: "git",
+      command: "test",
+      installed: true,
+      config: {},
+    });
+    expect(sm.read().companionsConfiguredAt).toBeTruthy();
+  });
+
   it("get-state includes companionReadiness", () => {
     const sm = new StateManager(dir);
     sm.addCompanion({

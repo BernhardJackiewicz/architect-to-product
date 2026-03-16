@@ -301,6 +301,7 @@ export const ProjectStateSchema = z.object({
   backupStatus: BackupStatusSchema.default({
     configured: false,
   }),
+  companionsConfiguredAt: z.string().nullable().default(null),
   lastSecurityRelevantChangeAt: z.string().nullable().default(null),
   lastFullSastAt: z.string().nullable().default(null),
   lastFullSastFindingCount: z.number().int().min(0).default(0),

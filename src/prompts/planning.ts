@@ -5,6 +5,8 @@ ${ENGINEERING_LOOP}
 ## Kontext
 Lies zuerst den aktuellen State mit \`a2p_get_state\`. Die Architektur ist dort gespeichert.
 
+Wenn \`restartRequired: true\` → Sage dem User: "Companion-MCPs wurden konfiguriert, aber Claude Code wurde noch nicht neu gestartet. Starte Claude Code neu und tippe dann \`/a2p_planning\` erneut." Fahre NICHT mit der Planung fort.
+
 ## Was ist ein Slice?
 Ein Slice ist eine vertikale Feature-Einheit, die:
 - Eigenständig testbar ist

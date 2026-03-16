@@ -109,6 +109,7 @@ export class StateManager {
         offsiteProvider: "none", verifyAfterBackup: false, preDeploySnapshot: false,
       },
       backupStatus: { configured: false },
+      companionsConfiguredAt: null,
       lastSecurityRelevantChangeAt: null,
       lastFullSastAt: null,
       lastFullSastFindingCount: 0,
@@ -539,6 +540,7 @@ export class StateManager {
     } else {
       state.companions.push(companion);
     }
+    state.companionsConfiguredAt = new Date().toISOString();
     this.addEvent(
       state,
       state.phase,

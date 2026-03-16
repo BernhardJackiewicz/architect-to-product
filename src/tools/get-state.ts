@@ -25,6 +25,9 @@ export function handleGetState(input: GetStateInput): string {
     playwright: state.companions.some(c => c.type === "playwright" && c.installed),
   };
 
+  // Restart required: companions configured but still in onboarding (restart hasn't happened yet)
+  const restartRequired = !!(state.companionsConfiguredAt && state.phase === "onboarding");
+
   return JSON.stringify({
     projectName: state.projectName,
     phase: state.phase,
@@ -39,6 +42,7 @@ export function handleGetState(input: GetStateInput): string {
       installed: c.installed,
     })),
     companionReadiness,
+    restartRequired,
     config: state.config,
     ...(phases && phases.length > 0
       ? {
