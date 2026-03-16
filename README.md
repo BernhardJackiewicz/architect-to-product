@@ -2,11 +2,11 @@
 
 MCP server that turns AI-generated code into production-ready software with TDD, security scanning, and deployment automation. Up to 100 times fewer exploration tokens for claude code.
 
-**21 MCP tools** · **837 tests** · **Architecture → Plan → Build (evidence-gated) → Quality Audit (cadence) → Signoff → Security → Whitebox → Verify → Release Audit → Deploy → Backup**
+**21 MCP tools** · **859 tests** · **Architecture → Plan → Build (evidence-gated) → Quality Audit (cadence) → Code Review → Signoff → Security → Whitebox → Verify → Release Audit → Deploy → Backup**
 
 [![npm version](https://img.shields.io/npm/v/architect-to-product)](https://www.npmjs.com/package/architect-to-product)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Tests: 837 passing](https://img.shields.io/badge/tests-837%20passing-brightgreen)]()
+[![Tests: 859 passing](https://img.shields.io/badge/tests-859%20passing-brightgreen)]()
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue)]()
 
 ---
@@ -79,6 +79,8 @@ Most AI-generated — and human-built — architectures don't fail because the m
 - **Whitebox audit** — SAST finds patterns, whitebox proves exploitability: reachable code paths, missing guards, prompt-only enforcement. Blocking findings prevent deployment (enforced in code)
 - **Active verification** — Runtime gate tests prove that workflow invariants actually hold: state transitions require evidence, deployment gates block on critical findings, state survives round-trips
 - **Human oversight** — Mandatory build signoff (before wasting tokens on audit/security) and deploy approval. Configurable plan approval, slice review, UI screenshot verification, and security signoff. Two gates are always on, the rest you control
+- **Code review** — Structured code review at build signoff (cross-slice consistency) and release audit (cross-file consistency, API coherence)
+- **Finding justification** — Security findings can't be silently dismissed — accepted/fixed/false_positive require justification (code-enforced)
 - **Audit before release** — Quality audits catch debug artifacts, hardcoded secrets, and test coverage gaps during development. Release audits verify README, .gitignore, temp files, and aggregate findings before publish. Critical release findings block deployment (enforced in code)
 - **Automated backup strategy** — Stack-aware inference of what needs protecting (database, uploads, artifacts). Generates backup, restore, and verification scripts with stack-specific commands (`pg_dump`, `mysqldump`, `mongodump`, `sqlite3 .backup`). Retention policies, offsite sync, and deployment gate enforcement for stateful apps
 - **Deploy on day one** — Stack-specific Dockerfile, docker-compose, Caddyfile, backup/restore/verify scripts, hardening guides
@@ -132,6 +134,8 @@ These cannot be bypassed — they are enforced in code, not just in prompts:
 - **Audit gate**: Cannot deploy with critical release audit findings
 - **Deploy approval gate**: Cannot generate deployment configs without human deploy approval (`a2p_deploy_approval`). Approval is invalidated by new findings, whitebox results, or audit results — must re-approve
 - **Backup gate**: Stateful apps (database or uploads) are blocked from deploying without configured backup (enforced in code)
+- **Finding justification gate**: Cannot set finding status to `accepted`, `fixed`, or `false_positive` without a justification (code-enforced via `a2p_record_finding`)
+- **Companion restart detection**: `a2p_get_state` reports `restartRequired: true` when companions are configured but session hasn't been restarted
 - **Phase guards**: Tools are restricted to appropriate phases (e.g. tests only in building, SAST full only in security, deployment only in deployment phase)
 - **Test command restriction**: Test command override blocked when a test command is configured — prevents fabricated test results
 
@@ -215,6 +219,7 @@ Planning (vertical slices) ─── [planApproval? → STOP]
 Build (evidence-gated slices) ─── [sliceReview? → STOP after each slice]
      │  ← [uiVerification? → STOP for UI screenshot review]
      │  ← Quality Audit (cadence: every ~3 slices)
+     │  ← Code Review (cross-slice consistency)
      ▼
 BUILD SIGNOFF [MANDATORY] ─── "Does the product actually work?"
      │
@@ -228,7 +233,7 @@ Whitebox Audit (exploitability analysis)
 Active Verification (gate-enforced)
      │
      ▼
-Release Audit (pre-publish checks)
+Release Audit (code review + pre-publish checks)
      │
      ▼
 DEPLOY APPROVAL [MANDATORY] ─── "Ready to ship?" + backup status
@@ -247,11 +252,11 @@ Phase 1: Plan → Build → BUILD SIGNOFF → Security → Whitebox → Release 
 
 1. **Onboarding**: Capture or co-develop the AI software architecture. Detect database and frontend tech. Automatically infer backup strategy from tech stack — databases and uploads get mandatory backup, hosting determines offsite provider. Describe UI via text, upload wireframes/mockups/screenshots, or let AI generate a design concept. Set up companion MCP servers via the MCP protocol. If the architecture defines phases, they get extracted automatically.
 2. **Planning**: Break the architecture into ordered vertical slices, each a deployable feature unit with acceptance criteria. Three slice types: `feature` (default), `integration` (library/API adapters with TDD), `infrastructure` (CI, auth, monitoring).
-3. **Build Loop**: Evidence-gated slices: RED (write tests) → GREEN (minimal implementation, requires passing tests) → REFACTOR (clean up) → SAST (security scan required) → DONE (requires passing tests). Frontend slices with `hasUI: true` get visual verification via Playwright between GREEN and REFACTOR — when `uiVerification` is on (default for frontend projects), the human reviews screenshots before proceeding. Configurable review checkpoints (`oversight.sliceReview`: `off`, `all`, `ui-only`) pause after slices for human approval. Domain logic triggers a WebSearch step before tests to verify facts (tax rates, regulations, standards). Quality audits run every ~5-10 commits to catch TODOs, debug artifacts, hardcoded secrets, and test coverage gaps. **Mandatory build signoff** after all slices are done — you verify the product works before spending tokens on audit and security. **Structured build log** tracks every tool run with log levels, duration, status, run correlation, and secret redaction — queryable by phase, slice, level, time range, or errors.
+3. **Build Loop**: Evidence-gated slices: RED (write tests) → GREEN (minimal implementation, requires passing tests) → REFACTOR (clean up) → SAST (security scan required) → DONE (requires passing tests). Frontend slices with `hasUI: true` get visual verification via Playwright between GREEN and REFACTOR — when `uiVerification` is on (default for frontend projects), the human reviews screenshots before proceeding. Configurable review checkpoints (`oversight.sliceReview`: `off`, `all`, `ui-only`) pause after slices for human approval. Domain logic triggers a WebSearch step before tests to verify facts (tax rates, regulations, standards). Quality audits run every ~5-10 commits to catch TODOs, debug artifacts, hardcoded secrets, and test coverage gaps. **Code review** checks cross-slice consistency before build signoff. **Mandatory build signoff** after all slices are done — you verify the product works before spending tokens on audit and security. **Structured build log** tracks every tool run with log levels, duration, status, run correlation, and secret redaction — queryable by phase, slice, level, time range, or errors.
 4. **Security Gate**: Full SAST scan (static code analysis via Semgrep + Bandit), OWASP Top 10 manual review, dependency audit. Acts as an AI code review tool and AI code scanner for your entire codebase. Fix all critical/high findings.
 5. **Whitebox Audit**: Analyzes whether SAST findings are actually exploitable — checks reachable code paths, missing guards, trust boundaries, prompt-only enforcement. Blocking findings prevent deployment (enforced in code, not just prompts).
 6. **Active Verification** (gate-enforced): Runtime gate tests that prove workflow invariants hold — state transitions require evidence, deployment gates block correctly, state survives round-trips. Deployment is blocked without a passing active verification.
-7. **Release Audit**: Pre-publish verification — README completeness, temp file cleanup, aggregated SAST/quality findings, build/test pass, .gitignore coverage. Critical findings in the release audit block deployment (enforced in code).
+7. **Release Audit**: Code review pass (cross-file consistency, API coherence) + pre-publish verification — README completeness, temp file cleanup, aggregated SAST/quality findings, build/test pass, .gitignore coverage. Critical findings in the release audit block deployment (enforced in code).
 8. **Deployment**: **Mandatory deploy approval** before generating configs. Stack-specific Dockerfile, docker-compose, Caddyfile, backup/restore/verify scripts, backup strategy docs, hardening guides. Stateful apps are blocked from deployment if no backup is configured. Stack-specific launch checklist.
 
 ## Client Configuration
@@ -464,7 +469,7 @@ git clone https://github.com/BernhardJackiewicz/architect-to-product.git
 cd architect-to-product
 npm install
 npm run typecheck   # Type checking
-npm test            # 837 tests
+npm test            # 859 tests
 npm run build       # Build
 npm run dev         # Dev mode
 ```
