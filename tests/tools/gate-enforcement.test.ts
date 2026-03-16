@@ -9,6 +9,7 @@ import {
 } from "../helpers/setup.js";
 import { handleInitProject } from "../../src/tools/init-project.js";
 import { handleSetArchitecture } from "../../src/tools/set-architecture.js";
+import { handleCompleteAdversarialReview } from "../../src/tools/complete-adversarial-review.js";
 
 let dir: string;
 
@@ -141,10 +142,10 @@ describe("Adversarial Review Gate: security -> deployment", () => {
     addWhiteboxOnly(sm);
     completeAdversarialReview(sm);
     // Adversarial review is completed
-    expect(sm.read().adversarialReviewCompletedAt).not.toBeNull();
+    expect(sm.read().adversarialReviewState).not.toBeNull();
     // New whitebox audit invalidates it
     addWhiteboxOnly(sm);
-    expect(sm.read().adversarialReviewCompletedAt).toBeNull();
+    expect(sm.read().adversarialReviewState).toBeNull();
   });
 
   it("BLOCKED: completeAdversarialReview requires whitebox audit first", () => {
@@ -162,6 +163,201 @@ describe("Adversarial Review Gate: security -> deployment", () => {
     const sm = initWithStateManager(dir);
     forcePhase(dir, "building");
     expect(() => sm.completeAdversarialReview(0)).toThrow("security phase");
+  });
+});
+
+// ============================================================================
+// Adversarial Review: iterative round tracking
+// ============================================================================
+
+describe("Adversarial Review: round tracking", () => {
+  it("round 1: creates initial state with round=1 and roundHistory[1]", () => {
+    const sm = initWithStateManager(dir);
+    forcePhase(dir, "building");
+    for (const s of sm.read().slices) walkSliceToStatus(sm, s.id, "done");
+    sm.setBuildSignoff();
+    addQualityAudit(sm);
+    sm.setPhase("security");
+    sm.markFullSastRun(0);
+    addWhiteboxOnly(sm);
+    sm.completeAdversarialReview(3, "reviewed auth + API");
+    const state = sm.read();
+    expect(state.adversarialReviewState).not.toBeNull();
+    expect(state.adversarialReviewState!.round).toBe(1);
+    expect(state.adversarialReviewState!.totalFindingsRecorded).toBe(3);
+    expect(state.adversarialReviewState!.roundHistory).toHaveLength(1);
+    expect(state.adversarialReviewState!.roundHistory[0].round).toBe(1);
+    expect(state.adversarialReviewState!.roundHistory[0].findingsRecorded).toBe(3);
+    expect(state.adversarialReviewState!.roundHistory[0].note).toBe("reviewed auth + API");
+  });
+
+  it("round 2: increments round and accumulates findings", () => {
+    const sm = initWithStateManager(dir);
+    forcePhase(dir, "building");
+    for (const s of sm.read().slices) walkSliceToStatus(sm, s.id, "done");
+    sm.setBuildSignoff();
+    addQualityAudit(sm);
+    sm.setPhase("security");
+    sm.markFullSastRun(0);
+    addWhiteboxOnly(sm);
+    sm.completeAdversarialReview(5, "round 1");
+    sm.completeAdversarialReview(2, "round 2");
+    const state = sm.read();
+    expect(state.adversarialReviewState!.round).toBe(2);
+    expect(state.adversarialReviewState!.totalFindingsRecorded).toBe(7);
+    expect(state.adversarialReviewState!.roundHistory).toHaveLength(2);
+    expect(state.adversarialReviewState!.roundHistory[0].round).toBe(1);
+    expect(state.adversarialReviewState!.roundHistory[1].round).toBe(2);
+    expect(state.adversarialReviewState!.roundHistory[1].findingsRecorded).toBe(2);
+  });
+
+  it("round 3: full history preserved across 3 rounds", () => {
+    const sm = initWithStateManager(dir);
+    forcePhase(dir, "building");
+    for (const s of sm.read().slices) walkSliceToStatus(sm, s.id, "done");
+    sm.setBuildSignoff();
+    addQualityAudit(sm);
+    sm.setPhase("security");
+    sm.markFullSastRun(0);
+    addWhiteboxOnly(sm);
+    sm.completeAdversarialReview(4, "r1");
+    sm.completeAdversarialReview(3, "r2");
+    sm.completeAdversarialReview(1, "r3");
+    const state = sm.read();
+    expect(state.adversarialReviewState!.round).toBe(3);
+    expect(state.adversarialReviewState!.totalFindingsRecorded).toBe(8);
+    expect(state.adversarialReviewState!.roundHistory).toHaveLength(3);
+  });
+
+  it("invalidation: new whitebox resets ALL round state to null", () => {
+    const sm = initWithStateManager(dir);
+    forcePhase(dir, "building");
+    for (const s of sm.read().slices) walkSliceToStatus(sm, s.id, "done");
+    sm.setBuildSignoff();
+    addQualityAudit(sm);
+    sm.setPhase("security");
+    sm.markFullSastRun(0);
+    addWhiteboxOnly(sm);
+    sm.completeAdversarialReview(5, "r1");
+    sm.completeAdversarialReview(2, "r2");
+    expect(sm.read().adversarialReviewState!.round).toBe(2);
+    // New whitebox audit invalidates everything
+    addWhiteboxOnly(sm);
+    expect(sm.read().adversarialReviewState).toBeNull();
+    // After re-doing review, starts at round 1 again
+    sm.completeAdversarialReview(1, "fresh start");
+    expect(sm.read().adversarialReviewState!.round).toBe(1);
+    expect(sm.read().adversarialReviewState!.totalFindingsRecorded).toBe(1);
+    expect(sm.read().adversarialReviewState!.roundHistory).toHaveLength(1);
+  });
+
+  it("gate: passes with any number of rounds >= 1", () => {
+    const sm = initWithStateManager(dir);
+    forcePhase(dir, "building");
+    for (const s of sm.read().slices) walkSliceToStatus(sm, s.id, "done");
+    sm.setBuildSignoff();
+    addQualityAudit(sm);
+    sm.setPhase("security");
+    sm.markFullSastRun(0);
+    addWhiteboxOnly(sm);
+    sm.completeAdversarialReview(0, "r1");
+    sm.completeAdversarialReview(0, "r2");
+    sm.completeAdversarialReview(0, "r3");
+    addReleaseAudit(sm);
+    addPassingVerification(sm);
+    const state = sm.setPhase("deployment");
+    expect(state.phase).toBe("deployment");
+  });
+});
+
+// ============================================================================
+// Adversarial Review: tool output
+// ============================================================================
+
+describe("Adversarial Review: tool output", () => {
+  it("round 2 output contains previousFindings from round 1", () => {
+    const sm = initWithStateManager(dir);
+    forcePhase(dir, "building");
+    for (const s of sm.read().slices) walkSliceToStatus(sm, s.id, "done");
+    sm.setBuildSignoff();
+    addQualityAudit(sm);
+    sm.setPhase("security");
+    sm.markFullSastRun(0);
+    addWhiteboxOnly(sm);
+    // Record a finding on a slice before completing round 1
+    const sliceId = sm.read().slices[0].id;
+    sm.addSASTFinding(sliceId, {
+      id: "ADV-001", tool: "adversarial-review", severity: "high", status: "open",
+      title: "Rate Limit Memory Leak", file: "src/rate-limit.ts", line: 10,
+      description: "Leak", fix: "Fix",
+    });
+    sm.completeAdversarialReview(1, "r1");
+    // Now complete round 2 via tool handler
+    const result = JSON.parse(handleCompleteAdversarialReview({
+      projectPath: dir, findingsRecorded: 0, note: "r2 — no new findings",
+    }));
+    expect(result.success).toBe(true);
+    expect(result.currentRound).toBe(2);
+    expect(result.totalFindingsRecorded).toBe(1);
+    expect(result.previousFindings).toHaveLength(1);
+    expect(result.previousFindings[0].title).toBe("Rate Limit Memory Leak");
+    expect(result.previousFindings[0].file).toBe("src/rate-limit.ts");
+    expect(result.hint).toContain("Runde 2");
+    expect(result.hint).toContain("Noch eine Runde");
+  });
+
+  it("round 3 output contains ALL previousFindings from rounds 1+2", () => {
+    const sm = initWithStateManager(dir);
+    forcePhase(dir, "building");
+    for (const s of sm.read().slices) walkSliceToStatus(sm, s.id, "done");
+    sm.setBuildSignoff();
+    addQualityAudit(sm);
+    sm.setPhase("security");
+    sm.markFullSastRun(0);
+    addWhiteboxOnly(sm);
+    const sliceId = sm.read().slices[0].id;
+    // Round 1 findings
+    sm.addSASTFinding(sliceId, {
+      id: "ADV-001", tool: "adversarial-review", severity: "high", status: "open",
+      title: "Finding A", file: "src/a.ts", line: 1, description: "A", fix: "Fix A",
+    });
+    sm.completeAdversarialReview(1, "r1");
+    // Round 2 findings
+    sm.addSASTFinding(sliceId, {
+      id: "ADV-002", tool: "adversarial-review", severity: "medium", status: "open",
+      title: "Finding B", file: "src/b.ts", line: 5, description: "B", fix: "Fix B",
+    });
+    sm.completeAdversarialReview(1, "r2");
+    // Round 3 via tool
+    const result = JSON.parse(handleCompleteAdversarialReview({
+      projectPath: dir, findingsRecorded: 0, note: "r3",
+    }));
+    expect(result.currentRound).toBe(3);
+    expect(result.totalFindingsRecorded).toBe(2);
+    expect(result.previousFindings).toHaveLength(2);
+    expect(result.roundHistory).toHaveLength(3);
+  });
+
+  it("roundHistory output capped at 5, older summarized", () => {
+    const sm = initWithStateManager(dir);
+    forcePhase(dir, "building");
+    for (const s of sm.read().slices) walkSliceToStatus(sm, s.id, "done");
+    sm.setBuildSignoff();
+    addQualityAudit(sm);
+    sm.setPhase("security");
+    sm.markFullSastRun(0);
+    addWhiteboxOnly(sm);
+    // Complete 6 rounds
+    for (let i = 0; i < 6; i++) {
+      sm.completeAdversarialReview(i, `round ${i + 1}`);
+    }
+    // 7th round via tool
+    const result = JSON.parse(handleCompleteAdversarialReview({
+      projectPath: dir, findingsRecorded: 0, note: "round 7",
+    }));
+    expect(result.currentRound).toBe(7);
+    expect(result.roundHistory).toHaveLength(5); // capped
+    expect(result.olderRoundsSummary).toContain("2 earlier round");
   });
 });
 
