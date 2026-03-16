@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { requireProject } from "../utils/tool-helpers.js";
+import { SERVER_VERSION } from "../utils/constants.js";
 
 export const getStateSchema = z.object({
   projectPath: z.string().describe("Absolute path to the project directory"),
@@ -29,6 +30,7 @@ export function handleGetState(input: GetStateInput): string {
   const restartRequired = !!(state.companionsConfiguredAt && state.phase === "onboarding");
 
   return JSON.stringify({
+    a2pVersion: SERVER_VERSION,
     projectName: state.projectName,
     phase: state.phase,
     progress,
