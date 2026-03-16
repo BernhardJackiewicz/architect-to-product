@@ -50,7 +50,28 @@ Das ist ein defensives Code-Review — kein Exploit-Building.
 15. **Backup/Restore Security**: Unverschluesselte Backups, Backup-Credentials in Plaintext,
     Restore ohne Integritaets-Check.
 
+16. **Tenant Isolation**: Queries ohne tenant_id Filter? Shared Tables ohne Row-Level-Filterung?
+    Wenn DB-MCP verfuegbar: \`execute_sql SELECT * FROM pg_policies\` fuer RLS-Check.
+17. **Session Security**: Session-ID Regeneration nach Login? Timeout konfiguriert? Logout
+    invalidiert Session? Session-Fixation moeglich?
+18. **JWT / Token Security**: jwt.sign ohne expiresIn? aud/iss geprueft? Refresh-Token-Rotation?
+    Revocation-Liste vorhanden?
+19. **Password Reset / Invite Flows**: Token-Expiry auf Reset-Links? Rate-Limit auf Reset-Endpoint?
+    Token single-use? Identische Fehlermeldungen bei "User not found" vs "Wrong password"?
+20. **File Upload Security**: multer/formidable ohne Size/Type-Limits? Stored XSS via Upload?
+    Path Traversal via Filename? Upload-Directory ausserhalb Webroot?
+21. **Webhook Security**: Webhook-Signature verifiziert (HMAC)? Replay-Schutz (Timestamp-Check)?
+    Idempotency-Key vorhanden?
+22. **Cache-Control**: \`Cache-Control: no-store\` auf Auth-Responses? Private Daten cacheable?
+23. **DB Connection Security**: ssl: false oder fehlende sslmode=require? DB-User ist root/admin?
+    Connection-Pooling Limits?
+24. **Soft Delete Access**: Soft-deleted Records ueber API abrufbar? WHERE deleted_at IS NULL
+    in allen Queries? Cascading Soft-Delete konsistent?
+25. **Internal Endpoint Exposure**: Admin-Endpoints ueber oeffentliche URL erreichbar?
+    Webhook-Endpoints IP-restricted? Metrics/Health-Endpoints mit sensiblen Daten?
+
 Domaenen 9-15 erfordern evidence-backed oder hard-to-verify Findings — Code lesen und belegen, nicht nur vermuten.
+Domaenen 16-25 erfordern evidence-backed Findings. Wenn DB-MCP verfuegbar: nutze Schema-Queries fuer RLS und FK-Constraints.
 
 **Inline-Verifikation (PFLICHT fuer jeden Verdacht):**
 Fuer JEDEN potentiellen Fund musst du den Verdacht am Code verifizieren:

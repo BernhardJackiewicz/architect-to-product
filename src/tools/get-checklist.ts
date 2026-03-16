@@ -25,6 +25,8 @@ export function handleGetChecklist(input: GetChecklistInput): string {
       { item: "CORS configured for production domain only", done: false },
       { item: ".env.production with real values", done: false },
       { item: "Debug mode disabled", done: false },
+      { item: "DB user has least-privilege permissions (not root/admin)", done: false },
+      { item: "No real PII in seed/test data", done: false },
     ],
     infrastructure: [
       { item: "VPS provisioned and hardened (SSH key-only, fail2ban)", done: false },
@@ -46,6 +48,12 @@ export function handleGetChecklist(input: GetChecklistInput): string {
       { item: "Cookie security flags set (HttpOnly, Secure, SameSite)", done: false },
       { item: "CORS restricted to production domain (no wildcard with credentials)", done: false },
       { item: "Backup encryption configured (or access control on backup directory)", done: false },
+      { item: "Session timeout configured", done: false },
+      { item: "JWT expiry configured (≤ 24h recommended)", done: false },
+      { item: "Webhook signature verification active", done: false },
+      { item: "DB connection uses TLS/SSL", done: false },
+      { item: "Metrics/admin endpoints not publicly accessible", done: false },
+      { item: "DR runbook documented and recovery tested", done: false },
     ],
   };
 

@@ -773,3 +773,230 @@ def load_config(path):
     expect(evalFinding.severity).toBe("critical");
   });
 });
+
+describe("Block 2-5 probes", () => {
+  it("mass assignment with spread operator → detected", () => {
+    const sm = initWithStateManager(dir);
+    forcePhase(dir, "security");
+    sm.markFullSastRun(0);
+    const sliceId = sm.read().slices[0].id;
+    mkdirSync(join(dir, "src"), { recursive: true });
+    writeFileSync(join(dir, "src/spread.ts"), `
+      export function create(req: any) {
+        const user = { ...req.body, role: "user" };
+        return db.save(user);
+      }
+    `);
+    sm.updateSliceFiles(sliceId, ["src/spread.ts"]);
+    const result = parse(handleRunWhiteboxAudit({ projectPath: dir, mode: "full" }));
+    const finding = result.findings.find((f: any) =>
+      f.root_cause.toLowerCase().includes("mass assignment")
+    );
+    expect(finding).toBeDefined();
+    expect(finding.severity).toBe("high");
+  });
+
+  it("mass assignment with Object.assign + validation → suppressed", () => {
+    const sm = initWithStateManager(dir);
+    forcePhase(dir, "security");
+    sm.markFullSastRun(0);
+    const sliceId = sm.read().slices[0].id;
+    mkdirSync(join(dir, "src"), { recursive: true });
+    writeFileSync(join(dir, "src/safe-assign.ts"), `
+      import { z } from 'zod';
+      export function create(req: any) {
+        const validated = z.object({ name: z.string() }).parse(req.body);
+        const user = Object.assign({}, validated, req.body);
+        return db.save(user);
+      }
+    `);
+    sm.updateSliceFiles(sliceId, ["src/safe-assign.ts"]);
+    const result = parse(handleRunWhiteboxAudit({ projectPath: dir, mode: "full" }));
+    const finding = result.findings.find((f: any) =>
+      f.root_cause.toLowerCase().includes("mass assignment")
+    );
+    expect(finding).toBeUndefined();
+  });
+
+  it("migration with DROP TABLE → detected", () => {
+    const sm = initWithStateManager(dir);
+    forcePhase(dir, "security");
+    sm.markFullSastRun(0);
+    const sliceId = sm.read().slices[0].id;
+    mkdirSync(join(dir, "migrations"), { recursive: true });
+    writeFileSync(join(dir, "migrations/001_drop.ts"), `
+      export async function up(db: any) {
+        await db.query("DROP TABLE users");
+      }
+    `);
+    sm.updateSliceFiles(sliceId, ["migrations/001_drop.ts"]);
+    const result = parse(handleRunWhiteboxAudit({ projectPath: dir, mode: "full" }));
+    const finding = result.findings.find((f: any) =>
+      f.root_cause.toLowerCase().includes("destructive migration")
+    );
+    expect(finding).toBeDefined();
+    expect(finding.severity).toBe("high");
+  });
+
+  it("migration with DROP TABLE + rollback → suppressed", () => {
+    const sm = initWithStateManager(dir);
+    forcePhase(dir, "security");
+    sm.markFullSastRun(0);
+    const sliceId = sm.read().slices[0].id;
+    mkdirSync(join(dir, "migrations"), { recursive: true });
+    writeFileSync(join(dir, "migrations/002_safe_drop.ts"), `
+      export async function up(db: any) {
+        await db.query("DROP TABLE old_users");
+      }
+      export async function down(db: any) {
+        await db.query("CREATE TABLE old_users (id INT)");
+      }
+    `);
+    sm.updateSliceFiles(sliceId, ["migrations/002_safe_drop.ts"]);
+    const result = parse(handleRunWhiteboxAudit({ projectPath: dir, mode: "full" }));
+    const finding = result.findings.find((f: any) =>
+      f.root_cause.toLowerCase().includes("destructive migration")
+    );
+    expect(finding).toBeUndefined();
+  });
+
+  it("CORS wildcard → detected", () => {
+    const sm = initWithStateManager(dir);
+    forcePhase(dir, "security");
+    sm.markFullSastRun(0);
+    const sliceId = sm.read().slices[0].id;
+    mkdirSync(join(dir, "src"), { recursive: true });
+    writeFileSync(join(dir, "src/cors.ts"), `
+      import cors from 'cors';
+      app.use(cors());
+    `);
+    sm.updateSliceFiles(sliceId, ["src/cors.ts"]);
+    const result = parse(handleRunWhiteboxAudit({ projectPath: dir, mode: "full" }));
+    const finding = result.findings.find((f: any) =>
+      f.root_cause.toLowerCase().includes("cors")
+    );
+    expect(finding).toBeDefined();
+    expect(finding.severity).toBe("medium");
+  });
+
+  it("JWT sign without expiry → detected", () => {
+    const sm = initWithStateManager(dir);
+    forcePhase(dir, "security");
+    sm.markFullSastRun(0);
+    const sliceId = sm.read().slices[0].id;
+    mkdirSync(join(dir, "src"), { recursive: true });
+    writeFileSync(join(dir, "src/token.ts"), `
+      import jwt from 'jsonwebtoken';
+      export function createToken(userId: string) {
+        return jwt.sign({ sub: userId }, SECRET);
+      }
+    `);
+    sm.updateSliceFiles(sliceId, ["src/token.ts"]);
+    const result = parse(handleRunWhiteboxAudit({ projectPath: dir, mode: "full" }));
+    const finding = result.findings.find((f: any) =>
+      f.root_cause.toLowerCase().includes("jwt")
+    );
+    expect(finding).toBeDefined();
+    expect(finding.severity).toBe("medium");
+  });
+
+  it("JWT sign with expiresIn → suppressed", () => {
+    const sm = initWithStateManager(dir);
+    forcePhase(dir, "security");
+    sm.markFullSastRun(0);
+    const sliceId = sm.read().slices[0].id;
+    mkdirSync(join(dir, "src"), { recursive: true });
+    writeFileSync(join(dir, "src/safe-token.ts"), `
+      import jwt from 'jsonwebtoken';
+      export function createToken(userId: string) {
+        return jwt.sign({ sub: userId }, SECRET, { expiresIn: '1h' });
+      }
+    `);
+    sm.updateSliceFiles(sliceId, ["src/safe-token.ts"]);
+    const result = parse(handleRunWhiteboxAudit({ projectPath: dir, mode: "full" }));
+    const finding = result.findings.find((f: any) =>
+      f.root_cause.toLowerCase().includes("jwt")
+    );
+    expect(finding).toBeUndefined();
+  });
+
+  it("file upload without limits → detected", () => {
+    const sm = initWithStateManager(dir);
+    forcePhase(dir, "security");
+    sm.markFullSastRun(0);
+    const sliceId = sm.read().slices[0].id;
+    mkdirSync(join(dir, "src"), { recursive: true });
+    writeFileSync(join(dir, "src/upload.ts"), `
+      import multer from 'multer';
+      const upload = multer({ dest: 'uploads/' });
+      app.post('/upload', upload.single('file'), handler);
+    `);
+    sm.updateSliceFiles(sliceId, ["src/upload.ts"]);
+    const result = parse(handleRunWhiteboxAudit({ projectPath: dir, mode: "full" }));
+    const finding = result.findings.find((f: any) =>
+      f.root_cause.toLowerCase().includes("file upload")
+    );
+    expect(finding).toBeDefined();
+    expect(finding.severity).toBe("medium");
+  });
+
+  it("file upload with limits → suppressed", () => {
+    const sm = initWithStateManager(dir);
+    forcePhase(dir, "security");
+    sm.markFullSastRun(0);
+    const sliceId = sm.read().slices[0].id;
+    mkdirSync(join(dir, "src"), { recursive: true });
+    writeFileSync(join(dir, "src/safe-upload.ts"), `
+      import multer from 'multer';
+      const upload = multer({ dest: 'uploads/', limits: { fileSize: 5 * 1024 * 1024 } });
+      app.post('/upload', upload.single('file'), handler);
+    `);
+    sm.updateSliceFiles(sliceId, ["src/safe-upload.ts"]);
+    const result = parse(handleRunWhiteboxAudit({ projectPath: dir, mode: "full" }));
+    const finding = result.findings.find((f: any) =>
+      f.root_cause.toLowerCase().includes("file upload")
+    );
+    expect(finding).toBeUndefined();
+  });
+
+  it("PII in console.log → detected", () => {
+    const sm = initWithStateManager(dir);
+    forcePhase(dir, "security");
+    sm.markFullSastRun(0);
+    const sliceId = sm.read().slices[0].id;
+    mkdirSync(join(dir, "src"), { recursive: true });
+    writeFileSync(join(dir, "src/debug.ts"), `
+      export function loginUser(user: any) {
+        console.log("Login attempt:", user.password);
+        return authenticate(user);
+      }
+    `);
+    sm.updateSliceFiles(sliceId, ["src/debug.ts"]);
+    const result = parse(handleRunWhiteboxAudit({ projectPath: dir, mode: "full" }));
+    const finding = result.findings.find((f: any) =>
+      f.root_cause.toLowerCase().includes("logged to console") || f.root_cause.toLowerCase().includes("pii")
+    );
+    expect(finding).toBeDefined();
+    expect(finding.severity).toBe("high");
+  });
+
+  it("ORM raw query with interpolation → detected", () => {
+    const sm = initWithStateManager(dir);
+    forcePhase(dir, "security");
+    sm.markFullSastRun(0);
+    const sliceId = sm.read().slices[0].id;
+    mkdirSync(join(dir, "src"), { recursive: true });
+    writeFileSync(join(dir, "src/orm-raw.ts"), `
+      export function search(req: any) {
+        return knex.raw(\`SELECT * FROM users WHERE name = \${req.body.name}\`);
+      }
+    `);
+    sm.updateSliceFiles(sliceId, ["src/orm-raw.ts"]);
+    const result = parse(handleRunWhiteboxAudit({ projectPath: dir, mode: "full" }));
+    const finding = result.findings.find((f: any) =>
+      f.root_cause.toLowerCase().includes("sql injection")
+    );
+    expect(finding).toBeDefined();
+    expect(finding.severity).toBe("critical");
+  });
+});
