@@ -77,6 +77,8 @@ export type FindingSeverity = "critical" | "high" | "medium" | "low" | "info";
 
 export type FindingStatus = "open" | "fixed" | "accepted" | "false_positive";
 
+export type FindingConfidence = "hypothesis" | "evidence-backed" | "hard-to-verify";
+
 export interface ProductPhase {
   id: string; // "phase-0", "phase-1"
   name: string; // "Foundations/Spikes", "MVP"
@@ -151,6 +153,8 @@ export interface SASTFinding {
   description: string;
   fix: string;
   justification?: string; // Required when status is accepted/fixed/false_positive
+  confidence?: FindingConfidence; // Required for adversarial-review high/critical findings
+  evidence?: string; // File:line reference proving what was checked — required for adversarial-review high/critical
 }
 
 export interface QualityIssue {

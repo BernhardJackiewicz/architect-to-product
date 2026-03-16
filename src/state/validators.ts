@@ -74,6 +74,8 @@ export const SASTFindingSchema = z.object({
   description: z.string(),
   fix: z.string(),
   justification: z.string().optional(),
+  confidence: z.enum(["hypothesis", "evidence-backed", "hard-to-verify"]).optional(),
+  evidence: z.string().optional(),
 });
 
 export const SliceSchema = z.object({

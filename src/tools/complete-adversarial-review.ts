@@ -28,8 +28,24 @@ export function handleCompleteAdversarialReview(input: CompleteAdversarialReview
         title: f.title,
         file: f.file,
         severity: f.severity,
+        confidence: f.confidence ?? "legacy" as const,
         round: findRoundForFinding(f.id, reviewState),
       }));
+
+    // Compute confidence stats
+    const confidenceStats = {
+      evidenceBacked: previousFindings.filter(f => f.confidence === "evidence-backed").length,
+      hypothesis: previousFindings.filter(f => f.confidence === "hypothesis").length,
+      hardToVerify: previousFindings.filter(f => f.confidence === "hard-to-verify").length,
+      legacy: previousFindings.filter(f => f.confidence === "legacy").length,
+    };
+
+    // Warn if majority of high/critical are hypotheses
+    const highCritical = previousFindings.filter(f => f.severity === "critical" || f.severity === "high");
+    const hypothesisHighCritical = highCritical.filter(f => f.confidence === "hypothesis");
+    const confidenceWarning = highCritical.length > 0 && hypothesisHighCritical.length > highCritical.length / 2
+      ? `Warning: ${hypothesisHighCritical.length}/${highCritical.length} high/critical findings are hypotheses. Consider re-examining with code evidence.`
+      : undefined;
 
     // Round history for output: last N rounds fully, older as summary
     const fullHistory = reviewState.roundHistory;
@@ -56,6 +72,8 @@ export function handleCompleteAdversarialReview(input: CompleteAdversarialReview
       totalFindingsRecorded: reviewState.totalFindingsRecorded,
       completedAt: reviewState.completedAt,
       previousFindings,
+      confidenceStats,
+      ...(confidenceWarning ? { confidenceWarning } : {}),
       roundHistory,
       ...(olderSummary ? { olderRoundsSummary: olderSummary } : {}),
       note: input.note ?? null,
