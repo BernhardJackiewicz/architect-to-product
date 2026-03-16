@@ -72,6 +72,19 @@ describe("handleInitProject", () => {
     expect(content.toLowerCase()).toContain("injection");
   });
 
+  it("settings.json includes PreToolUse hook blocking .a2p/state.json edits", () => {
+    handleInitProject({ projectPath: tmpDir, projectName: "test" });
+    const content = JSON.parse(
+      readFileSync(join(tmpDir, ".claude", "settings.json"), "utf-8")
+    );
+    expect(content.hooks.PreToolUse).toBeDefined();
+    expect(content.hooks.PreToolUse.length).toBeGreaterThan(0);
+    const hook = content.hooks.PreToolUse[0];
+    expect(hook.matcher).toContain("Write");
+    expect(hook.hooks[0].command).toContain(".a2p/state");
+    expect(hook.hooks[0].command).toContain("exit 2");
+  });
+
   it("rejects double init", () => {
     handleInitProject({ projectPath: tmpDir, projectName: "test" });
     const result = parse(handleInitProject({ projectPath: tmpDir, projectName: "test" }));

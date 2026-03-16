@@ -4,7 +4,7 @@ import { handleInitProject } from "../../src/tools/init-project.js";
 import { handleSetArchitecture } from "../../src/tools/set-architecture.js";
 import { handleCreateBuildPlan } from "../../src/tools/create-build-plan.js";
 import { StateManager } from "../../src/state/state-manager.js";
-import { makeTmpDir, cleanTmpDir, parse, addPassingTests, addSastEvidence, addQualityAudit, addReleaseAudit, addPassingVerification } from "../helpers/setup.js";
+import { makeTmpDir, cleanTmpDir, parse, addPassingTests, addSastEvidence, addQualityAudit, addReleaseAudit, addPassingVerification, addPassingWhitebox } from "../helpers/setup.js";
 
 const twoPhases = [
   {
@@ -112,6 +112,7 @@ describe("handleCompletePhase", () => {
     addQualityAudit(sm);
     sm.setPhase("security");
     sm.markFullSastRun(0);
+    addPassingWhitebox(sm);
     addReleaseAudit(sm);
     addPassingVerification(sm);
     sm.setPhase("deployment");
@@ -134,6 +135,7 @@ describe("handleCompletePhase", () => {
     addQualityAudit(sm);
     sm.setPhase("security");
     sm.markFullSastRun(0);
+    addPassingWhitebox(sm);
     addReleaseAudit(sm);
     addPassingVerification(sm);
     sm.setPhase("deployment");
@@ -160,6 +162,7 @@ describe("handleCompletePhase", () => {
     addQualityAudit(sm);
     sm.setPhase("security");
     sm.markFullSastRun(0);
+    addPassingWhitebox(sm);
     addReleaseAudit(sm);
     addPassingVerification(sm);
     sm.setPhase("deployment");
@@ -190,6 +193,7 @@ describe("handleCompletePhase", () => {
     addQualityAudit(sm);
     sm.setPhase("security");
     sm.markFullSastRun(0);
+    addPassingWhitebox(sm);
     addReleaseAudit(sm);
     addPassingVerification(sm);
     sm.setPhase("deployment");

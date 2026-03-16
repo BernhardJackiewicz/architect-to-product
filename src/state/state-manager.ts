@@ -292,9 +292,14 @@ export class StateManager {
         );
       }
 
-      // 4. Whitebox gate: block deployment if last whitebox has blocking findings
+      // 4. Whitebox gate: must have run at least once, and no blocking findings
+      if (state.whiteboxResults.length === 0) {
+        throw new Error(
+          "Cannot deploy without whitebox audit. Run a2p_run_whitebox_audit first."
+        );
+      }
       const lastWhitebox = state.whiteboxResults[state.whiteboxResults.length - 1];
-      if (lastWhitebox && lastWhitebox.blocking_count > 0) {
+      if (lastWhitebox.blocking_count > 0) {
         throw new Error(
           `Cannot deploy with ${lastWhitebox.blocking_count} blocking whitebox finding(s). Fix all blocking findings before deploying.`
         );

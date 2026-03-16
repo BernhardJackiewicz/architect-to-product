@@ -889,6 +889,7 @@ describe("E2E Workflow: Full project lifecycle", () => {
       sm.addAuditResult({ id: `AQ-${Date.now()}`, mode: "quality", timestamp: new Date().toISOString(), findings: [], summary: { critical: 0, high: 0, medium: 0, low: 0 }, buildPassed: true, testsPassed: true, aggregated: { openSastFindings: 0, openQualityIssues: 0, slicesDone: 0, slicesTotal: 0 } });
       sm.setPhase("security");
       sm.markFullSastRun(0);
+      sm.addWhiteboxResult({ id: `WBA-${Date.now()}`, mode: "full", timestamp: new Date().toISOString(), candidates_evaluated: 0, findings: [], summary: { critical: 0, high: 0, medium: 0, low: 0 }, blocking_count: 0 });
       sm.addAuditResult({ id: `AR-${Date.now()}`, mode: "release", timestamp: new Date().toISOString(), findings: [], summary: { critical: 0, high: 0, medium: 0, low: 0 }, buildPassed: true, testsPassed: true, aggregated: { openSastFindings: 0, openQualityIssues: 0, slicesDone: 0, slicesTotal: 0 } });
       sm.addActiveVerificationResult({ id: `AV-${Date.now()}`, timestamp: new Date().toISOString(), round: 1, tests_run: 1, tests_passed: 1, tests_failed: 0, findings: [], summary: { critical: 0, high: 0, medium: 0, low: 0 }, blocking_count: 0, requires_human_review: false });
       sm.setPhase("deployment");
@@ -956,6 +957,7 @@ describe("E2E Workflow: Full project lifecycle", () => {
       sm.addAuditResult({ id: "AQ1", mode: "quality", timestamp: new Date().toISOString(), findings: [], summary: { critical: 0, high: 0, medium: 0, low: 0 }, buildPassed: true, testsPassed: true, aggregated: { openSastFindings: 0, openQualityIssues: 0, slicesDone: 0, slicesTotal: 0 } });
       sm.setPhase("security");
       sm.markFullSastRun(0);
+      sm.addWhiteboxResult({ id: "WBA-1", mode: "full", timestamp: new Date().toISOString(), candidates_evaluated: 0, findings: [], summary: { critical: 0, high: 0, medium: 0, low: 0 }, blocking_count: 0 });
       sm.addAuditResult({ id: "AR1", mode: "release", timestamp: new Date().toISOString(), findings: [], summary: { critical: 0, high: 0, medium: 0, low: 0 }, buildPassed: true, testsPassed: true, aggregated: { openSastFindings: 0, openQualityIssues: 0, slicesDone: 0, slicesTotal: 0 } });
       sm.addActiveVerificationResult({ id: "AV1", timestamp: new Date().toISOString(), round: 1, tests_run: 1, tests_passed: 1, tests_failed: 0, findings: [], summary: { critical: 0, high: 0, medium: 0, low: 0 }, blocking_count: 0, requires_human_review: false });
       sm.setPhase("deployment");
@@ -1046,6 +1048,7 @@ describe("E2E Workflow: Full project lifecycle", () => {
       sm.addAuditResult({ id: `AQ-${Date.now()}`, mode: "quality", timestamp: new Date().toISOString(), findings: [], summary: { critical: 0, high: 0, medium: 0, low: 0 }, buildPassed: true, testsPassed: true, aggregated: { openSastFindings: 0, openQualityIssues: 0, slicesDone: 0, slicesTotal: 0 } });
       sm.setPhase("security");
       sm.markFullSastRun(0);
+      sm.addWhiteboxResult({ id: `WBA-${Date.now()}`, mode: "full", timestamp: new Date().toISOString(), candidates_evaluated: 0, findings: [], summary: { critical: 0, high: 0, medium: 0, low: 0 }, blocking_count: 0 });
       sm.addAuditResult({ id: `AR-${Date.now()}`, mode: "release", timestamp: new Date().toISOString(), findings: [], summary: { critical: 0, high: 0, medium: 0, low: 0 }, buildPassed: true, testsPassed: true, aggregated: { openSastFindings: 0, openQualityIssues: 0, slicesDone: 0, slicesTotal: 0 } });
       sm.addActiveVerificationResult({ id: `AV-${Date.now()}`, timestamp: new Date().toISOString(), round: 1, tests_run: 1, tests_passed: 1, tests_failed: 0, findings: [], summary: { critical: 0, high: 0, medium: 0, low: 0 }, blocking_count: 0, requires_human_review: false });
       sm.setPhase("deployment");

@@ -1,6 +1,6 @@
 # Validation Summary
 
-> Last validated: 2026-03-16 | A2P v0.1.3 | 858 tests passing
+> Last validated: 2026-03-16 | A2P v0.1.4 | 861 tests passing
 
 ## Code-Enforced (verified by 858 unit/integration tests)
 
@@ -10,7 +10,8 @@ All workflow gates are implemented in `state-manager.ts` and tested:
 - **Build signoff**: mandatory, invalidated by slice/test changes, blocks building->security
 - **Deploy approval**: mandatory, invalidated by new findings/whitebox/audit, blocks deployment config generation
 - **Quality gate**: mandatory quality audit before building->security, stale audit blocked
-- **Security gates**: no deploy with open CRITICAL/HIGH SAST, blocking whitebox, critical audit findings, stale SAST, missing/stale active verification
+- **Security gates**: no deploy with open CRITICAL/HIGH SAST, missing/blocking whitebox, critical audit findings, stale SAST, missing/stale active verification
+- **State file protection**: PreToolUse hook blocks direct edits to `.a2p/state.json` (forces use of a2p_ tools)
 - **Backup gate**: stateful apps blocked from deployment without configured backup
 - **Phase guards**: tools restricted to their allowed phases
 - **Test command restriction**: override blocked when configured
@@ -93,6 +94,16 @@ First real end-to-end run with evidence gates active (v0.1.3). Verified on slice
 - `files` field limits npm package to dist/, README, LICENSE, VALIDATION
 - `SERVER_VERSION` reads from package.json at runtime (was hardcoded "0.1.0")
 - `a2p_get_state` returns `a2pVersion` for runtime version visibility
+
+### Direct state.json edit bypass (v0.1.3 finding, fixed v0.1.4)
+
+During the e-invoice-api run (2026-03-16), Claude bypassed all phase-transition guards by directly editing `.a2p/state.json` (changing `"phase": "building"` → `"security"` → `"deployment"`). This skipped whitebox audit, active verification, release audit, and OWASP review.
+
+**Root cause:** Guards in `setPhase()` (state-manager.ts) are comprehensive but only fire when transitions go through StateManager methods, not when the file is edited directly. Additionally, the whitebox gate only checked `blocking_count > 0` on the last result — did NOT require whitebox to have run at least once.
+
+**Fix (v0.1.4):**
+1. **PreToolUse hook** in `.claude/settings.json`: blocks Write/Edit on `.a2p/state.json` (exit code 2 = tool call blocked). Installed by `a2p_init_project`.
+2. **Whitebox "must run" guard**: `setPhase("deployment")` now throws if `whiteboxResults.length === 0`, matching the existing pattern for release audit and active verification gates.
 
 ### Root cause of v0.1.1 gate failure
 
