@@ -51,6 +51,49 @@ Wenn hosting "hetzner", "digitalocean", "vps", "debian", "ubuntu", "linux" enth�
 **Smoke checks:** /health returns 200, /.env blocked, HTTPS enforced, Security Headers
 **Domain checklist:** DNS A-Record → Server-IP, SSL via Caddy/Let's Encrypt
 
+### Automatisiertes Hetzner Deployment
+
+Wenn der User Hetzner gewählt hat oder kein spezifischer Hoster feststeht:
+
+1. **API Token erfragen:**
+   "Gib mir deinen Hetzner Cloud API Token (console.hetzner.cloud > Projekt > Security > API Tokens > Read & Write)."
+   → Token NUR in Shell-Variable speichern: \`export HETZNER_TOKEN="<token>"\`
+   → NIEMALS in Dateien, State oder Commits schreiben.
+
+2. **SSH Key wählen:**
+   - Liste vorhandene Keys: \`ls ~/.ssh/*.pub\`
+   - User wählt welchen Key verwenden
+   - Key bei Hetzner registrieren (curl POST /ssh_keys)
+
+3. **Infrastruktur planen:**
+   - \`a2p_plan_infrastructure\` aufrufen
+   - Plan dem User zeigen (Server-Typ, Kosten, Standort, Security)
+   - Auf explizite Bestätigung warten (kostenpflichtiger Server!)
+
+4. **Server provisionieren:**
+   - curl-Commands aus dem Plan via Bash ausführen
+   - Server-Status pollen bis running
+   - Cloud-init abwarten (~2-3 min), SSH-Zugang prüfen
+
+5. **Server registrieren:**
+   - \`a2p_record_server\` mit Server-Details aufrufen
+
+6. **Deployment-Dateien generieren:**
+   - \`a2p_generate_deployment\` aufrufen (wie bisher)
+   - Dockerfile, docker-compose.prod.yml, Caddyfile etc. erstellen
+   - .env.production erstellen (Secrets generieren via openssl)
+
+7. **Deployen:**
+   - \`a2p_deploy_to_server\` aufrufen für Command-Liste
+   - Projekt auf Server kopieren (rsync)
+   - docker compose up
+   - Health-Check + Smoke Tests
+
+8. **Domain (optional):**
+   - User nach Domain fragen
+   - DNS A-Record Anleitung geben
+   - Caddy holt automatisch Let's Encrypt Zertifikat
+
 ### Deploy to Vercel (wenn Vercel MCP verfügbar oder hosting=Vercel)
 1. Generiere \`vercel.json\` mit Framework-Preset + Environment Variables
 2. Konfiguriere Build-Settings (Output Directory, Install Command)

@@ -301,6 +301,24 @@ export interface ActiveVerificationResult {
   requires_human_review: boolean;
 }
 
+export type InfraProvider = "hetzner";
+
+export interface InfrastructureRecord {
+  provider: InfraProvider;
+  serverId: string;
+  serverName: string;
+  serverIp: string;
+  serverIpv6?: string;
+  serverType: string;
+  location: string;
+  firewallId?: string;
+  sshUser: string;
+  sshKeyFingerprint: string;
+  domain?: string;
+  provisionedAt: string;
+  lastDeployedAt: string | null;
+}
+
 export type BackupTarget = "database" | "uploads" | "local_media" | "deploy_artifacts";
 export type BackupOffsiteProvider = "none" | "s3" | "b2" | "spaces" | "hetzner_storage";
 
@@ -338,6 +356,7 @@ export interface ProjectState {
   activeVerificationResults: ActiveVerificationResult[];
   buildHistory: BuildEvent[];
   currentProductPhase: number; // Index in architecture.phases[], default 0
+  infrastructure: InfrastructureRecord | null;
   backupConfig: BackupConfig;
   backupStatus: BackupStatus;
   companionsConfiguredAt: string | null;

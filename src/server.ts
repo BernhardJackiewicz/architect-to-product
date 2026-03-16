@@ -23,6 +23,9 @@ import { runWhiteboxAuditSchema, handleRunWhiteboxAudit } from "./tools/run-whit
 import { runActiveVerificationSchema, handleRunActiveVerification } from "./tools/run-active-verification.js";
 import { buildSignoffSchema, handleBuildSignoff } from "./tools/build-signoff.js";
 import { deployApprovalSchema, handleDeployApproval } from "./tools/deploy-approval.js";
+import { planInfrastructureSchema, handlePlanInfrastructure } from "./tools/plan-infrastructure.js";
+import { recordServerSchema, handleRecordServer } from "./tools/record-server.js";
+import { deployToServerSchema, handleDeployToServer } from "./tools/deploy-to-server.js";
 
 // Prompts
 import { ONBOARDING_PROMPT } from "./prompts/onboarding.js";
@@ -303,6 +306,46 @@ export function createServer(): McpServer {
       note: deployApprovalSchema.shape.note,
     },
     wrapTool(handleDeployApproval as ToolHandler)
+  );
+
+  server.tool(
+    "a2p_plan_infrastructure",
+    "Plan server infrastructure (sizing, security, commands) for cloud deployment",
+    {
+      projectPath: planInfrastructureSchema.shape.projectPath,
+      provider: planInfrastructureSchema.shape.provider,
+      location: planInfrastructureSchema.shape.location,
+    },
+    wrapTool(handlePlanInfrastructure as ToolHandler)
+  );
+
+  server.tool(
+    "a2p_record_server",
+    "Record provisioned server details in project state",
+    {
+      projectPath: recordServerSchema.shape.projectPath,
+      provider: recordServerSchema.shape.provider,
+      serverId: recordServerSchema.shape.serverId,
+      serverName: recordServerSchema.shape.serverName,
+      serverIp: recordServerSchema.shape.serverIp,
+      serverIpv6: recordServerSchema.shape.serverIpv6,
+      serverType: recordServerSchema.shape.serverType,
+      location: recordServerSchema.shape.location,
+      firewallId: recordServerSchema.shape.firewallId,
+      sshUser: recordServerSchema.shape.sshUser,
+      sshKeyFingerprint: recordServerSchema.shape.sshKeyFingerprint,
+      domain: recordServerSchema.shape.domain,
+    },
+    wrapTool(handleRecordServer as ToolHandler)
+  );
+
+  server.tool(
+    "a2p_deploy_to_server",
+    "Generate deployment commands for a provisioned server",
+    {
+      projectPath: deployToServerSchema.shape.projectPath,
+    },
+    wrapTool(handleDeployToServer as ToolHandler)
   );
 
   // ===== PROMPTS =====

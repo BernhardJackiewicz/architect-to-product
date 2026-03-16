@@ -2,11 +2,11 @@
 
 MCP server that turns AI-generated code into production-ready software with TDD, security scanning, and deployment automation. Up to 100 times fewer exploration tokens for claude code.
 
-**21 MCP tools** · **859 tests** · **Architecture → Plan → Build (evidence-gated) → Quality Audit (cadence) → Code Review → Signoff → Security → Whitebox → Verify → Release Audit → Deploy → Backup**
+**24 MCP tools** · **890 tests** · **Architecture → Plan → Build (evidence-gated) → Quality Audit (cadence) → Code Review → Signoff → Security → Whitebox → Verify → Release Audit → Deploy → Backup**
 
 [![npm version](https://img.shields.io/npm/v/architect-to-product)](https://www.npmjs.com/package/architect-to-product)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Tests: 859 passing](https://img.shields.io/badge/tests-859%20passing-brightgreen)]()
+[![Tests: 890 passing](https://img.shields.io/badge/tests-890%20passing-brightgreen)]()
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue)]()
 
 ---
@@ -83,6 +83,7 @@ Most AI-generated — and human-built — architectures don't fail because the m
 - **Finding justification** — Security findings can't be silently dismissed — accepted/fixed/false_positive require justification (code-enforced)
 - **Audit before release** — Quality audits catch debug artifacts, hardcoded secrets, and test coverage gaps during development. Release audits verify README, .gitignore, temp files, and aggregate findings before publish. Critical release findings block deployment (enforced in code)
 - **Automated backup strategy** — Stack-aware inference of what needs protecting (database, uploads, artifacts). Generates backup, restore, and verification scripts with stack-specific commands (`pg_dump`, `mysqldump`, `mongodump`, `sqlite3 .backup`). Retention policies, offsite sync, and deployment gate enforcement for stateful apps
+- **Automated cloud deployment** — Hetzner Cloud: infrastructure planning (server sizing, cloud-init, firewall), provisioning via API, and deployment (rsync + docker compose) — all from Claude. Server hardening (SSH, fail2ban, UFW, unattended-upgrades) included in cloud-init
 - **Deploy on day one** — Stack-specific Dockerfile, docker-compose, Caddyfile, backup/restore/verify scripts, hardening guides
 - **Code quality** — Built-in code quality tool: dead code detection, redundancy analysis, coupling metrics
 - **Documentation first** — When the architecture uses unfamiliar tech (exotic auth, new ORMs, niche APIs), Claude reads the official docs via WebSearch + WebFetch instead of hallucinating API signatures. Enforced in every prompt, documented in CLAUDE.md
@@ -257,7 +258,7 @@ Phase 1: Plan → Build → BUILD SIGNOFF → Security → Whitebox → Release 
 5. **Whitebox Audit**: Analyzes whether SAST findings are actually exploitable — checks reachable code paths, missing guards, trust boundaries, prompt-only enforcement. Blocking findings prevent deployment (enforced in code, not just prompts).
 6. **Active Verification** (gate-enforced): Runtime gate tests that prove workflow invariants hold — state transitions require evidence, deployment gates block correctly, state survives round-trips. Deployment is blocked without a passing active verification.
 7. **Release Audit**: Code review pass (cross-file consistency, API coherence) + pre-publish verification — README completeness, temp file cleanup, aggregated SAST/quality findings, build/test pass, .gitignore coverage. Critical findings in the release audit block deployment (enforced in code).
-8. **Deployment**: **Mandatory deploy approval** before generating configs. Stack-specific Dockerfile, docker-compose, Caddyfile, backup/restore/verify scripts, backup strategy docs, hardening guides. Stateful apps are blocked from deployment if no backup is configured. Stack-specific launch checklist.
+8. **Deployment**: **Mandatory deploy approval** before generating configs. Stack-specific Dockerfile, docker-compose, Caddyfile, backup/restore/verify scripts, backup strategy docs, hardening guides. Stateful apps are blocked from deployment if no backup is configured. Stack-specific launch checklist. **Automated Hetzner Cloud deployment**: infrastructure planning (server sizing, cloud-init, firewall), provisioning via API, and deployment (rsync + docker compose) — all executed by Claude.
 
 ## Client Configuration
 
@@ -314,7 +315,7 @@ Add to `.vscode/mcp.json`:
 }
 ```
 
-## MCP Tools (21)
+## MCP Tools (24)
 
 | Tool | Phase | Description |
 |------|-------|-------------|
@@ -336,6 +337,9 @@ Add to `.vscode/mcp.json`:
 | `a2p_run_active_verification` | 5 | Active verification — runtime gate tests (workflow gates, state recovery, deployment gates) |
 | `a2p_build_signoff` | 2 | Confirm build works (mandatory before security phase, code-enforced) |
 | `a2p_deploy_approval` | 7 | Approve deployment (mandatory before generating configs, code-enforced) |
+| `a2p_plan_infrastructure` | 7 | Plan server infrastructure (sizing, security, cloud-init, provisioning commands) for Hetzner Cloud |
+| `a2p_record_server` | 7 | Record provisioned server details in project state |
+| `a2p_deploy_to_server` | 7 | Generate rsync/ssh/docker deployment commands for a provisioned server |
 | `a2p_generate_deployment` | 7 | Stack-specific deployment guidance |
 | `a2p_get_build_log` | * | Query structured build log (filter by phase, slice, level, run, time range, errors) |
 | `a2p_get_checklist` | * | Pre/post-deployment verification checklist |
@@ -415,7 +419,7 @@ Two ways to add work during or after the build:
 
 | Target | What A2P generates |
 |--------|-------------------|
-| **Docker VPS** (Hetzner, DigitalOcean, any VPS) | File generation guidance for Dockerfile, docker-compose.prod.yml, Caddyfile, backup/restore/verify scripts, BACKUP.md, DEPLOYMENT.md. Security hardening checklist. Stack-specific recommendations. |
+| **Docker VPS** (Hetzner, DigitalOcean, any VPS) | File generation guidance for Dockerfile, docker-compose.prod.yml, Caddyfile, backup/restore/verify scripts, BACKUP.md, DEPLOYMENT.md. Security hardening checklist. Stack-specific recommendations. **Hetzner Cloud: automated provisioning** — `a2p_plan_infrastructure` computes server sizing + cloud-init + firewall rules, Claude provisions via Hetzner API, `a2p_deploy_to_server` generates rsync/docker deployment commands. |
 | **Vercel** | Recommendations (Edge Functions, env vars, preview deploys). Checklist items (project linked, env vars set, preview tested). |
 | **Cloudflare** (Pages/Workers) | Recommendations (wrangler.toml bindings, WAF, CDN). Checklist items (NS records, SSL Full Strict, WAF rules). |
 | **Railway** | Recommendations (railway up, managed DB add-ons). Checklist items (services configured, env vars, custom domain). |
@@ -487,7 +491,7 @@ git clone https://github.com/BernhardJackiewicz/architect-to-product.git
 cd architect-to-product
 npm install
 npm run typecheck   # Type checking
-npm test            # 859 tests
+npm test            # 890 tests
 npm run build       # Build
 npm run dev         # Dev mode
 ```

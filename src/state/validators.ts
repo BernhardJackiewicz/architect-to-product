@@ -244,6 +244,22 @@ export const ActiveVerificationResultSchema = z.object({
   requires_human_review: z.boolean(),
 });
 
+export const InfrastructureRecordSchema = z.object({
+  provider: z.enum(["hetzner"]),
+  serverId: z.string().min(1),
+  serverName: z.string().min(1),
+  serverIp: z.string().min(1),
+  serverIpv6: z.string().optional(),
+  serverType: z.string().min(1),
+  location: z.string().min(1),
+  firewallId: z.string().optional(),
+  sshUser: z.string().min(1),
+  sshKeyFingerprint: z.string().min(1),
+  domain: z.string().optional(),
+  provisionedAt: z.string(),
+  lastDeployedAt: z.string().nullable(),
+});
+
 export const BackupConfigSchema = z.object({
   enabled: z.boolean(),
   required: z.boolean(),
@@ -287,6 +303,7 @@ export const ProjectStateSchema = z.object({
   activeVerificationResults: z.array(ActiveVerificationResultSchema).default([]),
   buildHistory: z.array(BuildEventSchema),
   currentProductPhase: z.number().int().min(0).default(0),
+  infrastructure: InfrastructureRecordSchema.nullable().default(null),
   backupConfig: BackupConfigSchema.default({
     enabled: true,
     required: false,
