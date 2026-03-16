@@ -385,6 +385,21 @@ You don't have to run the full pipeline. Each prompt works standalone — pick w
 - `/a2p_planning` — create new slices for the next phase
 - `/a2p_build_slice` — TDD per slice as usual
 
+### Adding slices vs. re-planning
+
+Two ways to add work during or after the build:
+
+**`a2p_add_slice`** — Insert a single slice mid-build. Use this when you realize something is missing while building. Example: during build you discover you need a rate-limiting middleware before the API endpoints. Add it as a slice, build it with TDD, then continue. Build signoff is automatically invalidated when slices change.
+
+**`/a2p_planning`** — Plan a whole new set of slices. Use this for the next product phase (Phase 0 done → plan Phase 1) or when you need a full re-plan. Uses `append: true` to add slices to the existing plan without losing completed work.
+
+| Situation | Use |
+|---|---|
+| "We forgot to add input validation" | `a2p_add_slice` — one slice, insert and build |
+| "Phase 0 is done, start Phase 1" | `/a2p_planning` — plan all Phase 1 slices |
+| "I want to add a webhook integration" | `a2p_add_slice` — one integration slice |
+| "The architecture changed significantly" | `/a2p_planning` — re-plan remaining work |
+
 ## Supported Stacks
 
 | Category | Technologies |
