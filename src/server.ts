@@ -26,6 +26,7 @@ import { deployApprovalSchema, handleDeployApproval } from "./tools/deploy-appro
 import { planInfrastructureSchema, handlePlanInfrastructure } from "./tools/plan-infrastructure.js";
 import { recordServerSchema, handleRecordServer } from "./tools/record-server.js";
 import { deployToServerSchema, handleDeployToServer } from "./tools/deploy-to-server.js";
+import { setPhaseSchema, handleSetPhase } from "./tools/set-phase.js";
 
 // Prompts
 import { ONBOARDING_PROMPT } from "./prompts/onboarding.js";
@@ -137,6 +138,16 @@ export function createServer(): McpServer {
       projectPath: completePhaseSchema.shape.projectPath,
     },
     wrapTool(handleCompletePhase as ToolHandler)
+  );
+
+  server.tool(
+    "a2p_set_phase",
+    "Transition to a new workflow phase (e.g. building→refactoring→e2e_testing→security). Enforces all gates.",
+    {
+      projectPath: setPhaseSchema.shape.projectPath,
+      phase: setPhaseSchema.shape.phase,
+    },
+    wrapTool(handleSetPhase as ToolHandler)
   );
 
   server.tool(
