@@ -226,6 +226,19 @@ const PROBE_PATTERNS: ProbePattern[] = [
     severity: "high",
     fileFilter: (f) => /seed|migration|init|setup/i.test(f),
   },
+  // Base64-encoded secrets in source
+  {
+    pattern: /(?:secret|password|token|key)\s*[:=]\s*["'](?:[A-Za-z0-9+/]{20,}={0,2})["']/i,
+    title: "Potential Base64-encoded secret in source code",
+    severity: "high",
+  },
+  // Secrets in Docker build args
+  {
+    pattern: /ARG\s+\w*(?:SECRET|PASSWORD|TOKEN|API_KEY)\b/i,
+    title: "Secret passed via Docker build arg (visible in image layers)",
+    severity: "high",
+    fileFilter: (f) => /dockerfile/i.test(f),
+  },
   // Missing auth on route handlers
   {
     pattern: /(?:app|router)\.\s*(?:get|post|put|patch|delete)\s*\(/,
@@ -238,12 +251,11 @@ const PROBE_PATTERNS: ProbePattern[] = [
     title: "Request body consumed without input validation",
     severity: "medium",
   },
-  // Missing rate limiting on auth endpoints
+  // Missing rate limiting on API endpoints
   {
-    pattern: /(?:login|signin|sign-in|credentials|authenticate)\s*(?:[:=]|function|\()/i,
-    title: "Auth endpoint without rate limiting",
+    pattern: /(?:login|signin|sign-in|credentials|authenticate|app\.post|router\.post)\s*(?:[:=]|function|\()/i,
+    title: "API endpoint without rate limiting",
     severity: "high",
-    fileFilter: (f) => /auth|login|credential|session/i.test(f),
   },
   // SQL Injection: query/execute/raw with template literal or concatenation
   {
@@ -251,21 +263,21 @@ const PROBE_PATTERNS: ProbePattern[] = [
     title: "SQL injection via string interpolation/concatenation",
     severity: "critical",
   },
-  // Command Injection: exec/spawn with user input
+  // Command Injection: exec/spawn/shelljs with user input
   {
-    pattern: /(?:exec|spawn|execSync|spawnSync)\s*\([^)]*(?:req\.|input|params|user)/i,
+    pattern: /(?:exec|spawn|execSync|spawnSync|shelljs\.exec|child_process)\s*[\.(][^)]*(?:req\.|input|params|user)/i,
     title: "Command injection via user-controlled input",
     severity: "critical",
   },
-  // Path Traversal: readFile/writeFile with user input
+  // Path Traversal: readFile/writeFile/open with user input (Node.js, Python, Go)
   {
-    pattern: /(?:readFile|writeFile|readFileSync|writeFileSync|createReadStream)\s*\([^)]*(?:req\.|params\.|query\.)/i,
+    pattern: /(?:readFile|writeFile|readFileSync|writeFileSync|createReadStream)\s*\([^)]*(?:req\.|params\.|query\.)|(?:^|\s)open\s*\([^)]*(?:req\.|request\.|params\.|user_input)|os\.Open\s*\([^)]*(?:req\.|params\.|input)/i,
     title: "Path traversal via user-controlled file path",
     severity: "high",
   },
-  // SSRF: fetch/axios/got with user-controlled URL
+  // SSRF: fetch/axios/got/http.get/url.parse with user-controlled URL
   {
-    pattern: /(?:fetch|axios|got|request)\s*\(\s*(?:req\.body|req\.query|params\.|input)/i,
+    pattern: /(?:fetch|axios|got|request|http\.get|https\.get|urllib\.request|url\.parse)\s*\(\s*(?:req\.body|req\.query|params\.|input)/i,
     title: "SSRF via user-controlled URL",
     severity: "high",
   },
@@ -287,10 +299,10 @@ const PROBE_PATTERNS: ProbePattern[] = [
     title: "Open redirect via user-controlled URL",
     severity: "medium",
   },
-  // Info Disclosure: error/stack in response
+  // Info Disclosure: error/stack in response, framework defaults, verbose logging
   {
-    pattern: /res\.(?:json|send)\s*\(\s*(?:err|error|.*\.stack)/i,
-    title: "Information disclosure via error details in response",
+    pattern: /res\.(?:json|send)\s*\(\s*(?:err|error|.*\.stack)|DEBUG\s*[:=]\s*(?:True|true|1)|FLASK_DEBUG|app\.debug\s*=\s*true|gin\.SetMode\s*\(\s*gin\.DebugMode/i,
+    title: "Information disclosure via error details or debug mode in response",
     severity: "medium",
   },
   // XSS: innerHTML/dangerouslySetInnerHTML/.html() with user input
