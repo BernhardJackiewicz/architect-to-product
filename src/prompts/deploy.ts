@@ -202,6 +202,34 @@ Die generierten \`docs/DEPLOYMENT.md\` und \`docs/LAUNCH_CHECKLIST.md\` sollten 
 Bei Multi-Phase-Projekten: Nach erfolgreichem Deployment \`a2p_complete_phase\` aufrufen,
 falls weitere Phasen ausstehen. Das bringt den Workflow zurück zur Planning-Phase für die nächste Phase.
 
+## Artefakt-Sicherheits-Validierung (PFLICHT nach Generierung)
+
+Pruefe JEDES generierte Deployment-Artefakt auf Sicherheitsprobleme.
+Melde jedes Problem als Finding via a2p_record_finding mit tool="deployment-audit".
+
+### Dockerfile
+- Non-root USER Direktive vorhanden?
+- Multi-stage Build (keine Build-Tools im Production Image)?
+- HEALTHCHECK Direktive vorhanden?
+- Keine COPY von .env / secrets?
+
+### docker-compose.prod.yml
+- security_opt: no-new-privileges vorhanden?
+- cap_drop: ALL vorhanden?
+- read_only: true wo moeglich?
+- Keine Ports ausser 80/443 an Host gebunden?
+
+### Caddyfile / nginx.conf
+- HTTPS / TLS aktiv?
+- Security Headers: HSTS, X-Frame-Options DENY, X-Content-Type-Options nosniff, CSP vorhanden?
+- /.env, /.git, /.db blockiert?
+- CORS: keine Wildcard mit Credentials?
+
+### Backup Scripts
+- Backup-Output verschluesselt oder Access-Control auf Backup-Dir?
+- Keine Plaintext-Credentials in Skript (sollen aus env kommen)?
+- Restore-Skript prueft Integritaet vor Wiederherstellung?
+
 ## Wichtig
 - ALLE Server-Deployment-Dateien werden dynamisch generiert — nicht aus Templates kopiert
 - Jede Datei ist spezifisch für dieses Projekt und seinen Tech Stack

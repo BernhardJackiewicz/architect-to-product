@@ -43,6 +43,9 @@ export function handleGetChecklist(input: GetChecklistInput): string {
       { item: "Auth flow works end-to-end", done: false },
       { item: "UptimeRobot monitoring active", done: false },
       { item: "Backup script/cron active", done: false },
+      { item: "Cookie security flags set (HttpOnly, Secure, SameSite)", done: false },
+      { item: "CORS restricted to production domain (no wildcard with credentials)", done: false },
+      { item: "Backup encryption configured (or access control on backup directory)", done: false },
     ],
   };
 
