@@ -36,10 +36,33 @@ Das ist ein defensives Code-Review — kein Exploit-Building.
 7. **State Manipulation**: App-State durch unerwartete API-Call-Sequenzen korrumpierbar?
 8. **Denial of Service**: Unbounded Input (grosse Uploads, unbegrenzte Pagination)?
 
-**Für jeden Fund:**
+**Inline-Verifikation (PFLICHT fuer jeden Verdacht):**
+Fuer JEDEN potentiellen Fund musst du den Verdacht am Code verifizieren:
+1. **Datei oeffnen** und die relevante Stelle lesen
+2. **Guards pruefen**: Gibt es Auth-Middleware, Input-Validation, Ownership-Checks?
+3. **Datenfluss verfolgen**: Woher kommt der Input? Wird er transformiert/gefiltert?
+4. **Entscheidung treffen**: Ist die Schwachstelle real, oder wird sie durch vorhandene Guards verhindert?
+
+Nur wenn du den Code gelesen und die Schwachstelle verifiziert hast, melde den Fund.
+
+**Evidence-Format (PFLICHT fuer high/critical):**
+Fuer high/critical Findings MUSS die Evidence eine File:Line-Referenz enthalten, z.B.:
+- evidence: "src/api/payments.ts:47 — charge amount from req.body without server-side validation"
+- evidence: "src/routes/users.ts:23 — DELETE /users/:id without ownership check (no WHERE user_id)"
+
+**WICHTIG: Hypothesen werden automatisch herabgestuft.**
+Findings mit confidence="hypothesis" und severity high/critical werden automatisch auf medium
+herabgestuft. Investiere die Zeit, den Code zu lesen und evidence-backed oder hard-to-verify
+Findings zu liefern.
+
+**Fuer jeden Fund:**
 - Beschreibe die Schwachstelle und das Angriffsszenario
 - Bewerte Exploitierbarkeit (trivial / erfordert Skill / theoretisch)
 - Bewerte Impact (Datenverlust / Privilege Escalation / Finanziell / Verfügbarkeit)
+- Setze \`confidence\`: "evidence-backed" (Code geprüft, Schwachstelle belegt),
+  "hard-to-verify" (Code geprüft, aber Runtime-Test nötig), oder
+  "hypothesis" (Verdacht ohne vollständige Code-Prüfung — wird bei high/critical auto-downgraded)
+- Setze \`evidence\`: File:Line-Referenz + was geprüft wurde und was fehlt
 - Melde via a2p_record_finding mit tool="adversarial-review", Datei + Zeile
 
 **Regeln:**

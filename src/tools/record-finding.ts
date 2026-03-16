@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { requireProject, requirePhase } from "../utils/tool-helpers.js";
-import type { SASTFinding } from "../state/types.js";
+import type { SASTFinding, FindingConfidence } from "../state/types.js";
 
 export const recordFindingSchema = z.object({
   projectPath: z.string().describe("Absolute path to the project directory"),
@@ -15,9 +15,14 @@ export const recordFindingSchema = z.object({
   description: z.string().describe("Full description of the issue"),
   fix: z.string().optional().describe("Suggested fix or applied fix (optional for new findings)"),
   justification: z.string().optional().describe("Required when status is accepted, fixed, or false_positive — explain why this status is justified"),
+  confidence: z.enum(["hypothesis", "evidence-backed", "hard-to-verify"]).optional().describe("Finding confidence level — REQUIRED for adversarial-review high/critical findings"),
+  evidence: z.string().optional().describe("File:line reference proving what was checked — REQUIRED for adversarial-review high/critical findings"),
 });
 
 export type RecordFindingInput = z.infer<typeof recordFindingSchema>;
+
+/** Regex requiring at least one file:line reference in evidence */
+const FILE_LINE_REGEX = /\S+:\d+/;
 
 export function handleRecordFinding(input: RecordFindingInput): string {
   const { sm, error } = requireProject(input.projectPath);
@@ -35,6 +40,39 @@ export function handleRecordFinding(input: RecordFindingInput): string {
     });
   }
 
+  // --- Evidence gate for adversarial-review high/critical findings ---
+  let effectiveSeverity = input.severity;
+  let autoDowngraded = false;
+
+  if (input.tool === "adversarial-review" && (input.severity === "critical" || input.severity === "high")) {
+    // confidence is REQUIRED
+    if (!input.confidence) {
+      return JSON.stringify({
+        error: `Adversarial-review findings with severity "${input.severity}" require a confidence level. Provide confidence: "hypothesis" | "evidence-backed" | "hard-to-verify".`,
+      });
+    }
+
+    // evidence is REQUIRED and must not be empty
+    if (!input.evidence || input.evidence.trim().length === 0) {
+      return JSON.stringify({
+        error: `Adversarial-review findings with severity "${input.severity}" require evidence. Provide a file:line reference describing what was checked.`,
+      });
+    }
+
+    // evidence must contain a file:line reference
+    if (!FILE_LINE_REGEX.test(input.evidence)) {
+      return JSON.stringify({
+        error: `Evidence must contain at least one file:line reference (e.g. "src/auth.ts:42 — no ownership check on DELETE"). Got: "${input.evidence}"`,
+      });
+    }
+
+    // Auto-downgrade hypothesis high/critical to medium
+    if (input.confidence === "hypothesis") {
+      effectiveSeverity = "medium";
+      autoDowngraded = true;
+    }
+  }
+
   // Check for ID collision
   const existingIds = new Set(
     state.slices.flatMap((s) => s.sastFindings).map((f) => f.id)
@@ -45,23 +83,34 @@ export function handleRecordFinding(input: RecordFindingInput): string {
     });
   }
 
+  const description = autoDowngraded
+    ? `[Auto-downgraded from ${input.severity} to medium — hypothesis without hard evidence] ${input.description}`
+    : input.description;
+
   const finding: SASTFinding = {
     id: input.id,
     tool: input.tool,
-    severity: input.severity,
+    severity: effectiveSeverity,
     status: input.status,
     title: input.title,
     file: input.file,
     line: input.line,
-    description: input.description,
+    description,
     fix: input.fix ?? "",
     ...(input.justification ? { justification: input.justification } : {}),
+    ...(input.confidence ? { confidence: input.confidence as FindingConfidence } : {}),
+    ...(input.evidence ? { evidence: input.evidence } : {}),
   };
 
   sm.addSASTFinding(input.sliceId, finding);
 
   return JSON.stringify({
     success: true,
-    finding: { id: input.id, severity: input.severity, status: input.status },
+    finding: {
+      id: input.id,
+      severity: effectiveSeverity,
+      status: input.status,
+      ...(autoDowngraded ? { autoDowngraded: true, originalSeverity: input.severity } : {}),
+    },
   });
 }

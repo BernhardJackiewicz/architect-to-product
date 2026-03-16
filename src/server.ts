@@ -214,6 +214,8 @@ export function createServer(): McpServer {
       description: recordFindingSchema.shape.description,
       fix: recordFindingSchema.shape.fix,
       justification: recordFindingSchema.shape.justification,
+      confidence: recordFindingSchema.shape.confidence,
+      evidence: recordFindingSchema.shape.evidence,
     },
     wrapTool(handleRecordFinding as ToolHandler)
   );

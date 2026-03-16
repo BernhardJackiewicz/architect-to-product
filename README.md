@@ -2,11 +2,11 @@
 
 MCP server that turns AI-generated code into production-ready software with TDD, security scanning, and deployment automation. Up to 100 times fewer exploration tokens for claude code.
 
-**25 MCP tools** · **941 tests** · **Architecture → Plan → Build (evidence-gated) → Quality Audit (cadence) → Code Review → Signoff → E2E Testing → Security → Whitebox → Verify → Release Audit → Deploy → Backup**
+**25 MCP tools** · **951 tests** · **Architecture → Plan → Build (evidence-gated) → Quality Audit (cadence) → Code Review → Signoff → E2E Testing → Security → Whitebox → Verify → Release Audit → Deploy → Backup**
 
 [![npm version](https://img.shields.io/npm/v/architect-to-product)](https://www.npmjs.com/package/architect-to-product)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Tests: 941 passing](https://img.shields.io/badge/tests-941%20passing-brightgreen)]()
+[![Tests: 951 passing](https://img.shields.io/badge/tests-951%20passing-brightgreen)]()
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue)]()
 
 ---
@@ -137,6 +137,7 @@ These cannot be bypassed — they are enforced in code, not just in prompts:
 - **Deploy approval gate**: Cannot generate deployment configs without human deploy approval (`a2p_deploy_approval`). Approval is invalidated by new findings, whitebox results, or audit results — must re-approve
 - **Backup gate**: Stateful apps (database or uploads) are blocked from deploying without configured backup (enforced in code)
 - **Finding justification gate**: Cannot set finding status to `accepted`, `fixed`, or `false_positive` without a justification (code-enforced via `a2p_record_finding`)
+- **Adversarial evidence gate**: Adversarial-review findings with severity high/critical require `confidence` level and `evidence` with file:line reference. Hypotheses are auto-downgraded to medium (code-enforced)
 - **Companion restart detection**: `a2p_get_state` reports `restartRequired: true` when companions are configured but session hasn't been restarted
 - **Security re-entry invalidation**: Transitioning to security from deployment or complete automatically nullifies deploy approval, adversarial review, and SAST timestamps — forces a complete security cycle before re-deploying
 - **Phase guards**: Tools are restricted to appropriate phases (e.g. tests only in building, SAST full only in security, deployment only in deployment phase)
@@ -271,7 +272,7 @@ Phase 1: Plan → Build → BUILD SIGNOFF → E2E Testing → Security → White
 2. **Planning**: Break the architecture into ordered vertical slices, each a deployable feature unit with acceptance criteria. Three slice types: `feature` (default), `integration` (library/API adapters with TDD), `infrastructure` (CI, auth, monitoring).
 3. **Build Loop**: Evidence-gated slices: RED (write tests) → GREEN (minimal implementation, requires passing tests) → REFACTOR (clean up) → SAST (security scan required) → DONE (requires passing tests). Frontend slices with `hasUI: true` get visual verification via Playwright between GREEN and REFACTOR — when `uiVerification` is on (default for frontend projects), the human reviews screenshots before proceeding. Configurable review checkpoints (`oversight.sliceReview`: `off`, `all`, `ui-only`) pause after slices for human approval. Domain logic triggers a WebSearch step before tests to verify facts (tax rates, regulations, standards). Quality audits run every ~5-10 commits to catch TODOs, debug artifacts, hardcoded secrets, and test coverage gaps. **Code review** checks cross-slice consistency before build signoff. **Mandatory build signoff** after all slices are done — you verify the product works before spending tokens on audit and security. **Structured build log** tracks every tool run with log levels, duration, status, run correlation, and secret redaction — queryable by phase, slice, level, time range, or errors.
 4. **Security Gate**: Full SAST scan (static code analysis via Semgrep + Bandit), OWASP Top 10 manual review, dependency audit. Acts as an AI code review tool and AI code scanner for your entire codebase. Fix all critical/high findings.
-5. **Whitebox Audit**: Analyzes whether SAST findings are actually exploitable — checks reachable code paths, missing guards, trust boundaries, prompt-only enforcement. Blocking findings prevent deployment (enforced in code, not just prompts).
+5. **Whitebox Audit**: Analyzes whether SAST findings are actually exploitable — checks reachable code paths, missing guards, trust boundaries, prompt-only enforcement. Blocking findings prevent deployment (enforced in code, not just prompts). **Evidence-based adversarial review**: high/critical findings require confidence level (`evidence-backed`, `hard-to-verify`, `hypothesis`) and file:line evidence. Hypotheses are auto-downgraded to medium. Confidence stats track evidence quality across rounds.
 6. **Active Verification** (gate-enforced): Runtime gate tests that prove workflow invariants hold — state transitions require evidence, deployment gates block correctly, state survives round-trips. Deployment is blocked without a passing active verification.
 7. **Release Audit**: Code review pass (cross-file consistency, API coherence) + pre-publish verification — README completeness, temp file cleanup, aggregated SAST/quality findings, build/test pass, .gitignore coverage. Critical findings in the release audit block deployment (enforced in code).
 8. **Deployment**: **Mandatory deploy approval** before generating configs. Stack-specific Dockerfile, docker-compose, Caddyfile, backup/restore/verify scripts, backup strategy docs, hardening guides. Stateful apps are blocked from deployment if no backup is configured. Stack-specific launch checklist. **Automated Hetzner Cloud deployment**: infrastructure planning (server sizing, cloud-init, firewall), provisioning via API, and deployment (rsync + docker compose) — all executed by Claude.
@@ -513,7 +514,7 @@ git clone https://github.com/BernhardJackiewicz/architect-to-product.git
 cd architect-to-product
 npm install
 npm run typecheck   # Type checking
-npm test            # 941 tests
+npm test            # 951 tests
 npm run build       # Build
 npm run dev         # Dev mode
 ```
