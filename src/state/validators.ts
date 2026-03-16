@@ -279,7 +279,47 @@ export const BackupStatusSchema = z.object({
   lastGeneratedAt: z.string().nullable().optional(),
 });
 
-export const ProjectStateSchema = z.object({
+export const AdversarialReviewRoundSchema = z.object({
+  round: z.number().int().min(1),
+  completedAt: z.string(),
+  findingsRecorded: z.number().int().min(0),
+  note: z.string(),
+});
+
+export const AdversarialReviewStateSchema = z.object({
+  completedAt: z.string(),
+  round: z.number().int().min(1),
+  totalFindingsRecorded: z.number().int().min(0),
+  roundHistory: z.array(AdversarialReviewRoundSchema),
+});
+
+/** Migrate old adversarialReviewCompletedAt (string) → adversarialReviewState (object) */
+function migrateAdversarialReview(data: Record<string, unknown>): Record<string, unknown> {
+  if ("adversarialReviewCompletedAt" in data && !("adversarialReviewState" in data)) {
+    const ts = data.adversarialReviewCompletedAt;
+    if (typeof ts === "string") {
+      data.adversarialReviewState = {
+        completedAt: ts,
+        round: 1,
+        totalFindingsRecorded: 0,
+        roundHistory: [],
+      };
+    } else {
+      data.adversarialReviewState = null;
+    }
+    delete data.adversarialReviewCompletedAt;
+  }
+  return data;
+}
+
+export const ProjectStateSchema = z.preprocess(
+  (val) => {
+    if (val && typeof val === "object" && !Array.isArray(val)) {
+      return migrateAdversarialReview(val as Record<string, unknown>);
+    }
+    return val;
+  },
+  z.object({
   version: z.number().int().positive(),
   projectName: z.string().min(1),
   architecture: ArchitectureSchema.nullable(),
@@ -324,9 +364,9 @@ export const ProjectStateSchema = z.object({
   lastFullSastFindingCount: z.number().int().min(0).default(0),
   buildSignoffAt: z.string().nullable().default(null),
   buildSignoffSliceHash: z.string().nullable().default(null),
-  adversarialReviewCompletedAt: z.string().nullable().default(null),
+  adversarialReviewState: AdversarialReviewStateSchema.nullable().default(null),
   deployApprovalAt: z.string().nullable().default(null),
   deployApprovalStateHash: z.string().nullable().default(null),
   createdAt: z.string(),
   updatedAt: z.string(),
-});
+}));

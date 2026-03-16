@@ -15,6 +15,7 @@ import type {
   AuditResult,
   WhiteboxAuditResult,
   ActiveVerificationResult,
+  AdversarialReviewState,
   BackupConfig,
   BackupStatus,
   InfrastructureRecord,
@@ -117,7 +118,7 @@ export class StateManager {
       lastFullSastFindingCount: 0,
       buildSignoffAt: null,
       buildSignoffSliceHash: null,
-      adversarialReviewCompletedAt: null,
+      adversarialReviewState: null,
       deployApprovalAt: null,
       deployApprovalStateHash: null,
       createdAt: now,
@@ -181,7 +182,7 @@ export class StateManager {
       `sast:${state.lastFullSastAt}`,
       `findings:${openFindings}`,
       `wb:${lastWhitebox?.id ?? "none"}:${lastWhitebox?.blocking_count ?? 0}`,
-      `ar:${state.adversarialReviewCompletedAt ?? "none"}`,
+      `ar:${state.adversarialReviewState?.completedAt ?? "none"}`,
       `audit:${lastAudit?.id ?? "none"}:${lastAudit?.summary.critical ?? 0}`,
       `slices:${state.slices.map(s => `${s.id}:${s.status}`).join(",")}`,
     ].join("|");
@@ -334,7 +335,7 @@ export class StateManager {
       }
 
       // 4b. Adversarial review gate: must have completed adversarial review after last whitebox audit
-      if (!state.adversarialReviewCompletedAt) {
+      if (!state.adversarialReviewState) {
         throw new Error(
           "Cannot deploy without adversarial review. Run the adversarial security review (Phase 1b) and confirm with a2p_complete_adversarial_review."
         );
@@ -676,7 +677,7 @@ export class StateManager {
     return state;
   }
 
-  /** Confirm adversarial review completion — agent confirmed Phase 1b is done */
+  /** Confirm adversarial review completion — agent confirmed Phase 1b is done. Supports multiple rounds. */
   completeAdversarialReview(findingsRecorded: number, note?: string): ProjectState {
     const state = this.read();
     if (state.phase !== "security") {
@@ -685,10 +686,25 @@ export class StateManager {
     if (state.whiteboxResults.length === 0) {
       throw new Error("Cannot complete adversarial review without running whitebox audit first (a2p_run_whitebox_audit)");
     }
-    state.adversarialReviewCompletedAt = new Date().toISOString();
+    const now = new Date().toISOString();
+    const prev = state.adversarialReviewState;
+    const newRound = prev ? prev.round + 1 : 1;
+    const totalFindings = (prev?.totalFindingsRecorded ?? 0) + findingsRecorded;
+    const roundEntry = {
+      round: newRound,
+      completedAt: now,
+      findingsRecorded,
+      note: note ?? "",
+    };
+    state.adversarialReviewState = {
+      completedAt: now,
+      round: newRound,
+      totalFindingsRecorded: totalFindings,
+      roundHistory: [...(prev?.roundHistory ?? []), roundEntry],
+    };
     this.invalidateDeployApproval(state);
     this.addEvent(state, state.phase, null, "adversarial_review_completed",
-      `Adversarial review completed: ${findingsRecorded} finding(s) recorded${note ? ` — ${note}` : ""}`,
+      `Adversarial review round ${newRound} completed: ${findingsRecorded} finding(s) recorded (total: ${totalFindings})${note ? ` — ${note}` : ""}`,
       { level: "info", status: "success" });
     this.write(state);
     return state;
@@ -872,7 +888,7 @@ export class StateManager {
   addWhiteboxResult(result: WhiteboxAuditResult): ProjectState {
     const state = this.read();
     state.whiteboxResults.push(result);
-    state.adversarialReviewCompletedAt = null; // New whitebox run invalidates adversarial review
+    state.adversarialReviewState = null; // New whitebox run invalidates adversarial review (full reset)
     this.invalidateDeployApproval(state);
     this.addEvent(
       state,

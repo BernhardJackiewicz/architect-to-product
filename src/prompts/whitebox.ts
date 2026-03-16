@@ -49,11 +49,31 @@ Das ist ein defensives Code-Review — kein Exploit-Building.
 - KEINE Exploit-Payloads, KEINE schrittweisen Angriffsanleitungen
 - Wenn die Codebase zu klein/trivial ist: sag das und mache weiter
 
+**Deduplizierung bei Re-Runs (PFLICHT ab Runde 2):**
+Der Tool-Output von a2p_complete_adversarial_review enthaelt \`previousFindings\` —
+eine vollstaendige Liste ALLER adversarial-review Findings aus ALLEN vorherigen Runden.
+
+- Melde NUR neue Schwachstellen die NICHT in previousFindings stehen
+- Pruefe gegen Titel UND Datei — gleiche Schwachstelle in anderer Datei ist ein neuer Fund
+- Fokussiere dich auf:
+  - Tiefere Analyse der gleichen Codepfade (Chaining ueber mehrere Schwachstellen)
+  - Bisher uebersehene Dateien/Routen
+  - Interaktionen zwischen Komponenten die einzeln ok aussehen
+  - Zeitbasierte Angriffe und Race Conditions (werden in Runde 1 oft uebersehen)
+
 **Abschluss (PFLICHT):**
 Nach Abschluss des adversarial Reviews: Rufe \`a2p_complete_adversarial_review\` auf mit:
 - \`findingsRecorded\`: Anzahl der via a2p_record_finding gemeldeten Findings
 - \`note\`: Kurze Zusammenfassung (z.B. "reviewed auth + payment routes, 2 findings recorded")
 **Ohne diesen Aufruf blockiert das Deployment-Gate.** Das ist ein code-enforced Gate, kein optionaler Schritt.
+
+**Nach Abschluss jeder Runde:**
+Sage dem User:
+"Adversarial Review Runde [N] abgeschlossen. [X] neue Findings in dieser Runde,
+[Y] Findings insgesamt ueber [N] Runden.
+Jede weitere Runde kann zusaetzliche Schwachstellen aufdecken. Noch eine Runde?"
+→ Wenn ja: Wiederhole Phase 1b (previousFindings werden automatisch mitgegeben)
+→ Wenn nein: Weiter zu Phase 2
 
 ### Phase 2: Active Verification (Gate-Tests)
 1. Rufe \`a2p_run_active_verification round=1\` auf

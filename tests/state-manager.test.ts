@@ -649,6 +649,39 @@ describe("StateManager", () => {
     });
   });
 
+  describe("backward compat: adversarialReviewCompletedAt migration", () => {
+    it("migrates old string field to AdversarialReviewState object", () => {
+      sm.init("test", tmpDir);
+      const { readFileSync, writeFileSync } = require("node:fs");
+      const statePath = join(tmpDir, ".a2p", "state.json");
+      const raw = JSON.parse(readFileSync(statePath, "utf-8"));
+      // Simulate old format
+      delete raw.adversarialReviewState;
+      raw.adversarialReviewCompletedAt = "2026-03-15T12:00:00.000Z";
+      writeFileSync(statePath, JSON.stringify(raw), "utf-8");
+
+      const state = sm.read();
+      expect(state.adversarialReviewState).not.toBeNull();
+      expect(state.adversarialReviewState!.completedAt).toBe("2026-03-15T12:00:00.000Z");
+      expect(state.adversarialReviewState!.round).toBe(1);
+      expect(state.adversarialReviewState!.totalFindingsRecorded).toBe(0);
+      expect(state.adversarialReviewState!.roundHistory).toEqual([]);
+    });
+
+    it("migrates old null field to null", () => {
+      sm.init("test", tmpDir);
+      const { readFileSync, writeFileSync } = require("node:fs");
+      const statePath = join(tmpDir, ".a2p", "state.json");
+      const raw = JSON.parse(readFileSync(statePath, "utf-8"));
+      delete raw.adversarialReviewState;
+      raw.adversarialReviewCompletedAt = null;
+      writeFileSync(statePath, JSON.stringify(raw), "utf-8");
+
+      const state = sm.read();
+      expect(state.adversarialReviewState).toBeNull();
+    });
+  });
+
   describe("deployment to planning transition", () => {
     it("allows deployment → planning for multi-phase", () => {
       sm.init("test", tmpDir);

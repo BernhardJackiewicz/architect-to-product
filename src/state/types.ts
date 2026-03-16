@@ -341,6 +341,20 @@ export interface BackupStatus {
   lastGeneratedAt?: string | null;
 }
 
+export interface AdversarialReviewRound {
+  round: number;
+  completedAt: string;
+  findingsRecorded: number;
+  note: string;
+}
+
+export interface AdversarialReviewState {
+  completedAt: string;          // Timestamp of the latest round
+  round: number;                // Current round (1, 2, 3, ...)
+  totalFindingsRecorded: number; // Cumulative findings across all rounds
+  roundHistory: AdversarialReviewRound[];
+}
+
 export interface ProjectState {
   version: number;
   projectName: string;
@@ -365,7 +379,7 @@ export interface ProjectState {
   lastFullSastFindingCount: number;
   buildSignoffAt: string | null;
   buildSignoffSliceHash: string | null;
-  adversarialReviewCompletedAt: string | null;
+  adversarialReviewState: AdversarialReviewState | null;
   deployApprovalAt: string | null;
   deployApprovalStateHash: string | null;
   createdAt: string;
