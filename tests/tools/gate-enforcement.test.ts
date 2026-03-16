@@ -5,7 +5,7 @@ import { StateManager } from "../../src/state/state-manager.js";
 import {
   makeTmpDir, cleanTmpDir, initWithStateManager, walkSliceToStatus,
   forcePhase, forceField, addQualityAudit, addReleaseAudit, addPassingVerification,
-  addPassingWhitebox,
+  addPassingWhitebox, addWhiteboxOnly, completeAdversarialReview,
 } from "../helpers/setup.js";
 import { handleInitProject } from "../../src/tools/init-project.js";
 import { handleSetArchitecture } from "../../src/tools/set-architecture.js";
@@ -92,6 +92,76 @@ describe("Quality Gate: staleness check", () => {
     addQualityAudit(sm); // timestamp is now(), which is after the change
     const state = sm.setPhase("security");
     expect(state.phase).toBe("security");
+  });
+});
+
+// ============================================================================
+// Adversarial Review Gate: security -> deployment requires adversarial review
+// ============================================================================
+
+describe("Adversarial Review Gate: security -> deployment", () => {
+  it("BLOCKED: security->deployment without adversarial review -> throw", () => {
+    const sm = initWithStateManager(dir);
+    forcePhase(dir, "building");
+    for (const s of sm.read().slices) walkSliceToStatus(sm, s.id, "done");
+    sm.setBuildSignoff();
+    addQualityAudit(sm);
+    sm.setPhase("security");
+    sm.markFullSastRun(0);
+    addWhiteboxOnly(sm); // whitebox but NO adversarial review
+    addReleaseAudit(sm);
+    addPassingVerification(sm);
+    expect(() => sm.setPhase("deployment")).toThrow("adversarial review");
+  });
+
+  it("ALLOWED: security->deployment with adversarial review completed -> passes gate", () => {
+    const sm = initWithStateManager(dir);
+    forcePhase(dir, "building");
+    for (const s of sm.read().slices) walkSliceToStatus(sm, s.id, "done");
+    sm.setBuildSignoff();
+    addQualityAudit(sm);
+    sm.setPhase("security");
+    sm.markFullSastRun(0);
+    addWhiteboxOnly(sm);
+    completeAdversarialReview(sm);
+    addReleaseAudit(sm);
+    addPassingVerification(sm);
+    const state = sm.setPhase("deployment");
+    expect(state.phase).toBe("deployment");
+  });
+
+  it("INVALIDATED: new whitebox audit resets adversarial review completion", () => {
+    const sm = initWithStateManager(dir);
+    forcePhase(dir, "building");
+    for (const s of sm.read().slices) walkSliceToStatus(sm, s.id, "done");
+    sm.setBuildSignoff();
+    addQualityAudit(sm);
+    sm.setPhase("security");
+    sm.markFullSastRun(0);
+    addWhiteboxOnly(sm);
+    completeAdversarialReview(sm);
+    // Adversarial review is completed
+    expect(sm.read().adversarialReviewCompletedAt).not.toBeNull();
+    // New whitebox audit invalidates it
+    addWhiteboxOnly(sm);
+    expect(sm.read().adversarialReviewCompletedAt).toBeNull();
+  });
+
+  it("BLOCKED: completeAdversarialReview requires whitebox audit first", () => {
+    const sm = initWithStateManager(dir);
+    forcePhase(dir, "building");
+    for (const s of sm.read().slices) walkSliceToStatus(sm, s.id, "done");
+    sm.setBuildSignoff();
+    addQualityAudit(sm);
+    sm.setPhase("security");
+    // No whitebox audit
+    expect(() => sm.completeAdversarialReview(0)).toThrow("whitebox audit");
+  });
+
+  it("BLOCKED: completeAdversarialReview only in security phase", () => {
+    const sm = initWithStateManager(dir);
+    forcePhase(dir, "building");
+    expect(() => sm.completeAdversarialReview(0)).toThrow("security phase");
   });
 });
 
@@ -461,7 +531,7 @@ describe("E2E Gate: UI + Playwright enforcement", () => {
 // ============================================================================
 
 describe("Full Gate Sequence: correct order enforcement", () => {
-  it("gates fire in order: SAST -> findings -> whitebox -> audit -> verification -> backup", () => {
+  it("gates fire in order: SAST -> findings -> whitebox -> adversarial -> audit -> verification -> backup", () => {
     const sm = initWithStateManager(dir);
     forcePhase(dir, "building");
     for (const s of sm.read().slices) walkSliceToStatus(sm, s.id, "done");
@@ -476,8 +546,12 @@ describe("Full Gate Sequence: correct order enforcement", () => {
     sm.markFullSastRun(0);
     expect(() => sm.setPhase("deployment")).toThrow("whitebox");
 
-    // Add whitebox -> should fail on release audit next
-    addPassingWhitebox(sm);
+    // Add whitebox (without adversarial review) -> should fail on adversarial review next
+    addWhiteboxOnly(sm);
+    expect(() => sm.setPhase("deployment")).toThrow("adversarial review");
+
+    // Complete adversarial review -> should fail on release audit next
+    completeAdversarialReview(sm);
     expect(() => sm.setPhase("deployment")).toThrow("release audit");
 
     // Add release audit -> should fail on verification next

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { makeTmpDir, cleanTmpDir, parse, initWithFindings, initWithStateManager, forcePhase } from "../helpers/setup.js";
-import { handleRunWhiteboxAudit, isBlockingWhiteboxFinding, checkFileForGuards, hasReachabilityEvidence, hasMutationPatterns } from "../../src/tools/run-whitebox-audit.js";
+import { handleRunWhiteboxAudit, isBlockingWhiteboxFinding, checkFileForGuards, hasReachabilityEvidence, hasMutationPatterns, runIndependentProbes } from "../../src/tools/run-whitebox-audit.js";
 import { StateManager } from "../../src/state/state-manager.js";
 import { writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
@@ -241,5 +241,372 @@ describe("run-whitebox-audit", () => {
       blocking: false,
     };
     expect(isBlockingWhiteboxFinding(finding)).toBe(false);
+  });
+});
+
+describe("independent security probes", () => {
+  it("probe finds hardcoded secret in slice file", () => {
+    const sm = initWithStateManager(dir);
+    forcePhase(dir, "security");
+    sm.markFullSastRun(0);
+    const sliceId = sm.read().slices[0].id;
+    // Create a file with a hardcoded password
+    mkdirSync(join(dir, "src"), { recursive: true });
+    writeFileSync(join(dir, "src/config.ts"), `
+      export const dbConfig = {
+        host: "localhost",
+        password = "admin123",
+        port: 5432,
+      };
+    `);
+    sm.updateSliceFiles(sliceId, ["src/config.ts"]);
+    const result = parse(handleRunWhiteboxAudit({ projectPath: dir, mode: "full" }));
+    expect(result.candidatesEvaluated).toBeGreaterThan(0);
+    const secretFinding = result.findings.find((f: any) =>
+      f.category === "Secrets" || f.root_cause.toLowerCase().includes("password")
+    );
+    expect(secretFinding).toBeDefined();
+  });
+
+  it("probe finds API route without auth", () => {
+    const sm = initWithStateManager(dir);
+    forcePhase(dir, "security");
+    sm.markFullSastRun(0);
+    const sliceId = sm.read().slices[0].id;
+    mkdirSync(join(dir, "src"), { recursive: true });
+    writeFileSync(join(dir, "src/routes.ts"), `
+      import express from 'express';
+      const app = express();
+      app.post("/api/items", (req, res) => {
+        const data = req.body;
+        res.json({ created: true });
+      });
+    `);
+    sm.updateSliceFiles(sliceId, ["src/routes.ts"]);
+    const result = parse(handleRunWhiteboxAudit({ projectPath: dir, mode: "full" }));
+    expect(result.candidatesEvaluated).toBeGreaterThan(0);
+    // Should find missing auth or missing validation
+    expect(result.totalFindings).toBeGreaterThan(0);
+  });
+
+  it("probe finds missing input validation", () => {
+    const sm = initWithStateManager(dir);
+    forcePhase(dir, "security");
+    sm.markFullSastRun(0);
+    const sliceId = sm.read().slices[0].id;
+    mkdirSync(join(dir, "src"), { recursive: true });
+    writeFileSync(join(dir, "src/handler.ts"), `
+      export async function handler(request: Request) {
+        const body = await request.json();
+        db.save(body);
+        return new Response("ok");
+      }
+    `);
+    sm.updateSliceFiles(sliceId, ["src/handler.ts"]);
+    const result = parse(handleRunWhiteboxAudit({ projectPath: dir, mode: "full" }));
+    expect(result.candidatesEvaluated).toBeGreaterThan(0);
+    const validationFinding = result.findings.find((f: any) =>
+      f.root_cause.toLowerCase().includes("input validation") ||
+      f.root_cause.toLowerCase().includes("request body")
+    );
+    expect(validationFinding).toBeDefined();
+  });
+
+  it("no probes when SAST findings are present", () => {
+    initWithFindings(dir, 2);
+    forcePhase(dir, "security");
+    const sm = new StateManager(dir);
+    const sliceId = sm.read().slices[0].id;
+    // Add a file with a hardcoded secret — probes should NOT fire since SAST has findings
+    mkdirSync(join(dir, "src"), { recursive: true });
+    writeFileSync(join(dir, "src/secret.ts"), `const password = "hunter2";`);
+    sm.updateSliceFiles(sliceId, ["src/handler1.ts", "src/handler2.ts", "src/secret.ts"]);
+    const result = parse(handleRunWhiteboxAudit({ projectPath: dir, mode: "full" }));
+    // Candidates should only be from SAST, not from probes
+    expect(result.candidatesEvaluated).toBe(2);
+  });
+
+  it("no probes when no full SAST has run", () => {
+    const sm = initWithStateManager(dir);
+    forcePhase(dir, "security");
+    // Do NOT call markFullSastRun — no full SAST
+    const sliceId = sm.read().slices[0].id;
+    mkdirSync(join(dir, "src"), { recursive: true });
+    writeFileSync(join(dir, "src/secret.ts"), `const password = "hunter2";`);
+    sm.updateSliceFiles(sliceId, ["src/secret.ts"]);
+    const result = parse(handleRunWhiteboxAudit({ projectPath: dir, mode: "full" }));
+    // Should get the "no full SAST" warning, not probe results
+    expect(result.warning).toBeDefined();
+    expect(result.candidatesEvaluated).toBe(0);
+  });
+
+  it("probe finds SQL injection via string interpolation", () => {
+    const sm = initWithStateManager(dir);
+    forcePhase(dir, "security");
+    sm.markFullSastRun(0);
+    const sliceId = sm.read().slices[0].id;
+    mkdirSync(join(dir, "src"), { recursive: true });
+    writeFileSync(join(dir, "src/db.ts"), `
+      export function getUser(id: string) {
+        return db.query(\`SELECT * FROM users WHERE id = \${id}\`);
+      }
+    `);
+    sm.updateSliceFiles(sliceId, ["src/db.ts"]);
+    const result = parse(handleRunWhiteboxAudit({ projectPath: dir, mode: "full" }));
+    const sqlFinding = result.findings.find((f: any) =>
+      f.root_cause.toLowerCase().includes("sql injection")
+    );
+    expect(sqlFinding).toBeDefined();
+    expect(sqlFinding.severity).toBe("critical");
+  });
+
+  it("probe finds command injection via user input", () => {
+    const sm = initWithStateManager(dir);
+    forcePhase(dir, "security");
+    sm.markFullSastRun(0);
+    const sliceId = sm.read().slices[0].id;
+    mkdirSync(join(dir, "src"), { recursive: true });
+    writeFileSync(join(dir, "src/runner.ts"), `
+      import { exec } from 'child_process';
+      export function run(req: any) {
+        exec(req.body.cmd);
+      }
+    `);
+    sm.updateSliceFiles(sliceId, ["src/runner.ts"]);
+    const result = parse(handleRunWhiteboxAudit({ projectPath: dir, mode: "full" }));
+    const cmdFinding = result.findings.find((f: any) =>
+      f.root_cause.toLowerCase().includes("command injection")
+    );
+    expect(cmdFinding).toBeDefined();
+    expect(cmdFinding.severity).toBe("critical");
+  });
+
+  it("SQL injection suppressed when parameterized query is used", () => {
+    const sm = initWithStateManager(dir);
+    forcePhase(dir, "security");
+    sm.markFullSastRun(0);
+    const sliceId = sm.read().slices[0].id;
+    mkdirSync(join(dir, "src"), { recursive: true });
+    writeFileSync(join(dir, "src/safe-db.ts"), `
+      export function getUser(id: string) {
+        return db.query(\`SELECT * FROM users WHERE id = \${id}\`, [$1]);
+        // parameterized query
+      }
+    `);
+    sm.updateSliceFiles(sliceId, ["src/safe-db.ts"]);
+    const result = parse(handleRunWhiteboxAudit({ projectPath: dir, mode: "full" }));
+    const sqlFinding = result.findings.find((f: any) =>
+      f.root_cause.toLowerCase().includes("sql injection")
+    );
+    expect(sqlFinding).toBeUndefined();
+  });
+
+  it("probe finds SSRF via user-controlled URL", () => {
+    const sm = initWithStateManager(dir);
+    forcePhase(dir, "security");
+    sm.markFullSastRun(0);
+    const sliceId = sm.read().slices[0].id;
+    mkdirSync(join(dir, "src"), { recursive: true });
+    writeFileSync(join(dir, "src/proxy.ts"), `
+      export async function proxy(req: any) {
+        const response = await fetch(req.body.url);
+        return response.json();
+      }
+    `);
+    sm.updateSliceFiles(sliceId, ["src/proxy.ts"]);
+    const result = parse(handleRunWhiteboxAudit({ projectPath: dir, mode: "full" }));
+    const ssrfFinding = result.findings.find((f: any) =>
+      f.root_cause.toLowerCase().includes("ssrf")
+    );
+    expect(ssrfFinding).toBeDefined();
+    expect(ssrfFinding.severity).toBe("high");
+  });
+
+  it("probe finds mass assignment via unvalidated req.body", () => {
+    const sm = initWithStateManager(dir);
+    forcePhase(dir, "security");
+    sm.markFullSastRun(0);
+    const sliceId = sm.read().slices[0].id;
+    mkdirSync(join(dir, "src"), { recursive: true });
+    writeFileSync(join(dir, "src/users.ts"), `
+      export async function createUser(req: any) {
+        const user = await User.create(req.body);
+        return user;
+      }
+    `);
+    sm.updateSliceFiles(sliceId, ["src/users.ts"]);
+    const result = parse(handleRunWhiteboxAudit({ projectPath: dir, mode: "full" }));
+    const massFinding = result.findings.find((f: any) =>
+      f.root_cause.toLowerCase().includes("mass assignment")
+    );
+    expect(massFinding).toBeDefined();
+    expect(massFinding.severity).toBe("high");
+  });
+
+  it("probe finds insecure crypto (MD5)", () => {
+    const sm = initWithStateManager(dir);
+    forcePhase(dir, "security");
+    sm.markFullSastRun(0);
+    const sliceId = sm.read().slices[0].id;
+    mkdirSync(join(dir, "src"), { recursive: true });
+    writeFileSync(join(dir, "src/hash.ts"), `
+      import { createHash } from 'crypto';
+      export function hashToken(token: string) {
+        return createHash('md5').update(token).digest('hex');
+      }
+    `);
+    sm.updateSliceFiles(sliceId, ["src/hash.ts"]);
+    const result = parse(handleRunWhiteboxAudit({ projectPath: dir, mode: "full" }));
+    const cryptoFinding = result.findings.find((f: any) =>
+      f.root_cause.toLowerCase().includes("crypto") || f.root_cause.toLowerCase().includes("insecure")
+    );
+    expect(cryptoFinding).toBeDefined();
+    expect(cryptoFinding.severity).toBe("high");
+  });
+
+  it("probe finding goes through guard analysis (not auto-confirmed)", () => {
+    const sm = initWithStateManager(dir);
+    forcePhase(dir, "security");
+    sm.markFullSastRun(0);
+    const sliceId = sm.read().slices[0].id;
+    mkdirSync(join(dir, "src"), { recursive: true });
+    // File has a secret BUT also has auth guards and validation
+    writeFileSync(join(dir, "src/guarded-config.ts"), `
+      import { authenticate } from './auth';
+      import { z } from 'zod';
+      export const config = {
+        apiKey = "test-key-123",
+      };
+      export function handler(req, res) {
+        authenticate(req);
+        const data = z.string().parse(req.body);
+        res.json(data);
+      }
+    `);
+    sm.updateSliceFiles(sliceId, ["src/guarded-config.ts"]);
+    const result = parse(handleRunWhiteboxAudit({ projectPath: dir, mode: "full" }));
+    expect(result.candidatesEvaluated).toBeGreaterThan(0);
+    // Finding should exist but NOT be confirmed exploitable (guards present)
+    const finding = result.findings.find((f: any) =>
+      f.affected_files.includes("src/guarded-config.ts")
+    );
+    if (finding) {
+      expect(finding.confirmed_exploitable).toBe(false);
+    }
+  });
+});
+
+describe("auto-discovery fallback", () => {
+  it("discovers source files when slice.files is empty", () => {
+    const sm = initWithStateManager(dir);
+    forcePhase(dir, "security");
+    sm.markFullSastRun(0);
+    // Do NOT set slice files — leave them empty
+    mkdirSync(join(dir, "src"), { recursive: true });
+    writeFileSync(join(dir, "src/secret-config.ts"), `
+      export const config = {
+        password = "admin123",
+      };
+    `);
+    const result = parse(handleRunWhiteboxAudit({ projectPath: dir, mode: "full" }));
+    // Auto-discovery should find the file and probes should detect the secret
+    expect(result.candidatesEvaluated).toBeGreaterThan(0);
+    const secretFinding = result.findings.find((f: any) =>
+      f.root_cause.toLowerCase().includes("password")
+    );
+    expect(secretFinding).toBeDefined();
+  });
+
+  it("prefers slice.files over auto-discovery", () => {
+    const sm = initWithStateManager(dir);
+    forcePhase(dir, "security");
+    sm.markFullSastRun(0);
+    const sliceId = sm.read().slices[0].id;
+    mkdirSync(join(dir, "src"), { recursive: true });
+    // File tracked in slice
+    writeFileSync(join(dir, "src/tracked.ts"), `
+      export const config = {
+        password = "tracked123",
+      };
+    `);
+    // File NOT tracked in slice but exists on disk
+    writeFileSync(join(dir, "src/untracked.ts"), `
+      export const other = {
+        password = "untracked456",
+      };
+    `);
+    sm.updateSliceFiles(sliceId, ["src/tracked.ts"]);
+    const result = parse(handleRunWhiteboxAudit({ projectPath: dir, mode: "full" }));
+    // Should only find the tracked file's finding, not untracked
+    const trackedFinding = result.findings.find((f: any) =>
+      f.affected_files.includes("src/tracked.ts")
+    );
+    const untrackedFinding = result.findings.find((f: any) =>
+      f.affected_files.includes("src/untracked.ts")
+    );
+    expect(trackedFinding).toBeDefined();
+    expect(untrackedFinding).toBeUndefined();
+  });
+});
+
+describe("adversarial review enforcement", () => {
+  it("adversarialReviewRequired=true when 0 findings", () => {
+    const sm = initWithStateManager(dir);
+    forcePhase(dir, "security");
+    sm.markFullSastRun(0);
+    const result = parse(handleRunWhiteboxAudit({ projectPath: dir, mode: "full" }));
+    expect(result.totalFindings).toBe(0);
+    expect(result.adversarialReviewRequired).toBe(true);
+    expect(result.hint).toContain("adversarial");
+  });
+
+  it("adversarialReviewRequired=true when findings exist (non-blocking)", () => {
+    const sm = initWithStateManager(dir);
+    forcePhase(dir, "security");
+    sm.markFullSastRun(0);
+    const sliceId = sm.read().slices[0].id;
+    mkdirSync(join(dir, "src"), { recursive: true });
+    writeFileSync(join(dir, "src/leaky.ts"), `
+      export const config = {
+        password = "admin123",
+      };
+    `);
+    sm.updateSliceFiles(sliceId, ["src/leaky.ts"]);
+    const result = parse(handleRunWhiteboxAudit({ projectPath: dir, mode: "full" }));
+    expect(result.totalFindings).toBeGreaterThan(0);
+    expect(result.adversarialReviewRequired).toBe(true);
+    expect(result.hint).toContain("adversarial");
+  });
+
+  it("adversarialReviewRequired=true when blocking findings exist", () => {
+    const sm = initWithStateManager(dir);
+    forcePhase(dir, "security");
+    const sliceId = sm.read().slices[0].id;
+    mkdirSync(join(dir, "src"), { recursive: true });
+    writeFileSync(join(dir, "src/vuln.ts"), `
+      export function handler(req, res) {
+        const result = db.query(req.body.sql);
+        res.send(result);
+      }
+    `);
+    sm.addSASTFinding(sliceId, {
+      id: "BLK-001", tool: "semgrep", severity: "critical", status: "open",
+      title: "SQL injection in auth handler", file: "src/vuln.ts", line: 3,
+      description: "Raw SQL", fix: "Parameterize",
+    });
+    sm.updateSliceFiles(sliceId, ["src/vuln.ts"]);
+    const result = parse(handleRunWhiteboxAudit({ projectPath: dir, mode: "full" }));
+    expect(result.adversarialReviewRequired).toBe(true);
+    expect(result.hint).toContain("adversarial");
+  });
+
+  it("adversarialReviewInstructions always present in output", () => {
+    const sm = initWithStateManager(dir);
+    forcePhase(dir, "security");
+    sm.markFullSastRun(0);
+    const result = parse(handleRunWhiteboxAudit({ projectPath: dir, mode: "full" }));
+    expect(result.adversarialReviewInstructions).toContain("MANDATORY");
+    expect(result.adversarialReviewInstructions).toContain("a2p_record_finding");
+    expect(result.adversarialReviewInstructions).toContain("adversarial-review");
   });
 });

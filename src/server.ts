@@ -22,6 +22,7 @@ import { runAuditSchema, handleRunAudit } from "./tools/run-audit.js";
 import { runWhiteboxAuditSchema, handleRunWhiteboxAudit } from "./tools/run-whitebox-audit.js";
 import { runActiveVerificationSchema, handleRunActiveVerification } from "./tools/run-active-verification.js";
 import { buildSignoffSchema, handleBuildSignoff } from "./tools/build-signoff.js";
+import { completeAdversarialReviewSchema, handleCompleteAdversarialReview } from "./tools/complete-adversarial-review.js";
 import { deployApprovalSchema, handleDeployApproval } from "./tools/deploy-approval.js";
 import { planInfrastructureSchema, handlePlanInfrastructure } from "./tools/plan-infrastructure.js";
 import { recordServerSchema, handleRecordServer } from "./tools/record-server.js";
@@ -307,6 +308,17 @@ export function createServer(): McpServer {
       note: buildSignoffSchema.shape.note,
     },
     wrapTool(handleBuildSignoff as ToolHandler)
+  );
+
+  server.tool(
+    "a2p_complete_adversarial_review",
+    "Confirm adversarial security review completion (Phase 1b) — mandatory before deployment. Records that the LLM-driven code review was performed.",
+    {
+      projectPath: completeAdversarialReviewSchema.shape.projectPath,
+      findingsRecorded: completeAdversarialReviewSchema.shape.findingsRecorded,
+      note: completeAdversarialReviewSchema.shape.note,
+    },
+    wrapTool(handleCompleteAdversarialReview as ToolHandler)
   );
 
   server.tool(

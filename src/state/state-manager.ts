@@ -117,6 +117,7 @@ export class StateManager {
       lastFullSastFindingCount: 0,
       buildSignoffAt: null,
       buildSignoffSliceHash: null,
+      adversarialReviewCompletedAt: null,
       deployApprovalAt: null,
       deployApprovalStateHash: null,
       createdAt: now,
@@ -180,6 +181,7 @@ export class StateManager {
       `sast:${state.lastFullSastAt}`,
       `findings:${openFindings}`,
       `wb:${lastWhitebox?.id ?? "none"}:${lastWhitebox?.blocking_count ?? 0}`,
+      `ar:${state.adversarialReviewCompletedAt ?? "none"}`,
       `audit:${lastAudit?.id ?? "none"}:${lastAudit?.summary.critical ?? 0}`,
       `slices:${state.slices.map(s => `${s.id}:${s.status}`).join(",")}`,
     ].join("|");
@@ -328,6 +330,13 @@ export class StateManager {
       if (lastWhitebox.blocking_count > 0) {
         throw new Error(
           `Cannot deploy with ${lastWhitebox.blocking_count} blocking whitebox finding(s). Fix all blocking findings before deploying.`
+        );
+      }
+
+      // 4b. Adversarial review gate: must have completed adversarial review after last whitebox audit
+      if (!state.adversarialReviewCompletedAt) {
+        throw new Error(
+          "Cannot deploy without adversarial review. Run the adversarial security review (Phase 1b) and confirm with a2p_complete_adversarial_review."
         );
       }
 
@@ -667,6 +676,24 @@ export class StateManager {
     return state;
   }
 
+  /** Confirm adversarial review completion — agent confirmed Phase 1b is done */
+  completeAdversarialReview(findingsRecorded: number, note?: string): ProjectState {
+    const state = this.read();
+    if (state.phase !== "security") {
+      throw new Error("Adversarial review completion only allowed in security phase");
+    }
+    if (state.whiteboxResults.length === 0) {
+      throw new Error("Cannot complete adversarial review without running whitebox audit first (a2p_run_whitebox_audit)");
+    }
+    state.adversarialReviewCompletedAt = new Date().toISOString();
+    this.invalidateDeployApproval(state);
+    this.addEvent(state, state.phase, null, "adversarial_review_completed",
+      `Adversarial review completed: ${findingsRecorded} finding(s) recorded${note ? ` — ${note}` : ""}`,
+      { level: "info", status: "success" });
+    this.write(state);
+    return state;
+  }
+
   /** Mark that a full SAST scan has been completed */
   markFullSastRun(findingCount: number): void {
     const state = this.read();
@@ -841,10 +868,11 @@ export class StateManager {
     return state;
   }
 
-  /** Record a whitebox audit result */
+  /** Record a whitebox audit result — invalidates adversarial review (must re-run Phase 1b) */
   addWhiteboxResult(result: WhiteboxAuditResult): ProjectState {
     const state = this.read();
     state.whiteboxResults.push(result);
+    state.adversarialReviewCompletedAt = null; // New whitebox run invalidates adversarial review
     this.invalidateDeployApproval(state);
     this.addEvent(
       state,

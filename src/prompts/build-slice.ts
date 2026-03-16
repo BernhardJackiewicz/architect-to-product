@@ -99,7 +99,7 @@ Gib das Prüfungsergebnis als kurzen Block aus (1-3 Zeilen: "Alle ACs abgedeckt,
 1. Schreibe die minimale Implementation, damit alle Tests grün werden
 2. Keine Über-Engineering! Nur was nötig ist, damit Tests passen
 3. Führe Tests aus mit \`a2p_run_tests\` — sie MÜSSEN jetzt bestehen
-4. Markiere Slice als "green" mit \`a2p_update_slice\`
+4. Markiere Slice als "green" mit \`a2p_update_slice\` — **gib alle erstellten/geänderten Dateien im \`files\`-Parameter mit**
 
 **Ändere NICHT die Tests in dieser Phase!**
 
@@ -203,7 +203,7 @@ Markiere den Slice NICHT als "sast" ohne vorher \`a2p_run_sast\` ausgeführt zu 
    - CRITICAL/HIGH → sofort fixen, Tests + SAST wiederholen
    - MEDIUM → fixen wenn einfach, sonst dokumentieren
    - LOW → dokumentieren
-5. Markiere Slice als "sast" und dann "done" mit \`a2p_update_slice\`
+5. Markiere Slice als "sast" und dann "done" mit \`a2p_update_slice\` — **gib alle Slice-Dateien im \`files\`-Parameter mit**
 
 ## Nach jedem abgeschlossenen Slice: Summary ausgeben
 Erstelle eine kurze Zusammenfassung:
