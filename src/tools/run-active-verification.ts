@@ -17,6 +17,8 @@ export const runActiveVerificationSchema = z.object({
   categories: z.array(z.enum([
     "workflow_gates", "state_recovery",
   ])).optional().describe("Categories to test (default: all)"),
+  acknowledgeSecurityDecision: z.boolean().optional().default(false)
+    .describe("Set to true to acknowledge pending security decision and proceed to verification"),
 });
 
 export type RunActiveVerificationInput = z.infer<typeof runActiveVerificationSchema>;
@@ -40,6 +42,25 @@ export function handleRunActiveVerification(input: RunActiveVerificationInput): 
   const state = sm.read();
   try { requirePhase(state.phase, ["security"], "a2p_run_active_verification"); }
   catch (err) { return JSON.stringify({ error: err instanceof Error ? err.message : String(err) }); }
+
+  // Gate: pending security decision must be acknowledged before proceeding
+  if (state.pendingSecurityDecision && !input.acknowledgeSecurityDecision) {
+    const pending = state.pendingSecurityDecision;
+    return JSON.stringify({
+      blocked: true,
+      reason: "pending_security_decision",
+      message: `Security decision pending after adversarial review round ${pending.round}. ` +
+        `The user must choose: continue hardening or proceed to deployment.`,
+      securityMessage: "Security is a never ending story. You can continue hardening or proceed to deployment. " +
+        "Since we keep full history, additional rounds never waste time — each builds on previous findings.",
+      pendingDecision: pending,
+      hint: "Call a2p_run_active_verification with acknowledgeSecurityDecision=true to proceed, or run another hardening round first.",
+    });
+  }
+  if (input.acknowledgeSecurityDecision && state.pendingSecurityDecision) {
+    sm.clearPendingSecurityDecision();
+  }
+
   const categoriesToTest = input.categories ?? ["workflow_gates", "state_recovery"];
 
   // Create temp copy of state for destructive tests

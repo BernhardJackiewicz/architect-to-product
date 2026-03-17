@@ -142,6 +142,7 @@ export function addPassingWhitebox(sm: StateManager): void {
     blocking_count: 0,
   });
   sm.completeAdversarialReview(0, "test: no findings");
+  sm.clearPendingSecurityDecision();
 }
 
 /** Add ONLY the whitebox audit result without adversarial review completion. */
@@ -160,6 +161,7 @@ export function addWhiteboxOnly(sm: StateManager): void {
 /** Complete ONLY the adversarial review (requires whitebox audit first). */
 export function completeAdversarialReview(sm: StateManager): void {
   sm.completeAdversarialReview(0, "test: no findings");
+  sm.clearPendingSecurityDecision();
 }
 
 /** Initialize a project with a basic architecture (no slices). */

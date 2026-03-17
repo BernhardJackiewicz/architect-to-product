@@ -301,6 +301,7 @@ export function createServer(): McpServer {
       projectPath: runActiveVerificationSchema.shape.projectPath,
       round: runActiveVerificationSchema.shape.round,
       categories: runActiveVerificationSchema.shape.categories,
+      acknowledgeSecurityDecision: runActiveVerificationSchema.shape.acknowledgeSecurityDecision,
     },
     wrapTool(handleRunActiveVerification as ToolHandler)
   );
