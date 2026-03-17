@@ -390,6 +390,16 @@ export class StateManager {
         );
       }
 
+      // 4c. Pending security decision gate
+      if (state.pendingSecurityDecision) {
+        throw new Error(
+          `Security decision pending (round ${state.pendingSecurityDecision.round}). ` +
+          `Choose an action: ${state.pendingSecurityDecision.availableActions.join(", ")}. ` +
+          `Use a2p_run_active_verification with acknowledgeSecurityDecision=true to continue, ` +
+          `or run another security round.`
+        );
+      }
+
       // 5. Release audit gate: at least one release audit must exist and have no critical findings
       const releaseAudits = state.auditResults.filter((a) => a.mode === "release");
       if (releaseAudits.length === 0) {
@@ -522,12 +532,23 @@ export class StateManager {
   }
 
   /** Mark that SAST has been run for a slice */
-  markSastRun(sliceId: string): void {
+  markSastRun(sliceId: string, extras?: {
+    durationMs?: number;
+    runId?: string;
+    metadata?: EventMetadata;
+    outputSummary?: string;
+  }): void {
     const state = this.read();
     const slice = state.slices.find((s) => s.id === sliceId);
     if (!slice) throw new Error(`Slice "${sliceId}" not found`);
     slice.sastRanAt = new Date().toISOString();
-    this.addEvent(state, state.phase, sliceId, "sast_run", `SAST scan completed for ${sliceId}`, { status: "success" });
+    this.addEvent(state, state.phase, sliceId, "sast_run", `SAST scan completed for ${sliceId}`, {
+      status: "success",
+      durationMs: extras?.durationMs,
+      runId: extras?.runId,
+      metadata: extras?.metadata,
+      outputSummary: extras?.outputSummary,
+    });
     this.write(state);
   }
 
@@ -870,14 +891,26 @@ export class StateManager {
   }
 
   /** Mark that a full SAST scan has been completed */
-  markFullSastRun(findingCount: number): void {
+  markFullSastRun(findingCount: number, extras?: {
+    durationMs?: number;
+    runId?: string;
+    metadata?: EventMetadata;
+    outputSummary?: string;
+  }): void {
     const state = this.read();
     state.lastFullSastAt = new Date().toISOString();
     state.lastFullSastFindingCount = findingCount;
     this.invalidateDeployApproval(state);
     this.addEvent(state, state.phase, null, "sast_run",
       `Full SAST scan completed — ${findingCount} finding(s)`,
-      { level: "info", status: "success" });
+      {
+        level: "info",
+        status: "success",
+        durationMs: extras?.durationMs,
+        runId: extras?.runId,
+        metadata: extras?.metadata,
+        outputSummary: extras?.outputSummary,
+      });
     this.write(state);
   }
 
@@ -1028,7 +1061,11 @@ export class StateManager {
   }
 
   /** Record an audit result */
-  addAuditResult(result: AuditResult): ProjectState {
+  addAuditResult(result: AuditResult, extras?: {
+    durationMs?: number;
+    runId?: string;
+    metadata?: EventMetadata;
+  }): ProjectState {
     const state = this.read();
     state.auditResults.push(result);
     this.invalidateDeployApproval(state);
@@ -1038,14 +1075,23 @@ export class StateManager {
       null,
       "audit_run",
       `[${result.mode}] ${result.id}: ${result.findings.length} findings (C:${result.summary.critical} H:${result.summary.high} M:${result.summary.medium} L:${result.summary.low})`,
-      { status: result.summary.critical > 0 ? "failure" : result.summary.high > 0 ? "warning" : "success" },
+      {
+        status: result.summary.critical > 0 ? "failure" : result.summary.high > 0 ? "warning" : "success",
+        durationMs: extras?.durationMs,
+        runId: extras?.runId,
+        metadata: extras?.metadata,
+      },
     );
     this.write(state);
     return state;
   }
 
   /** Record a whitebox audit result — invalidates adversarial review (must re-run Phase 1b) */
-  addWhiteboxResult(result: WhiteboxAuditResult): ProjectState {
+  addWhiteboxResult(result: WhiteboxAuditResult, extras?: {
+    durationMs?: number;
+    runId?: string;
+    metadata?: EventMetadata;
+  }): ProjectState {
     const state = this.read();
     state.whiteboxResults.push(result);
     state.adversarialReviewState = null; // New whitebox run invalidates adversarial review (full reset)
@@ -1057,14 +1103,23 @@ export class StateManager {
       null,
       "whitebox_audit",
       `[${result.mode}] ${result.id}: ${result.findings.length} findings (blocking: ${result.blocking_count})`,
-      { status: result.blocking_count > 0 ? "failure" : result.findings.length > 0 ? "warning" : "success" },
+      {
+        status: result.blocking_count > 0 ? "failure" : result.findings.length > 0 ? "warning" : "success",
+        durationMs: extras?.durationMs,
+        runId: extras?.runId,
+        metadata: extras?.metadata,
+      },
     );
     this.write(state);
     return state;
   }
 
   /** Record an active verification result */
-  addActiveVerificationResult(result: ActiveVerificationResult): ProjectState {
+  addActiveVerificationResult(result: ActiveVerificationResult, extras?: {
+    durationMs?: number;
+    runId?: string;
+    metadata?: EventMetadata;
+  }): ProjectState {
     const state = this.read();
     state.activeVerificationResults.push(result);
     this.refreshSecurityOverview(state);
@@ -1074,7 +1129,12 @@ export class StateManager {
       null,
       "active_verification",
       `${result.id} round ${result.round}: ${result.tests_passed}/${result.tests_run} passed (blocking: ${result.blocking_count})`,
-      { status: result.blocking_count > 0 ? "failure" : result.tests_failed > 0 ? "warning" : "success" },
+      {
+        status: result.blocking_count > 0 ? "failure" : result.tests_failed > 0 ? "warning" : "success",
+        durationMs: extras?.durationMs,
+        runId: extras?.runId,
+        metadata: extras?.metadata,
+      },
     );
     this.write(state);
     return state;

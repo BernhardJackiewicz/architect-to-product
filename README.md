@@ -1,52 +1,66 @@
 # A2P — Architect-to-Product
+AI engineering framework delivered as an MCP server. Turns AI-generated code into production-ready software with evidence-gated TDD, security review, backup strategy, and deployment automation.
 
-AI engineering framework delivered as an MCP server.
-Turns AI-generated code into production-ready software with evidence-gated TDD, security review, backup strategy, and deployment automation.
+**27 MCP tools · 1084 tests · Architecture → Plan → Build → Audit → Security → Deploy**
 
-**28 MCP tools** · **1073 tests** · **Architecture → Plan → Build → Audit → Security → Deploy**
-
-[![npm version](https://img.shields.io/npm/v/architect-to-product)](https://www.npmjs.com/package/architect-to-product)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Tests: 1073 passing](https://img.shields.io/badge/tests-1073%20passing-brightgreen)]()
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue)]()
+[![npm version](https://img.shields.io/npm/v/architect-to-product)](https://www.npmjs.com/package/architect-to-product) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) [![Tests: 1084 passing](https://img.shields.io/badge/tests-1084%20passing-brightgreen)](docs/validation/) [![TypeScript](https://img.shields.io/badge/TypeScript-blue)](tsconfig.json)
 
 ---
 
-### Quickstart
+**Best for:** developers using Claude Code, Cursor, or other MCP clients who want AI speed with test, security, and deployment discipline — whether building from scratch or hardening a vibe-coded MVP.
+
+📖 [Getting Started](#quickstart) · [Workflow](docs/WORKFLOW.md) · [Security](docs/SECURITY.md) · [Reference](docs/REFERENCE.md) · [Deployment (Hetzner / VPS)](docs/HETZNER-DEPLOYMENT.md)
+
+---
+
+## Quickstart
 
 ```bash
-npx a2p-mcp init   # creates .mcp.json in your project
+npx architect-to-product init
 ```
 
-Restart Claude Code, then type `/a2p` to start (listed under *planning* — slash commands are alphabetically sorted).
+This creates `.mcp.json` in your project. Then restart Claude Code and run:
+
+```
+/a2p
+```
+
+A2P will onboard the project, co-develop the architecture, configure companion MCP servers, and set up the engineering workflow.
+
+---
 
 ## What A2P is
 
-A2P is an AI engineering framework. It defines how AI-assisted software moves from architecture to production: vertical slice planning, evidence-gated TDD, security scanning, exploitability review, release audits, backup strategy, and deployment verification.
+A2P is an AI engineering framework packaged as an MCP server.
+
+It adds engineering discipline to AI-assisted software development: architecture-driven planning, evidence-gated TDD, security review, backup strategy, and deployment generation.
 
 The MCP server is the interface. The engineering system is the product.
 
-> **In one sentence:** A2P is an AI engineering framework, packaged as an MCP server, for turning AI-generated code into production-ready software.
+In one sentence: **A2P is an AI engineering framework, packaged as an MCP server, for turning AI-generated code into production-ready software.**
 
 ---
 
-### How it works: Red, Green, Refactor
+## How it works
 
-A2P enforces classic Test-Driven Development — write the test first, make it pass, then clean up. Every feature (called a "slice") moves through a strict cycle:
+A2P drives software through a gated lifecycle:
 
-1. **Red** — Write failing tests that define what the feature should do. No production code yet. The tests prove you understand the requirement.
-2. **Green** — Write the minimum code to make all tests pass. Nothing more. A2P verifies tests actually ran and passed before allowing this transition.
-3. **Refactor** — Clean up the code while tests stay green. Remove duplication, improve names, simplify logic.
-4. **SAST** — Static analysis scans the code for security vulnerabilities (Semgrep for all languages, Bandit for Python). Findings must be addressed.
-5. **Done** — Tests pass again after refactoring. The slice is complete.
+**Architecture → Plan → Build → Audit → Security → Deploy**
 
-Each transition is evidence-gated — enforced in code, not just in prompts. You can't skip to "green" without test results. You can't skip to "done" without passing tests. The AI agent follows the same rules a disciplined engineer would, because the tooling won't let it cut corners.
+During build, each feature (called a "slice") follows an evidence-gated TDD cycle:
 
-This matters because AI coding agents naturally take shortcuts. They'll generate code without tests, suppress errors instead of fixing them, and mark things "done" that aren't. The red-green-refactor cycle with hard gates prevents all of that.
+**RED → GREEN → REFACTOR → SAST → DONE**
 
-### State machine and gates
+That means:
+- tests define the requirement first
+- implementation must prove it passes
+- refactoring must preserve green tests
+- security scanning is part of the slice workflow
+- **state transitions are enforced in code, not just described in prompts**
 
-The entire project lifecycle is a state machine with enforced gates between phases:
+The AI agent cannot skip a gate. If it tries to advance without meeting the conditions, the tool throws an error. There is no way around it.
+
+### Lifecycle overview
 
 ```
 onboarding → planning → building → security → deployment → complete
@@ -56,385 +70,98 @@ onboarding → planning → building → security → deployment → complete
                    e2e_testing               required again)
 ```
 
-Each arrow is a gate — a set of conditions that must be met before the transition is allowed. Gates are enforced in code, not prompts. The AI agent cannot skip them:
+→ Full lifecycle, gates, and re-entry rules: [docs/WORKFLOW.md](docs/WORKFLOW.md)
 
-| Gate | What it checks |
+---
+
+## Why A2P exists
+
+AI coding agents are fast, but they tend to skip discipline:
+- they write code before tests
+- they mark work "done" without sufficient evidence
+- they suppress errors instead of fixing root causes
+- they underinvest in security, backup, and deployment hardening
+
+A2P adds the missing engineering system around the agent.
+
+---
+
+## Key capabilities
+
+- **Evidence-gated development** — Slice progression is enforced through test and workflow evidence. No tests passing, no advancing.
+- **Architecture-driven planning** — Work is broken into ordered vertical slices instead of ad-hoc task generation.
+- **Security review built into the workflow** — Includes SAST (Semgrep + Bandit), exploitability-focused whitebox review, and optional runtime adversarial testing (Shake & Break).
+- **Human oversight at critical gates** — Build signoff and deploy approval are mandatory. All other checkpoints are configurable.
+- **Backup-aware deployment** — Stateful systems are blocked from deployment unless backup requirements are satisfied.
+- **Deployment generation** — Produces stack-specific Dockerfile, docker-compose, Caddyfile, backup/restore/verify scripts, and hardening guides.
+- **Code intelligence** — `codebase-memory-mcp` builds a code graph instead of scanning files raw — up to 100x fewer exploration tokens.
+- **Structured build history** — Tool runs, statuses, durations, and findings are tracked in a queryable build log with secret redaction.
+
+---
+
+## Common use cases
+
+### 1. Start a new project with guardrails
+Use A2P from day one to define architecture, plan slices, build with TDD, and generate deployment artifacts.
+
+```
+/a2p → /a2p_planning → /a2p_build_slice (repeat per slice) → /a2p_audit → /a2p_security_gate → /a2p_whitebox → /a2p_audit (release) → /a2p_deploy
+```
+
+### 2. Harden a vibe-coded MVP
+Skip straight to security, audits, refactoring, and deployment preparation — no slices needed.
+
+```
+/a2p → set architecture → transition to security
+/a2p_security_gate → /a2p_whitebox → /a2p_refactor → /a2p_deploy
+```
+
+### 3. Re-scan before release
+Transition back to security from deployment or complete — prior approvals are automatically invalidated and the full security cycle must be re-satisfied.
+
+```
+security re-entry → /a2p_security_gate → /a2p_whitebox → /a2p_deploy
+```
+
+---
+
+## Without vs. with A2P
+
+| Without A2P | With A2P |
 |---|---|
-| **building → security** | All slices done, build signoff from human, quality audit run |
-| **security → deployment** | Full SAST scan, no open critical/high findings, whitebox audit, adversarial review, release audit clean, active verification passing, backup configured (stateful apps) |
-| **deployment → configs** | Human deploy approval (invalidated by any new finding — must be the last step) |
+| Ad-hoc AI coding | Architecture-driven vertical slices |
+| Tests are optional | Evidence-gated TDD (enforced in code) |
+| Security is manual or late | SAST + whitebox + optional runtime adversarial testing |
+| Deployment is improvised | Stack-specific configs, backup/restore scripts, hardening guides |
+| Backups are an afterthought | Backup strategy inferred from stack, gates enforced |
+| "Done" is subjective | Gates are enforced in code, not just in prompts |
+| No build history | Structured build log with levels, duration, run correlation |
 
-If the AI tries to advance without meeting a gate, the tool throws an error. There's no way around it — direct state file edits are blocked by a PreToolUse hook.
+---
 
-Security re-entry (deployment → security or complete → security) automatically invalidates all prior approvals — deploy approval, adversarial review, SAST timestamps. The full security cycle must be re-satisfied before deploying again.
+## Validation
 
-Built-in SAST tools run static code analysis and OWASP Top 10 reviews before deploy. Stack-aware backup strategy infers what needs protecting — databases, uploads, deployment artifacts — and generates backup, restore, and verification scripts automatically. Stack-specific deployment configs mean you ship on day one, not day thirty.
+A2P includes active claim verification across the full pipeline.
 
-## Quick Start
+- **Phase A/B:** Workflow, state management, and gate enforcement (96 QuickBill scenarios)
+- **Phase C:** Real UI tests via Playwright against a running Next.js app (8 browser tests)
+- **Phase D/E:** Deploy target reality check + companion tool count verification
+- README claims are actively tracked, corrected, and verified against real behavior
 
-```bash
-npx a2p-mcp init   # creates .mcp.json in your project
-```
+→ Full validation results: [docs/validation/](docs/validation/)
 
-Restart Claude Code, then type `/a2p` to start. The onboarding will co-develop your architecture, auto-configure companion MCP servers, and install SAST tools.
+---
 
-### Troubleshooting: wrong version
+## Client setup
 
-If you previously installed `architect-to-product` globally, `npx` will use the outdated global copy instead of fetching the latest version. Fix:
+A2P works with Claude Code, Claude Desktop, Cursor, VS Code, and any MCP-compatible AI coding assistant.
 
-```bash
-npm uninstall -g architect-to-product   # remove stale global install
-rm -rf ~/.npm/_npx                       # clear npx cache
-```
-
-Then restart Claude Code. Verify with `npm view architect-to-product version`.
-
-## What A2P does
-
-- **Up to 100x fewer exploration tokens** — codebase-memory-mcp builds a code graph instead of scanning files raw
-- **Evidence-gated development** — every feature requires passing tests before advancing (code-enforced)
-- **Static code analysis** — Semgrep + Bandit scan for vulnerabilities automatically
-- **Whitebox security audit** — verifies whether SAST findings are actually exploitable (reachable paths, guards, trust boundaries)
-- **Active verification** — runtime gate tests that prove workflow invariants hold (state transitions, deployment gates, recovery)
-- **Shake & Break** (optional) — runtime adversarial testing in an isolated sandbox with real HTTP requests. Evidence-backed findings, not speculative
-- **Code audits** — quality audits during development, release audits before publish
-- **Security reviews** — OWASP Top 10 review before deploy
-- **Structured build log** — every tool run tracked with log levels, duration, status, run correlation, and automatic secret redaction
-- **Configurable human oversight** — mandatory build signoff and deploy approval, optional plan approval, slice review, UI verification, and security signoff
-- **Backup strategy** — automatic inference of backup targets from tech stack. Stack-aware backup/restore/verify scripts. Stateful apps blocked from deployment without backup
-- **Deployment generation** — stack-specific Dockerfile, docker-compose, Caddyfile, hardening guides
-
-## Without vs. With architect-to-product
-
-| Without a2p | With a2p |
-|---|---|
-| Vibe code a feature | Architecture-driven vertical slices |
-| Manually write some tests (maybe) | Evidence-gated slices: RED → GREEN → REFACTOR (green requires passing tests, done requires passing tests + SAST) |
-| Miss security vulnerabilities | Automated SAST + OWASP Top 10 review + whitebox exploitability analysis + optional runtime adversarial testing |
-| SAST reports 50 findings, most are noise | Whitebox audit confirms which findings are actually exploitable. Shake & Break proves them with real HTTP requests |
-| Ship with TODOs, console.logs, .env in repo | Quality + release audits catch hygiene issues, block deploy on critical findings |
-| AI runs without stopping | Mandatory build signoff + deploy approval, UI screenshot review, configurable oversight at every phase |
-| AI hallucinates API signatures for unfamiliar libraries | Documentation-first: reads official docs via WebSearch + WebFetch before writing code |
-| No backup strategy, pray nothing breaks | Stack-aware backup inference with restore scripts, verification, and deployment gate enforcement |
-| Copy-paste a Dockerfile from StackOverflow | Generated Dockerfile + docker-compose + Caddyfile + backup scripts |
-| No build history, no idea what failed when | Structured build log with levels, duration, run correlation, and secret redaction |
-| Hope for the best | Ship to production with confidence |
-
-## Key Benefits
-
-- **100x fewer tokens** — Code graph intelligence via codebase-memory-mcp replaces raw file scanning — saves context window and money
-- **Develop faster** — Vertical slices with TDD, no yak shaving
-- **Fewer bugs** — Evidence-gated development: every slice requires passing tests before advancing (RED → GREEN → REFACTOR, code-enforced)
-- **Ship secure** — Static code analysis (Semgrep + Bandit) + OWASP Top 10 review + whitebox exploitability analysis built into the AI coding workflow
-- **Whitebox audit** — SAST finds patterns, whitebox proves exploitability: reachable code paths, missing guards, prompt-only enforcement. Blocking findings prevent deployment (enforced in code)
-- **Active verification** — Runtime gate tests prove that workflow invariants actually hold: state transitions require evidence, deployment gates block on critical findings, state survives round-trips
-- **Shake & Break** (optional) — Active runtime adversarial testing in an isolated sandbox. Creates a git worktree, generates safe .env with neutralized external services, allocates an ephemeral port, and optionally spins up a Docker DB. Claude starts the app and sends real HTTP requests testing 8 categories: auth/IDOR, race conditions, state manipulation, business logic, injection, token/session, file upload, webhook security. Findings include actual request/response evidence. Requires adversarial review completion. Terminal warning enforced before testing
-- **Human oversight** — Mandatory build signoff (before wasting tokens on audit/security) and deploy approval. Configurable plan approval, slice review, UI screenshot verification, and security signoff. Two gates are always on, the rest you control
-- **Code review** — Structured code review at build signoff (cross-slice consistency) and release audit (cross-file consistency, API coherence)
-- **Finding justification** — Security findings can't be silently dismissed — accepted/fixed/false_positive require justification (code-enforced)
-- **Audit before release** — Quality audits catch debug artifacts, hardcoded secrets, and test coverage gaps during development. Release audits verify README, .gitignore, temp files, and aggregate findings before publish. Critical release findings block deployment (enforced in code)
-- **Automated backup strategy** — Stack-aware inference of what needs protecting (database, uploads, artifacts). Generates backup, restore, and verification scripts with stack-specific commands (`pg_dump`, `mysqldump`, `mongodump`, `sqlite3 .backup`). Retention policies, offsite sync, and deployment gate enforcement for stateful apps
-- **Automated cloud deployment** — Hetzner Cloud: automatic server sizing based on tech stack (cx22 4GB for most stacks, cx32 8GB for JVM/multi-service — 20 TB traffic included per instance), cloud-init with production hardening (Docker log rotation, kernel sysctl, swap, fail2ban, SSH lockdown, unattended-upgrades), firewall provisioning, and deployment (rsync + docker compose) — all from Claude. 3-layer backup strategy: server snapshots + app-level backup + offsite replication. The standard VPS config is portable to any Ubuntu provider — only cloud firewall, snapshots, and storage products are Hetzner-specific. See [`docs/HETZNER-DEPLOYMENT.md`](docs/HETZNER-DEPLOYMENT.md)
-- **Deploy on day one** — Stack-specific Dockerfile, docker-compose, Caddyfile, backup/restore/verify scripts, hardening guides
-- **Code quality** — Built-in code quality tool: dead code detection, redundancy analysis, coupling metrics
-- **Documentation first** — When the architecture uses unfamiliar tech (exotic auth, new ORMs, niche APIs), Claude reads the official docs via WebSearch + WebFetch instead of hallucinating API signatures. Enforced in every prompt, documented in CLAUDE.md
-- **Model preference** — Configure which Claude model does the programming (`opus`, `sonnet`, `haiku`). Default: opus (Claude Opus 4.6 with maximum effort). Stored in project config, referenced by all prompts
-- **Structured logging** — Build events with log levels, status, duration tracking, run correlation, secret redaction, and output previews. Filter build logs by level, run, phase, or errors
-- **Any stack** — Python, TypeScript, Go, Rust, Java, Ruby, PHP, C#, Dart/Flutter, Swift — PostgreSQL, MySQL, MongoDB, Redis
-- **Mobile / cross-platform** — Platform-aware architecture (`mobile`, `cross-platform`, `backend-only`, `web`). Mobile checklist items (code signing, TestFlight, release hardening). Compliance items (GoBD, GDPR). External validator items (KoSIT, veraPDF). Multi-target deployment guidance (backend first, then mobile distribution). No false artifact promises — A2P orchestrates, toolchains are project-provided. Verified with a real Flutter/Dart + Kotlin/Spring Boot project on physical iPhone (14 slices, OCR pipeline, KoSIT validation, GoBD archive). Known limits: Gradle test counts require `--console=plain` or JUnit XML output; mobile E2E runs via `a2p_run_tests`, not the Playwright-based `a2p_run_e2e`
-
-## Security Coverage
-
-A2P layers multiple security mechanisms — from deterministic pattern matching to LLM-guided code review to active runtime testing. Each mechanism operates at a different enforcement level, and every finding produces verifiable evidence.
-
-**Legend:**
-- **Probe** — Deterministic regex/AST pattern matching (zero false negatives for covered patterns)
-- **Adversarial** — LLM-guided code review with confidence tracking and file:line evidence
-- **SAST** — Semgrep + Bandit static analysis
-- **Shake & Break** — Runtime adversarial testing with real HTTP requests in an isolated sandbox
-- **Artifact Validation** — Security checks on generated deployment files
-- **Active Verification** — Runtime gate tests proving workflow invariants hold
-- **Checklist** — Pre/post-deployment verification items
-
-| Security Domain | Mechanism | Enforcement | Evidence |
-|---|---|---|---|
-| **Injection** | | | |
-| SQL injection (interpolation, ORM raw queries) | Probe + SAST + Shake & Break | Code-enforced + Runtime-tested | Pattern match + SAST finding + HTTP request/response |
-| Command injection | Probe + SAST | Code-enforced | Pattern match + SAST finding |
-| NoSQL injection (query operators) | Probe | Code-enforced | Pattern match with context |
-| XSS (DOM manipulation, output encoding) | Probe + Adversarial | Code-enforced + Prompt-guided | Pattern match + file:line evidence |
-| Path traversal | Probe + Shake & Break | Code-enforced + Runtime-tested | Pattern match + HTTP proof |
-| SSRF (user-controlled URLs) | Probe | Code-enforced | Pattern match with context |
-| Insecure deserialization | Probe + Adversarial | Code-enforced + Prompt-guided | Pattern match + confidence level |
-| Code execution (eval/Function) | Probe + SAST | Code-enforced | Pattern match + SAST finding |
-| **Auth & Access Control** | | | |
-| Missing auth middleware | Probe + Adversarial | Code-enforced + Prompt-guided | Pattern match + file:line evidence |
-| IDOR / missing ownership checks | Adversarial + Shake & Break | Prompt-guided + Runtime-tested | Confidence level + HTTP proof |
-| Privilege escalation | Adversarial + Shake & Break | Prompt-guided + Runtime-tested | file:line evidence + HTTP proof |
-| Auth bypasses | Adversarial + Shake & Break | Prompt-guided + Runtime-tested | Confidence level + HTTP proof |
-| Mass assignment (spread/Object.assign) | Probe | Code-enforced | Pattern match with context suppression |
-| Missing rate limiting | Probe + Adversarial | Code-enforced + Prompt-guided | Pattern match + file:line evidence |
-| **Secrets & Credentials** | | | |
-| Hardcoded passwords | Probe + SAST | Code-enforced | Pattern match + SAST finding |
-| Hardcoded API keys/secrets | Probe + SAST | Code-enforced | Pattern match + SAST finding |
-| Base64-encoded secrets | Probe | Code-enforced | Pattern match |
-| Seed/default credentials | Probe | Code-enforced | Pattern match with production guard check |
-| Secrets in Dockerfiles | Probe + Artifact Validation | Code-enforced | Pattern match + artifact check |
-| PII/secrets in logs | Probe | Code-enforced | Pattern match |
-| **Session & Token Security** | | | |
-| Cookie security flags (HttpOnly/Secure/SameSite) | Probe + Adversarial + Checklist | Code-enforced + Prompt-guided | Pattern match + checklist verification |
-| JWT without expiry | Probe + Adversarial | Code-enforced + Prompt-guided | Pattern match + file:line evidence |
-| Session fixation/regeneration | Adversarial + Shake & Break | Prompt-guided + Runtime-tested | Confidence level + HTTP proof |
-| CSRF protection | Probe + Adversarial | Code-enforced + Prompt-guided | Pattern match + file:line evidence |
-| Password reset flow weaknesses | Adversarial | Prompt-guided | Confidence level + file:line evidence |
-| **Web Security** | | | |
-| CORS misconfiguration | Probe + Adversarial + Checklist | Code-enforced + Prompt-guided | Pattern match + checklist verification |
-| Open redirects | Probe | Code-enforced | Pattern match |
-| Missing security headers | Artifact Validation + Checklist | Code-enforced | Artifact check + checklist |
-| Cache-control (auth responses) | Adversarial | Prompt-guided | file:line evidence |
-| **Deployment & Infrastructure** | | | |
-| Dockerfile security (non-root, multi-stage, no secrets) | Artifact Validation | Code-enforced | Artifact validation pass/fail |
-| docker-compose hardening (security_opt, cap_drop) | Artifact Validation | Code-enforced | Artifact validation pass/fail |
-| Unpinned base images | Probe | Code-enforced | Pattern match |
-| Debug mode in production | Adversarial + Checklist | Prompt-guided | file:line evidence + checklist |
-| Internal endpoint exposure | Adversarial + Checklist | Prompt-guided | file:line evidence + checklist |
-| DB connection security (TLS/SSL) | Adversarial + Checklist | Prompt-guided | Confidence level + checklist |
-| **Data Protection** | | | |
-| Tenant isolation gaps | Adversarial | Prompt-guided | Confidence level + file:line evidence |
-| Soft delete access control | Adversarial | Prompt-guided | file:line evidence |
-| Backup encryption | Adversarial + Checklist | Prompt-guided | file:line evidence + checklist |
-| File upload without limits | Probe + Adversarial + Shake & Break | Code-enforced + Runtime-tested | Pattern match + HTTP proof |
-| Destructive migrations without rollback | Probe | Code-enforced | Pattern match |
-| Insecure crypto functions | Probe | Code-enforced | Pattern match |
-| **Runtime Adversarial (Shake & Break)** | | | |
-| Race conditions (double-spend, state inconsistency) | Shake & Break | Runtime-tested | Concurrent HTTP requests + response proof |
-| State manipulation (unexpected API sequences) | Shake & Break | Runtime-tested | Multi-step HTTP request/response proof |
-| Business logic bypasses (price manipulation, flow skipping) | Shake & Break | Runtime-tested | HTTP request/response proof |
-| Webhook replay/signature bypass | Adversarial + Shake & Break | Prompt-guided + Runtime-tested | Confidence level + HTTP proof |
-| **Workflow Integrity** | | | |
-| Evidence gates (tests required for green/done) | Active Verification | Code-enforced + Runtime-tested | Gate violation = critical finding |
-| Deployment gates (SAST/whitebox/audit blocking) | Active Verification | Code-enforced + Runtime-tested | Gate violation = critical finding |
-| State persistence (round-trip integrity) | Active Verification | Runtime-tested | Serialization verification |
-| **Dependencies** | | | |
-| Known vulnerabilities (npm, pip) | SAST (`npm audit` / `pip-audit`) | Code-enforced | Severity-mapped findings |
-
-**Coverage by numbers:** 32 deterministic probes · 25 adversarial review domains · 8 runtime test categories · 2 active verification categories · deployment artifact validation · dependency scanning · pre/post-deployment checklists
-
-## Human Oversight
-
-A2P gives you granular control over where the AI pauses for human review. Two gates are always on (non-negotiable), the rest you configure during onboarding.
-
-### Oversight Configuration
-
-Set during onboarding via `a2p_set_architecture`:
-
-```json
-{
-  "oversight": {
-    "sliceReview": "off",
-    "planApproval": true,
-    "buildSignoff": true,
-    "deployApproval": true,
-    "uiVerification": true,
-    "securitySignoff": false
-  }
-}
-```
-
-| Setting | Default | Mandatory? | What it does |
-|---------|---------|------------|-------------|
-| `buildSignoff` | `true` | **Yes, always on** | After all slices are built: "Does the product work?" — prevents wasting tokens on audit/security for broken code |
-| `deployApproval` | `true` | **Yes, always on** | Before deployment: explicit go/no-go with finding summary |
-| `planApproval` | `true` | No | Must approve slice plan before building starts |
-| `sliceReview` | `"off"` | No | `"off"` = auto-proceed, `"ui-only"` = pause after UI slices, `"all"` = pause after every slice |
-| `uiVerification` | `true`* | No | Human reviews Playwright screenshots after visual verification of UI slices. *Auto-enabled when frontend detected |
-| `securitySignoff` | `false` | No | Explicit go/no-go after security gate (in addition to code-enforced gates) |
-
-### Always-On Gates (Code-Enforced)
-
-These cannot be bypassed — they are enforced in code, not just in prompts:
-
-- **Build gate**: Cannot leave building phase until all slices are `done`
-- **Build signoff gate**: Cannot proceed to security without human build signoff (`a2p_build_signoff`). Signoff is invalidated by any slice change or new test run — must re-signoff
-- **E2E gate**: Projects with UI slices (`hasUI: true`) and Playwright installed cannot skip E2E testing — `building→security` and `refactoring→security` are blocked. Must go through `e2e_testing` phase first
-- **Evidence gates**: Cannot mark slice as `green` without passing tests, `sast` without SAST scan, `done` without passing tests
-- **Security gate**: Cannot deploy with open CRITICAL/HIGH SAST findings
-- **Full SAST gate**: Cannot deploy without at least one full SAST scan (`a2p_run_sast mode=full`)
-- **Whitebox gate**: Cannot deploy with blocking whitebox findings (confirmed exploitable auth/secrets/tenant issues)
-- **Audit gate**: Cannot deploy with critical release audit findings
-- **Deploy approval gate**: Cannot generate deployment configs without human deploy approval (`a2p_deploy_approval`). Approval is invalidated by any new finding, audit result, or whitebox result — always approve as the last step before generating deployment configs
-- **Backup gate**: Stateful apps (database or uploads) are blocked from deploying without configured backup (enforced in code)
-- **Finding justification gate**: Cannot set finding status to `accepted`, `fixed`, or `false_positive` without a justification (code-enforced via `a2p_record_finding`)
-- **Adversarial evidence gate**: Adversarial-review findings with severity high/critical require `confidence` level and `evidence` with file:line reference. Hypotheses are auto-downgraded to medium (code-enforced)
-- **Companion restart detection**: `a2p_get_state` reports `restartRequired: true` when companions are configured but session hasn't been restarted
-- **Security re-entry invalidation**: Transitioning to security from deployment or complete automatically nullifies deploy approval, adversarial review, and SAST timestamps — forces a complete security cycle before re-deploying
-- **Phase guards**: Tools are restricted to appropriate phases (e.g. tests only in building, SAST full only in security, deployment only in deployment phase)
-- **Test command restriction**: Test command override blocked when a test command is configured — prevents fabricated test results
-
-### Backup Strategy
-
-A2P automatically infers a backup strategy from your tech stack during onboarding. No manual configuration needed — if your app has a database or handles uploads, A2P knows it needs backups.
-
-**How inference works:**
-- **Database detected** (PostgreSQL, MySQL, SQLite, MongoDB) → `required: true`, target `"database"` added, stack-specific `pg_dump`/`mysqldump`/`mongodump`/`sqlite3 .backup` commands generated
-- **Uploads/media detected** (features mentioning upload, file storage, media, images) → `required: true`, targets `"uploads"` + `"local_media"` added
-- **Hosting detected** → offsite provider inferred (Hetzner → `hetzner_storage`, AWS → `s3`, DigitalOcean → `spaces`)
-- **Stateless apps** → `enabled: true` but `required: false`, only `"deploy_artifacts"` backup (no warnings, no gates)
-
-**What gets generated during deployment:**
-
-The `a2p_generate_deployment` tool provides stack-specific backup guidance and commands. Claude then generates the actual files following the deployment prompt instructions:
-- `scripts/backup.sh` — database + artifact backup with retention and manifest
-- `scripts/restore.sh` — restore from backup with verification
-- `scripts/backup-verify.sh` — verify backup integrity and freshness
-- `scripts/backup-offsite.sh` — sync to offsite provider (if configured)
-- `ops/backup.env.example` — backup configuration (paths, retention, offsite credentials)
-- `docs/BACKUP.md` — strategy, schedule, restore procedures, verification steps
-
-**Security by design:**
-- MySQL: uses `--defaults-file` instead of `-p$PASSWORD` — no password leaks in scripts or logs
-- SQLite restore: warns to stop the application first for consistent restore
-- Scheduler: recommends systemd timers over cron on VPS/Linux (better logging, failure notification)
-
-**3-layer backup model (Hetzner):**
-
-For Hetzner deployments, A2P recommends a 3-layer backup strategy:
-1. **Server Backup** — Hetzner automated snapshots of the root disk (daily, 7-slot retention, ~0.70 EUR/month). Covers OS, Docker, configs, and Docker named volumes on root disk. Does NOT cover attached Hetzner Volumes
-2. **App Backup** — `scripts/backup.sh` → `/backups/` with configurable retention (14+ days). Stack-specific DB dumps + artifact backup
-3. **Offsite Replication** — `rclone copy` to Hetzner Storage Box (SFTP) or Object Storage (S3). Protects against server deletion, account errors, provider outage. Uses `rclone copy` not `rclone sync` (sync deletes at target)
-
-See [`docs/HETZNER-DEPLOYMENT.md`](docs/HETZNER-DEPLOYMENT.md) for full details including storage product comparison and post-provisioning verification commands.
-
-**Deployment checklist integration:**
-- Backup scripts generated and tested locally
-- Backup scheduler active (daily at 02:00)
-- Retention configured (14 days default)
-- Restore documentation present
-- Offsite backup configured (if provider detected)
-- First backup completed successfully
-- Backup verification passed (restore to temp + integrity check)
-- Pre-deploy snapshot taken
-- (Hetzner) Server backups enabled, offsite copy configured, restore from both layers tested
-
-### Model Preference
-
-Configure which Claude model does the programming via `claudeModel` in `a2p_set_architecture`:
-
-| Model | Best for | Trade-off |
-|-------|----------|-----------|
-| **`opus`** (default) | Production code, complex architectures | Maximum quality, slower, most expensive |
-| `sonnet` | Standard features, good-enough code | Fast, cheaper, less deep analysis |
-| `haiku` | Simple tasks, scaffolding | Fastest, cheapest, basic quality |
-
-Stored in `.a2p/state.json` → `config.claudeModel`. Referenced in CLAUDE.md and all prompts.
-
-### Documentation-First Principle
-
-When the architecture uses unfamiliar technologies (exotic auth, new ORMs, niche APIs), Claude is instructed to:
-1. **WebSearch** for the official documentation URL
-2. **WebFetch** to read the relevant docs (Getting Started, API Reference, Configuration)
-3. Document the source URL as a comment in the code
-4. **Never** hallucinate API signatures, config options, or behavior
-
-This rule is enforced in the shared Engineering Loop (all prompts), the build-slice prompt (detailed section), the security-gate prompt, and the generated CLAUDE.md.
-
-### Recommended Configurations
-
-**Solo developer (default):** Plan approval on, UI verification on (if frontend), everything else off. Build signoff and deploy approval are always on. Backup strategy auto-inferred from stack. Model: opus.
-
-**Team / enterprise:** All oversight on — every phase gets human review, every UI change gets screenshot approval. Backup warnings visible in deploy approval. Model: opus.
-
-**Rapid prototyping:** Plan approval off, slice review off, UI verification off. You still get mandatory build signoff and deploy approval. Backup still inferred — even fast prototypes need a restore plan. Model: sonnet for speed.
-
-## How it works
-
-The full AI workflow automation pipeline:
-
-```
-AI Assistant
-     │
-     ▼
-Architecture + Oversight Config + Backup Inference
-     │
-     ▼
-Planning (vertical slices) ─── [planApproval? → STOP]
-     │
-     ▼
-Build (evidence-gated slices) ─── [sliceReview? → STOP after each slice]
-     │  ← [uiVerification? → STOP for UI screenshot review]
-     │  ← Quality Audit (cadence: every ~3 slices)
-     │  ← Code Review (cross-slice consistency)
-     ▼
-BUILD SIGNOFF [MANDATORY] ─── "Does the product actually work?"
-     │
-     ▼
-E2E Testing (Playwright) ─── [if UI slices + Playwright: MANDATORY]
-     │
-     ▼
-Security Gate (SAST + OWASP) ─── [securitySignoff? → STOP]
-     │
-     ▼
-Whitebox Audit (exploitability analysis)
-     │
-     ▼
-Active Verification (gate-enforced)
-     │
-     ▼
-[Shake & Break] (optional — runtime adversarial testing in sandbox)
-     │
-     ▼
-Release Audit (code review + pre-publish checks)
-     │
-     ▼
-DEPLOY APPROVAL [MANDATORY] ─── "Ready to ship?" + backup status
-     │  🛑 Blocks deployment if stateful app has no backup configured
-     ▼
-Deployment (configs + backup/restore/verify scripts)
-     │
-     ├──→ Security Re-Entry ──→ Security Gate (re-scan after changes)
-     │    (invalidates prior approvals, forces full security cycle)
-     ▼
-Complete
-     │
-     └──→ Security Re-Entry ──→ Security Gate (post-release audit)
-```
-
-**Security-Only Mode:** For existing repos that just need security scanning, skip the build phase entirely: `init → set_architecture → security`. No slices, no build signoff — findings are stored at project level.
-
-**Post-Deploy / Post-Complete Re-Entry:** After deployment or completion, transition back to security for re-scans. All prior approvals (deploy approval, adversarial review, SAST timestamps) are automatically invalidated — the full security cycle must be re-satisfied before deploying again.
-
-For multi-phase projects (e.g. Phase 0: Spikes, Phase 1: MVP, Phase 2: Scale), this loop repeats per phase automatically.
-
-```
-Phase 0: Plan → Build → BUILD SIGNOFF → E2E Testing → Security → Whitebox → [Shake & Break] → Release Audit → DEPLOY APPROVAL (+ backup check) → Deploy → complete_phase
-Phase 1: Plan → Build → BUILD SIGNOFF → E2E Testing → Security → Whitebox → [Shake & Break] → Release Audit → DEPLOY APPROVAL (+ backup check) → Deploy → complete_phase
-...
-```
-
-1. **Onboarding**: Capture or co-develop the AI software architecture. Detect database and frontend tech. Automatically infer backup strategy from tech stack — databases and uploads get mandatory backup, hosting determines offsite provider. Describe UI via text, upload wireframes/mockups/screenshots, or let AI generate a design concept. Set up companion MCP servers via the MCP protocol. If the architecture defines phases, they get extracted automatically.
-2. **Planning**: Break the architecture into ordered vertical slices, each a deployable feature unit with acceptance criteria. Three slice types: `feature` (default), `integration` (library/API adapters with TDD), `infrastructure` (CI, auth, monitoring).
-3. **Build Loop**: Evidence-gated slices: RED (write tests) → GREEN (minimal implementation, requires passing tests) → REFACTOR (clean up) → SAST (security scan required) → DONE (requires passing tests). Frontend slices with `hasUI: true` get visual verification via Playwright between GREEN and REFACTOR — when `uiVerification` is on (default for frontend projects), the human reviews screenshots before proceeding. Configurable review checkpoints (`oversight.sliceReview`: `off`, `all`, `ui-only`) pause after slices for human approval. Domain logic triggers a WebSearch step before tests to verify facts (tax rates, regulations, standards). Quality audits run every ~5-10 commits to catch TODOs, debug artifacts, hardcoded secrets, and test coverage gaps. **Code review** checks cross-slice consistency before build signoff. **Mandatory build signoff** after all slices are done — you verify the product works before spending tokens on audit and security. **Structured build log** tracks every tool run with log levels, duration, status, run correlation, and secret redaction — queryable by phase, slice, level, time range, or errors.
-4. **Security Gate**: Full SAST scan (static code analysis via Semgrep + Bandit), dependency scanning (`npm audit`/`pip-audit`), OWASP Top 10 manual review. Acts as an AI code review tool and AI code scanner for your entire codebase. Fix all critical/high findings.
-5. **Whitebox Audit**: Analyzes whether SAST findings are actually exploitable — checks reachable code paths, missing guards, trust boundaries, prompt-only enforcement. Blocking findings prevent deployment (enforced in code, not just prompts). **30 deterministic probes** detect hardcoded secrets, SQL/command/NoSQL injection, XSS, insecure deserialization, eval with user input, SSRF, path traversal, mass assignment (including spread/Object.assign), open redirects, insecure crypto, cookie security, CORS misconfiguration, CSRF, JWT without expiry, file upload without limits, PII in logs, ORM raw queries, destructive migrations, secrets in Dockerfiles, unpinned base images, missing auth/rate limiting/input validation — each with context-aware suppression to reduce false positives. **Dependency scanning** via `npm audit` and `pip-audit` with automatic severity mapping. **Evidence-based adversarial review** across 25 domains (business logic, auth bypasses, race conditions, IDOR/ownership, XSS, deserialization, cookie/CORS security, deployment config, backup security, tenant isolation, session/JWT security, password reset flows, file upload, webhook security, cache-control, DB connection security, soft delete access, internal endpoint exposure): high/critical findings require confidence level and file:line evidence. Hypotheses are auto-downgraded to medium. Confidence stats track evidence quality across rounds.
-6. **Active Verification** (gate-enforced): Runtime gate tests that prove workflow invariants hold — state transitions require evidence, deployment gates block correctly, state survives round-trips. Deployment is blocked without a passing active verification.
-6b. **Shake & Break** (optional): Active runtime adversarial testing. Creates an isolated sandbox (git worktree + generated .env with neutralized external services + ephemeral port + optional Docker DB). Claude starts the app and sends real HTTP requests across 8 categories: auth/IDOR, race conditions, state manipulation, business logic, injection, token/session, file upload, webhook security. Findings are `evidence-backed` with actual request/response proof. Requires adversarial review completion. ANSI-red terminal warning before testing. SQLite fallback available when Docker is unavailable (with confidence downgrade for race conditions and injection tests).
-7. **Release Audit**: Code review pass (cross-file consistency, API coherence) + pre-publish verification — README completeness, temp file cleanup, aggregated SAST/quality findings, build/test pass, .gitignore coverage. Critical findings in the release audit block deployment (enforced in code).
-8. **Deployment**: **Mandatory deploy approval** before generating configs. Stack-specific Dockerfile, docker-compose, Caddyfile, backup/restore/verify scripts, backup strategy docs, hardening guides. **Artifact security validation** checks every generated file (Dockerfile non-root/multi-stage/no secrets copy, docker-compose security_opt/cap_drop, Caddyfile security headers/CORS/Permissions-Policy, backup script credentials/encryption, body parser size limits, source map exclusion). Stateful apps are blocked from deployment if no backup is configured. Stack-specific launch checklist with cookie security, CORS, backup encryption, and Hetzner-specific items. **Automated Hetzner Cloud deployment**: auto-sizing (cx22/cx32 based on stack, 20 TB traffic included), cloud-init with production hardening (Docker log rotation, kernel sysctl, swap, logwatch, fail2ban, unattended-upgrades), 3-layer backup (server snapshots + app backup + offsite replication to Storage Box or Object Storage), and deployment (rsync + docker compose) — all executed by Claude. The VPS standard config is portable to any Ubuntu provider. See [`docs/HETZNER-DEPLOYMENT.md`](docs/HETZNER-DEPLOYMENT.md).
-
-## Client Configuration
-
-Works with Claude Code, Cursor AI, and any MCP-compatible AI coding assistant:
-
-### Claude Code (CLI)
-
+**Claude Code (CLI)**
 ```bash
 claude mcp add architect-to-product -- npx architect-to-product
 ```
 
-### Claude Desktop
-
-Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows):
-
+**Claude Desktop** — Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows):
 ```json
 {
   "mcpServers": {
@@ -446,10 +173,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
 }
 ```
 
-### Cursor AI
-
-Add to `.cursor/mcp.json` in your project root:
-
+**Cursor** — Add to `.cursor/mcp.json`:
 ```json
 {
   "mcpServers": {
@@ -461,10 +185,7 @@ Add to `.cursor/mcp.json` in your project root:
 }
 ```
 
-### VS Code
-
-Add to `.vscode/mcp.json`:
-
+**VS Code** — Add to `.vscode/mcp.json`:
 ```json
 {
   "servers": {
@@ -476,182 +197,173 @@ Add to `.vscode/mcp.json`:
 }
 ```
 
-## MCP Tools (27)
+---
 
-| Tool | Phase | Description |
-|------|-------|-------------|
-| `a2p_init_project` | 0 | Scaffold project with CLAUDE.md, hooks, agents, state |
-| `a2p_set_architecture` | 0 | Parse architecture, detect DB/frontend, extract phases, configure oversight, capture UI design |
-| `a2p_setup_companions` | 0 | Register companion MCP servers |
-| `a2p_create_build_plan` | 1 | Architecture → ordered vertical slices (supports `append` for multi-phase) |
-| `a2p_add_slice` | 1,2 | Insert a single slice mid-project (e.g. integration discovered during build) |
-| `a2p_set_phase` | * | Transition to a new workflow phase (enforces all gates: E2E, build signoff, quality audit, etc.) |
-| `a2p_complete_phase` | 7 | Complete current product phase, advance to next (multi-phase projects) |
-| `a2p_get_state` | * | Read current project state (includes phase info) |
-| `a2p_update_slice` | 2 | Update slice status with review checkpoints and slice summaries |
-| `a2p_run_tests` | 2 | Execute test command, parse results (pytest/vitest/jest/go/flutter/dart/xctest/gradle) |
-| `a2p_run_quality` | 2.5 | Code quality analysis — dead code, redundancy, coupling metrics |
-| `a2p_run_e2e` | 2.6 | Record Playwright E2E test results |
-| `a2p_run_sast` | 2,3 | Static code analysis with Semgrep/Bandit, deduplicated findings |
-| `a2p_record_finding` | 3 | Manually record a security finding |
-| `a2p_run_audit` | 2,6 | Quality audit (dev hygiene) or release audit (pre-publish). Critical release findings block deployment |
-| `a2p_run_whitebox_audit` | 4 | Whitebox security audit — exploitability analysis of SAST findings (reachable paths, guards, trust boundaries). Blocking findings prevent deployment |
-| `a2p_run_active_verification` | 5 | Active verification — runtime gate tests (workflow gates, state recovery, deployment gates) |
-| `a2p_build_signoff` | 2 | Confirm build works (mandatory before security phase, code-enforced) |
-| `a2p_deploy_approval` | 7 | Approve deployment (mandatory before generating configs, code-enforced) |
-| `a2p_plan_infrastructure` | 7 | Plan server infrastructure (sizing, security, cloud-init, provisioning commands) for Hetzner Cloud |
-| `a2p_record_server` | 7 | Record provisioned server details in project state |
-| `a2p_deploy_to_server` | 7 | Generate rsync/ssh/docker deployment commands for a provisioned server |
-| `a2p_generate_deployment` | 7 | Stack-specific deployment guidance |
-| `a2p_shake_break_setup` | 5 | Set up isolated sandbox for runtime adversarial testing (worktree, safe .env, port, DB) |
-| `a2p_shake_break_teardown` | 5 | Tear down sandbox, auto-calculate finding count, record results |
-| `a2p_get_build_log` | * | Query structured build log (filter by phase, slice, level, run, time range, errors) |
-| `a2p_get_checklist` | * | Pre/post-deployment verification checklist |
-
-## Prompts (9)
+## Prompts
 
 MCP prompts are invoked with `/` in Claude Code:
 
 | Command | What it does |
-|---------|-------------|
+|---|---|
 | `/a2p` | Start onboarding — define architecture, UI design, tech stack, oversight config, companions |
 | `/a2p_planning` | Break architecture into ordered vertical slices |
 | `/a2p_build_slice` | Build the current slice with TDD (RED → GREEN → REFACTOR → SAST) + mandatory build signoff |
 | `/a2p_refactor` | Code quality tool — analyze codebase for dead code, redundancy, coupling |
 | `/a2p_e2e_testing` | AI testing tool — run visual E2E tests with Playwright |
 | `/a2p_security_gate` | Full SAST scan + OWASP Top 10 review |
-| `/a2p_whitebox` | Whitebox security audit + active verification — exploitability analysis + runtime gate tests |
-| `/a2p_audit` | Quality audit (dev hygiene every ~5-10 commits) or release audit (pre-publish verification) |
-| `/a2p_deploy` | Generate deployment configs and launch checklist + mandatory deploy approval |
+| `/a2p_whitebox` | Whitebox security audit + active verification |
+| `/a2p_audit` | Quality audit (dev hygiene) or release audit (pre-publish) |
+| `/a2p_deploy` | Generate deployment configs and launch checklist |
 
-### When to use which prompt
+---
 
-You don't have to run the full pipeline. Each prompt works standalone — pick what you need:
+## Documentation
 
-**Full project from scratch:**
-`/a2p` → `/a2p_planning` → `/a2p_build_slice` (repeat per slice) → `/a2p_audit` (quality) → `/a2p_e2e_testing` (if UI) → `/a2p_security_gate` → `/a2p_whitebox` → [Shake & Break optional] → `/a2p_audit` (release) → `/a2p_deploy`
+- [Workflow and lifecycle](docs/WORKFLOW.md) — state machine, gates, oversight, re-entry, multi-phase
+- [Security model](docs/SECURITY.md) — SAST, whitebox, Shake & Break, security coverage, findings
+- [Reference](docs/REFERENCE.md) — tools, prompts, stacks, companions, model preference
+- [Deployment (Hetzner / VPS)](docs/HETZNER-DEPLOYMENT.md) — Docker VPS, Hetzner Cloud, 3-layer backup
+- [Validation](docs/validation/) — claim verification, test evidence, reality checks
 
-**MVP built with vibe coding, now make it production-ready:**
-- `/a2p` → set architecture → transition directly to security (no slices needed)
-- `/a2p_security_gate` — find the vulnerabilities that vibe coding missed
-- `/a2p_whitebox` — verify which findings are actually exploitable vs. noise
-- `/a2p_refactor` — clean up the spaghetti, remove dead code
-- `/a2p_deploy` — generate Dockerfile, docker-compose, Caddyfile instead of guessing
+<details>
+<summary>MCP Tools reference (27 tools)</summary>
 
-**Already deployed, need a security re-scan:**
-- Transition back to security from deployment or complete phase — prior approvals are automatically invalidated
-- `/a2p_security_gate` → `/a2p_whitebox` → full security cycle before re-deploying
+| Tool | Phase | Description |
+|---|---|---|
+| `a2p_init_project` | 0 | Scaffold project with CLAUDE.md, hooks, agents, state |
+| `a2p_set_architecture` | 0 | Parse architecture, detect DB/frontend, extract phases, configure oversight, capture UI design |
+| `a2p_setup_companions` | 0 | Register companion MCP servers |
+| `a2p_create_build_plan` | 1 | Architecture → ordered vertical slices (supports append for multi-phase) |
+| `a2p_add_slice` | 1,2 | Insert a single slice mid-project |
+| `a2p_set_phase` | * | Transition to a new workflow phase (enforces all gates) |
+| `a2p_complete_phase` | 7 | Complete current product phase, advance to next |
+| `a2p_get_state` | * | Read current project state |
+| `a2p_update_slice` | 2 | Update slice status with review checkpoints and summaries |
+| `a2p_run_tests` | 2 | Execute test command, parse results (pytest/vitest/jest/go/flutter/dart/xctest/gradle) |
+| `a2p_run_quality` | 2.5 | Code quality analysis — dead code, redundancy, coupling |
+| `a2p_run_e2e` | 2.6 | Record Playwright E2E test results |
+| `a2p_run_sast` | 2,3 | Static code analysis with Semgrep/Bandit, deduplicated findings |
+| `a2p_record_finding` | 3 | Manually record a security finding |
+| `a2p_run_audit` | 2,6 | Quality audit or release audit. Critical release findings block deployment |
+| `a2p_run_whitebox_audit` | 4 | Whitebox security audit — exploitability analysis of SAST findings |
+| `a2p_run_active_verification` | 5 | Active verification — runtime gate tests |
+| `a2p_build_signoff` | 2 | Confirm build works (mandatory before security phase) |
+| `a2p_deploy_approval` | 7 | Approve deployment (mandatory before generating configs) |
+| `a2p_plan_infrastructure` | 7 | Plan server infrastructure for Hetzner Cloud |
+| `a2p_record_server` | 7 | Record provisioned server details in project state |
+| `a2p_deploy_to_server` | 7 | Generate rsync/ssh/docker deployment commands |
+| `a2p_generate_deployment` | 7 | Stack-specific deployment guidance |
+| `a2p_shake_break_setup` | 5 | Set up isolated sandbox for runtime adversarial testing |
+| `a2p_shake_break_teardown` | 5 | Tear down sandbox, record results |
+| `a2p_get_build_log` | * | Query structured build log |
+| `a2p_get_checklist` | * | Pre/post-deployment verification checklist |
 
-**SAST reports too many findings, need to triage:**
-- `/a2p_whitebox` — whitebox audit confirms exploitability, active verification tests that gates hold
+</details>
 
-**Added features without tests, need confidence before shipping:**
-- `/a2p_audit` — catch TODOs, debug artifacts, hardcoded secrets, missing .gitignore entries, low test coverage
-- `/a2p_refactor` — identify dead code and coupling from the feature sprawl
-- `/a2p_e2e_testing` — visually verify nothing is broken
-- `/a2p_security_gate` — catch injection, auth holes, hardcoded secrets
+<details>
+<summary>Security coverage summary</summary>
 
-**Existing project, just need deployment:**
-- `/a2p_deploy` — stack-specific configs, backup/restore/verify scripts, offsite sync, hardening guide
+A2P layers multiple security mechanisms from deterministic pattern matching to LLM-guided code review to active runtime testing.
 
-**Built the MVP with slices, now entering Phase 2:**
-- `/a2p_planning` — create new slices for the next phase
-- `/a2p_build_slice` — TDD per slice as usual
+**Coverage by numbers:** 32 deterministic probes · 25 adversarial review domains · 8 runtime test categories · 2 active verification categories · deployment artifact validation · dependency scanning · pre/post-deployment checklists
 
-### Adding slices vs. re-planning
+**Mechanisms:**
+- **Probe** — Deterministic regex/AST pattern matching
+- **SAST** — Semgrep + Bandit static analysis
+- **Adversarial** — LLM-guided code review with confidence tracking and file:line evidence
+- **Shake & Break** — Runtime adversarial testing with real HTTP requests in an isolated sandbox
+- **Active Verification** — Runtime gate tests proving workflow invariants hold
 
-Two ways to add work during or after the build:
+**Domains covered:** SQL/command/NoSQL injection, XSS, path traversal, SSRF, insecure deserialization, auth middleware, IDOR, privilege escalation, mass assignment, hardcoded secrets, JWT, session fixation, CSRF, CORS, race conditions, business logic bypasses, file upload, webhook security, and more.
 
-**`a2p_add_slice`** — Insert a single slice mid-build. Use this when you realize something is missing while building. Example: during build you discover you need a rate-limiting middleware before the API endpoints. Add it as a slice, build it with TDD, then continue. Build signoff is automatically invalidated when slices change.
+→ Full security coverage matrix: [docs/SECURITY.md](docs/SECURITY.md)
 
-**`/a2p_planning`** — Plan a whole new set of slices. Use this for the next product phase (Phase 0 done → plan Phase 1) or when you need a full re-plan. Uses `append: true` to add slices to the existing plan without losing completed work.
+</details>
 
-| Situation | Use |
+<details>
+<summary>Companion MCP servers</summary>
+
+A2P auto-configures companion MCP servers based on your tech stack.
+
+**Core (always installed)**
+
+| Companion | What it adds |
 |---|---|
-| "We forgot to add input validation" | `a2p_add_slice` — one slice, insert and build |
-| "Phase 0 is done, start Phase 1" | `/a2p_planning` — plan all Phase 1 slices |
-| "I want to add a webhook integration" | `a2p_add_slice` — one integration slice |
-| "The architecture changed significantly" | `/a2p_planning` — re-plan remaining work |
-| "Existing repo, I want to add a feature" | `/a2p` → `/a2p_planning` → `/a2p_build_slice` |
+| `codebase-memory-mcp` | Code graph intelligence — up to 100x fewer exploration tokens |
+| `mcp-server-git` | Git history, commits, diffs |
+| `@modelcontextprotocol/server-filesystem` | File operations |
+| `@modelcontextprotocol/server-sequential-thinking` | Step-by-step reasoning |
 
-**Adding a feature to an existing project:** If you have a repo that wasn't built with a2p, you can still use it. Run `/a2p` to onboard the existing codebase, then `/a2p_planning` to create slices for the new feature. A2p detects existing code via codebase-memory and only plans slices for what's missing — it won't rebuild what's already there. The new feature goes through the full pipeline: TDD, SAST, security gate, and deployment.
-
-## Supported Stacks
-
-| Category | Technologies |
-|----------|-------------|
-| **Languages** | Python, TypeScript/Node.js, Go, Rust, Java/Kotlin, Ruby, PHP, C#/.NET, Dart/Flutter, Swift |
-| **Databases** | SQLite, PostgreSQL, MySQL/MariaDB, MongoDB, Redis |
-| **Hosting** | Hetzner, DigitalOcean, AWS, Fly.io, Railway, Vercel, Cloudflare, Render, any VPS |
-
-## Supported Deploy Targets
-
-| Target | What A2P generates |
-|--------|-------------------|
-| **Docker VPS** (Hetzner, DigitalOcean, any VPS) | File generation guidance for Dockerfile, docker-compose.prod.yml, Caddyfile, backup/restore/verify scripts, BACKUP.md, DEPLOYMENT.md. Security hardening checklist. Stack-specific recommendations. **Hetzner Cloud: automated provisioning** — `a2p_plan_infrastructure` auto-selects server type based on tech stack (cx22 4GB ~4 EUR/mo or cx32 8GB ~7 EUR/mo, 20 TB traffic included), generates cloud-init with production hardening (Docker log rotation, kernel sysctl, swap, logwatch, fail2ban, unattended-upgrades without auto-reboot), firewall rules, and provisioning commands. `a2p_generate_deployment` adds 3-layer backup strategy (server snapshots + app backup + offsite via Storage Box/Object Storage) and Hetzner storage guidance. `a2p_deploy_to_server` generates rsync/docker deployment commands. **Portable:** The cloud-init, Docker hardening, sysctl, swap, backup scripts, and security checklist work on any Ubuntu VPS — only the cloud firewall API, snapshot model, and storage products are Hetzner-specific. See [`docs/HETZNER-DEPLOYMENT.md`](docs/HETZNER-DEPLOYMENT.md). |
-| **Vercel** | Recommendations (Edge Functions, env vars, preview deploys). Checklist items (project linked, env vars set, preview tested). |
-| **Cloudflare** (Pages/Workers) | Recommendations (wrangler.toml bindings, WAF, CDN). Checklist items (NS records, SSL Full Strict, WAF rules). |
-| **Railway** | Recommendations (railway up, managed DB add-ons). Checklist items (services configured, env vars, custom domain). |
-| **Fly.io** | Recommendations (fly.toml, Volumes, TLS). Checklist items (app created, secrets set, TLS cert). |
-| **Render** | Recommendations (render.yaml Blueprint, Private Services). Checklist items (Blueprint deployed, health check, auto-deploy). |
-
-| **Mobile** (Flutter, React Native) | Recommendations only: build commands, TestFlight/Play Store distribution, multi-target coordination (backend first, then mobile). No generated build scripts — mobile toolchains are project-provided. |
-
-Docker VPS targets get full file generation guidance (Dockerfile, compose, Caddy, backup scripts). PaaS targets (Vercel, Railway, Cloudflare, Fly.io, Render) get stack-specific recommendations and deployment checklists — Claude generates the platform-specific config files based on these recommendations. Mobile targets get deployment recommendations and checklists (code signing, release hardening, store submission) but no generated build scripts — A2P orchestrates, mobile toolchains (Xcode, Android Studio, Flutter SDK) are project-provided.
-
-## Companion MCP Servers
-
-a2p auto-configures companion MCP servers based on your tech stack. Each companion is integration-tested against its real server to verify tool availability. These MCP tools extend your AI development tool with specialized capabilities.
-
-### Core (always installed)
-
-| Companion | What it adds | Verified Tools |
-|-----------|-------------|----------------|
-| [codebase-memory-mcp](https://github.com/DeusData/codebase-memory-mcp) | Code graph intelligence — up to 100x fewer exploration tokens vs. raw file scanning | 11 tools: `index_repository`, `search_graph`, `search_code`, `trace_call_path`, ... |
-| [mcp-server-git](https://github.com/modelcontextprotocol/servers) | Git history, commits, diffs | `git_log`, `git_diff`, `git_commit`, `git_status`, ... |
-| [@modelcontextprotocol/server-filesystem](https://github.com/modelcontextprotocol/servers) | File operations | 13 tools: `write_file`, `list_directory`, `read_file`, `search_files`, ... |
-| [@modelcontextprotocol/server-sequential-thinking](https://github.com/modelcontextprotocol/servers) | Step-by-step reasoning for complex decisions | 1 tool: `sequentialthinking` |
-
-### Conditional (installed based on stack)
-
-| Companion | When | Key Tools |
-|-----------|------|-----------|
-| [Playwright MCP](https://github.com/microsoft/playwright-mcp) | Frontend projects | `browser_navigate`, `browser_click`, `browser_fill_form`, `browser_take_screenshot`, ... |
-| [GitHub MCP](https://github.com/github/github-mcp-server) | GitHub repos | `list_issues`, `create_pull_request`, `search_code`, `get_file_contents`, ... |
-| [Supabase MCP](https://github.com/supabase-community/supabase-mcp) | Supabase projects | `execute_sql`, `list_tables`, `apply_migration`, `deploy_edge_function`, ... |
-| [@stripe/mcp](https://github.com/stripe/agent-toolkit) | Payment/billing | `create_product`, `create_price`, `create_payment_link`, `create_customer`, ... |
-| [@cloudflare/mcp-server-cloudflare](https://github.com/cloudflare/mcp-server-cloudflare) | Cloudflare hosting | `worker_deploy`, `kv_put`, `d1_query`, `r2_put_object`, `zones_list`, `secret_put`, ... |
-| [@sentry/mcp-server](https://github.com/getsentry/sentry-mcp-server) | Error tracking | `list_issues`, `get_issue_details`, `find_projects`, `analyze_issue_with_seer`, ... |
-| [@upstash/mcp-server](https://github.com/upstash/mcp-server) | Serverless Redis/Queue | `redis_database_run_redis_commands`, `qstash_publish_message`, `workflow_logs_list`, ... |
-| [Semgrep MCP](https://semgrep.dev/) | Semgrep Pro users | `semgrep_scan`, `security_check`, `get_abstract_syntax_tree` (OSS uses CLI fallback) |
-| [Atlassian MCP](https://developer.atlassian.com/) | Jira/Confluence | Remote MCP via OAuth |
-
-### Database MCPs
+**Conditional (installed based on stack)**
 
 | Companion | When |
-|-----------|------|
-| [@modelcontextprotocol/server-postgres](https://github.com/modelcontextprotocol/servers) | PostgreSQL |
-| [@mongodb-js/mongodb-mcp-server](https://github.com/mongodb-js/mongodb-mcp-server) | MongoDB |
-| [mcp-server-mysql](https://github.com/benborla/mcp-server-mysql) | MySQL/MariaDB |
+|---|---|
+| Playwright MCP | Frontend projects |
+| GitHub MCP | GitHub repos |
+| Supabase MCP | Supabase projects |
+| `@stripe/mcp` | Payment/billing |
+| `@cloudflare/mcp-server-cloudflare` | Cloudflare hosting |
+| `@sentry/mcp-server` | Error tracking |
+| `@upstash/mcp-server` | Serverless Redis/Queue |
+| Semgrep MCP | Semgrep Pro users |
+| Database MCPs | PostgreSQL, MongoDB, MySQL |
 
-### CLI-only (no MCP server, uses CLI commands)
+> **Security note:** Companion MCPs are third-party software with access to your project files and databases. Review the source repo and generated `.mcp.json` before enabling any companion.
 
-| Tool | When |
-|------|------|
-| Vercel CLI (`vercel`) | Vercel / Next.js hosting |
-| Clerk | Auth integration |
-| Resend | Email integration |
+</details>
 
-> **Security note:** Companion MCPs are third-party software with access to your project files and databases. Before enabling a companion: check the source repo (author, stars, open issues), review the `.mcp.json` that gets generated, and confirm you trust the server. Official packages (`@modelcontextprotocol/*`, `@playwright/mcp`, `mcp.supabase.com`) are maintained by their respective organizations. Community packages are not audited by us — use at your own discretion.
+<details>
+<summary>Supported stacks and deploy targets</summary>
 
-## How is this different?
+**Languages:** Python, TypeScript/Node.js, Go, Rust, Java/Kotlin, Ruby, PHP, C#/.NET, Dart/Flutter, Swift
 
-- **vs. AI coding assistants alone (Claude Code, Cursor AI, Copilot)** — They generate code. a2p adds the TDD, security scanning, and deployment that AI coding assistants skip.
-- **vs. create-\*-app scaffolders** — Static templates vs. dynamic architecture-driven AI app builder with TDD and security gates.
-- **vs. manual deployment setup** — Weeks of DevOps vs. generated configs, backup/restore scripts, and verification on day one.
-- **vs. vibe coding without a2p** — You ship fast but accumulate security debt, untested features, and manual deployment. a2p is the safety net that makes vibe coding production-viable.
+**Databases:** SQLite, PostgreSQL, MySQL/MariaDB, MongoDB, Redis
 
-Works alongside autonomous AI agents — a2p adds the engineering rigor (TDD, SAST, deployment) that autonomous AI coding needs.
+**Hosting:** Hetzner, DigitalOcean, AWS, Fly.io, Railway, Vercel, Cloudflare, Render, any VPS
+
+**Deploy targets:**
+
+| Target | What A2P generates |
+|---|---|
+| Docker VPS (Hetzner, DigitalOcean, any Ubuntu VPS) | Dockerfile, docker-compose, Caddyfile, backup/restore/verify scripts, BACKUP.md, DEPLOYMENT.md, hardening checklist. Hetzner: automated provisioning, cloud-init, firewall, 3-layer backup |
+| Vercel | Recommendations + checklist |
+| Cloudflare Pages/Workers | Recommendations + checklist |
+| Railway | Recommendations + checklist |
+| Fly.io | Recommendations + checklist |
+| Render | Recommendations + checklist |
+| Mobile (Flutter, React Native) | Recommendations and checklists only — mobile toolchains are project-provided |
+
+</details>
+
+---
+
+## Upgrading
+
+### 1.0.1 → 1.0.2
+
+```bash
+rm -rf ~/.npm/_npx                       # clear npx cache
+npm view architect-to-product version    # verify 1.0.2 on registry
+```
+
+If you previously installed globally:
+```bash
+npm uninstall -g architect-to-product
+```
+
+**What changed:**
+- README restructured: concise overview + deep-dive docs (WORKFLOW.md, SECURITY.md, REFERENCE.md)
+- Tool count corrected: 27 (was 28 — duplicate `a2p_run_quality` row removed)
+- Test count updated: 1084
+- Added upgrade notes section
+
+### 1.0.0 → 1.0.1
+
+**What changed:**
+- Fixed duplicate events in audit, SAST, whitebox, and active verification (same event logged twice per run)
+- `pendingSecurityDecision` is now enforced as a hard deployment gate (was prompt-only before)
+
+---
 
 ## Development
 
@@ -660,19 +372,12 @@ git clone https://github.com/BernhardJackiewicz/architect-to-product.git
 cd architect-to-product
 npm install
 npm run typecheck   # Type checking
-npm test            # 1073 tests
+npm test            # 1084 tests
 npm run build       # Build
 npm run dev         # Dev mode
 ```
 
-## Validation
-
-Full validation results: [`docs/validation/`](docs/validation/)
-
-- Phase A/B: Workflow, state management, and gate enforcement validation (96 QuickBill scenarios)
-- Phase C: Real UI tests via Playwright against a running Next.js app (8 browser tests, all pass)
-- Phase D/E: Deploy target reality check + companion tool count verification
-- README claim verification with gap analysis and corrections
+---
 
 ## License
 

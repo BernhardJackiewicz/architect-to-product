@@ -191,20 +191,12 @@ export function handleRunWhiteboxAudit(input: RunWhiteboxAuditInput): string {
     blocking_count: findings.filter((f) => f.blocking).length,
   };
 
-  sm.addWhiteboxResult(result);
-
   const durationMs = Date.now() - whiteboxStart;
-  sm.log(
-    result.blocking_count > 0 ? "error" : findings.length > 0 ? "warn" : "info",
-    "whitebox_audit",
-    `[${input.mode}] ${resultId}: ${findings.length} findings (blocking: ${result.blocking_count})`,
-    {
-      status: result.blocking_count > 0 ? "failure" : findings.length > 0 ? "warning" : "success",
-      durationMs,
-      runId: generateRunId(),
-      metadata: { findingCount: findings.length, toolName: "whitebox", candidatesEvaluated: unsuppressed.length, blockingCount: result.blocking_count },
-    },
-  );
+  sm.addWhiteboxResult(result, {
+    durationMs,
+    runId: generateRunId(),
+    metadata: { findingCount: findings.length, toolName: "whitebox", candidatesEvaluated: unsuppressed.length, blockingCount: result.blocking_count },
+  });
 
   return JSON.stringify({
     success: true,

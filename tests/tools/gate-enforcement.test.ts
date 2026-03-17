@@ -265,6 +265,7 @@ describe("Adversarial Review: round tracking", () => {
     sm.completeAdversarialReview(0, "r1");
     sm.completeAdversarialReview(0, "r2");
     sm.completeAdversarialReview(0, "r3");
+    sm.clearPendingSecurityDecision();
     addReleaseAudit(sm);
     addPassingVerification(sm);
     const state = sm.setPhase("deployment");

@@ -292,21 +292,13 @@ export function handleRunAudit(input: RunAuditInput): string {
     },
   };
 
-  sm.addAuditResult(result);
-
   const durationMs = Date.now() - auditStart;
   const runId = generateRunId();
-  sm.log(
-    summary.critical > 0 ? "error" : summary.high > 0 ? "warn" : "info",
-    "audit_run",
-    `[${input.mode}] ${auditId}: ${findings.length} findings`,
-    {
-      status: summary.critical > 0 ? "failure" : summary.high > 0 ? "warning" : "success",
-      durationMs,
-      runId,
-      metadata: { mode: input.mode, findingCount: findings.length, toolName: "audit" },
-    },
-  );
+  sm.addAuditResult(result, {
+    durationMs,
+    runId,
+    metadata: { mode: input.mode, findingCount: findings.length, toolName: "audit" },
+  });
 
   // Clarify when build/test commands are not configured
   const buildNote = buildPassed === null && input.runBuild !== false

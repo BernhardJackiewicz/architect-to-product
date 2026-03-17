@@ -563,4 +563,105 @@ describe("Enforcement Guards", () => {
       expect(result.note).toBe("looks good");
     });
   });
+
+  // === SAST Duplicate Event Prevention ===
+
+  describe("sast duplicate event prevention", () => {
+    it("markSastRun produces exactly 1 sast_run event with extras", () => {
+      const sm = initWithStateManager(dir);
+      forcePhase(dir, "building");
+
+      const beforeCount = sm.read().buildHistory.filter((e: any) => e.action === "sast_run").length;
+      sm.markSastRun("s1", {
+        durationMs: 123,
+        runId: "run-test1234",
+        metadata: { findingCount: 5, toolName: "sast" },
+        outputSummary: "SAST: 5 findings",
+      });
+
+      const state = sm.read();
+      const afterEvents = state.buildHistory.filter((e: any) => e.action === "sast_run");
+      expect(afterEvents.length - beforeCount).toBe(1);
+      const lastEvent = afterEvents[afterEvents.length - 1];
+      expect(lastEvent.durationMs).toBe(123);
+      expect(lastEvent.runId).toBe("run-test1234");
+      expect(lastEvent.metadata).toBeDefined();
+      expect(lastEvent.metadata.toolName).toBe("sast");
+    });
+
+    it("markFullSastRun produces exactly 1 sast_run event with extras", () => {
+      const sm = initWithStateManager(dir);
+      forcePhase(dir, "security");
+
+      const beforeCount = sm.read().buildHistory.filter((e: any) => e.action === "sast_run").length;
+      sm.markFullSastRun(3, {
+        durationMs: 456,
+        runId: "run-test5678",
+        metadata: { findingCount: 3, toolName: "sast" },
+        outputSummary: "SAST: 3 findings",
+      });
+
+      const state = sm.read();
+      const afterEvents = state.buildHistory.filter((e: any) => e.action === "sast_run");
+      expect(afterEvents.length - beforeCount).toBe(1);
+      const lastEvent = afterEvents[afterEvents.length - 1];
+      expect(lastEvent.durationMs).toBe(456);
+      expect(lastEvent.runId).toBe("run-test5678");
+      expect(lastEvent.metadata).toBeDefined();
+      expect(lastEvent.metadata.toolName).toBe("sast");
+    });
+  });
+
+  // === pendingSecurityDecision Enforcement ===
+
+  describe("pendingSecurityDecision deployment gate", () => {
+    it("blocks deployment when pendingSecurityDecision is set", () => {
+      const sm = initWithStateManager(dir, 1);
+      sm.setPhase("planning");
+      sm.setPhase("building");
+      walkSliceToStatus(sm, "s1", "done");
+      sm.setBuildSignoff();
+      addQualityAudit(sm);
+      sm.setPhase("security");
+      sm.markFullSastRun(0);
+      addPassingWhitebox(sm);
+      addReleaseAudit(sm);
+      addPassingVerification(sm);
+
+      // Set pendingSecurityDecision manually
+      forceField(dir, "pendingSecurityDecision", {
+        round: 1,
+        setAt: new Date().toISOString(),
+        recommendedAreas: [],
+        availableActions: ["focused-hardening", "full-round", "shake-break", "continue"],
+      });
+
+      expect(() => sm.setPhase("deployment")).toThrow("Security decision pending");
+    });
+
+    it("allows deployment after clearPendingSecurityDecision", () => {
+      const sm = initWithStateManager(dir, 1);
+      sm.setPhase("planning");
+      sm.setPhase("building");
+      walkSliceToStatus(sm, "s1", "done");
+      sm.setBuildSignoff();
+      addQualityAudit(sm);
+      sm.setPhase("security");
+      sm.markFullSastRun(0);
+      addPassingWhitebox(sm);
+      addReleaseAudit(sm);
+      addPassingVerification(sm);
+
+      // Set and then clear
+      forceField(dir, "pendingSecurityDecision", {
+        round: 1,
+        setAt: new Date().toISOString(),
+        recommendedAreas: [],
+        availableActions: ["focused-hardening", "full-round", "shake-break", "continue"],
+      });
+      sm.clearPendingSecurityDecision();
+
+      expect(() => sm.setPhase("deployment")).not.toThrow();
+    });
+  });
 });

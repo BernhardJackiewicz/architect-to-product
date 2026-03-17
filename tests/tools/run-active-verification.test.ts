@@ -234,3 +234,17 @@ describe("run-active-verification", () => {
     expect(() => sm.setPhase("deployment")).not.toThrow();
   });
 });
+
+describe("active verification duplicate event prevention", () => {
+  it("produces exactly 1 active_verification event per run (no duplicates)", () => {
+    initWithFindings(dir);
+    forcePhase(dir, "security");
+    handleRunActiveVerification({ projectPath: dir, round: 1 });
+
+    const state = new StateManager(dir).read();
+    const verifyEvents = state.buildHistory.filter((e: any) => e.action === "active_verification");
+    expect(verifyEvents.length).toBe(1);
+    expect(verifyEvents[0].metadata).toBeDefined();
+    expect(verifyEvents[0].metadata.toolName).toBe("active_verification");
+  });
+});
