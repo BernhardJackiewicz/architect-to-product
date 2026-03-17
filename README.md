@@ -22,7 +22,7 @@ Restart Claude Code, then type `/a2p` to start.
 
 ## What A2P is
 
-A2P is an AI engineering framework — not just an MCP tool bundle. It defines how AI-assisted software moves from architecture to production: vertical slice planning, evidence-gated TDD, security scanning, exploitability review, release audits, backup strategy, and deployment verification.
+A2P is an AI engineering framework. It defines how AI-assisted software moves from architecture to production: vertical slice planning, evidence-gated TDD, security scanning, exploitability review, release audits, backup strategy, and deployment verification.
 
 The MCP server is the interface. The engineering system is the product.
 
