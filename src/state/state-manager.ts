@@ -1,6 +1,7 @@
 import { readFileSync, writeFileSync, mkdirSync, existsSync, copyFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { ProjectStateSchema } from "./validators.js";
+import { WHITEBOX_CATEGORY_TO_DOMAINS } from "../tools/run-whitebox-audit.js";
 import type {
   ProjectState,
   Phase,
@@ -25,6 +26,9 @@ import type {
   SecurityReentryReason,
   ShakeBreakSession,
   ShakeBreakResult,
+  HardeningAreaId,
+  SecurityOverview,
+  SecurityOverviewCoverageEntry,
 } from "./types.js";
 import { pruneEvents, sanitizeOutput, truncatePreview } from "../utils/log-sanitizer.js";
 
@@ -128,6 +132,7 @@ export class StateManager {
       securityReentryReason: null,
       shakeBreakSession: null,
       shakeBreakResults: [],
+      securityOverview: null,
       createdAt: now,
       updatedAt: now,
     };
@@ -723,7 +728,7 @@ export class StateManager {
   }
 
   /** Confirm adversarial review completion — agent confirmed Phase 1b is done. Supports multiple rounds. */
-  completeAdversarialReview(findingsRecorded: number, note?: string): ProjectState {
+  completeAdversarialReview(findingsRecorded: number, note?: string, focusArea?: HardeningAreaId): ProjectState {
     const state = this.read();
     if (state.phase !== "security") {
       throw new Error("Adversarial review completion only allowed in security phase");
@@ -740,6 +745,7 @@ export class StateManager {
       completedAt: now,
       findingsRecorded,
       note: note ?? "",
+      ...(focusArea ? { focusArea } : {}),
     };
     state.adversarialReviewState = {
       completedAt: now,
@@ -748,6 +754,7 @@ export class StateManager {
       roundHistory: [...(prev?.roundHistory ?? []), roundEntry],
     };
     this.invalidateDeployApproval(state);
+    this.refreshSecurityOverview(state);
     this.addEvent(state, state.phase, null, "adversarial_review_completed",
       `Adversarial review round ${newRound} completed: ${findingsRecorded} finding(s) recorded (total: ${totalFindings})${note ? ` — ${note}` : ""}`,
       { level: "info", status: "success" });
@@ -936,6 +943,7 @@ export class StateManager {
     state.whiteboxResults.push(result);
     state.adversarialReviewState = null; // New whitebox run invalidates adversarial review (full reset)
     this.invalidateDeployApproval(state);
+    this.refreshSecurityOverview(state);
     this.addEvent(
       state,
       state.phase,
@@ -952,6 +960,7 @@ export class StateManager {
   addActiveVerificationResult(result: ActiveVerificationResult): ProjectState {
     const state = this.read();
     state.activeVerificationResults.push(result);
+    this.refreshSecurityOverview(state);
     this.addEvent(
       state,
       state.phase,
@@ -1042,11 +1051,100 @@ export class StateManager {
   addShakeBreakResult(result: ShakeBreakResult): ProjectState {
     const state = this.read();
     state.shakeBreakResults.push(result);
+    this.refreshSecurityOverview(state);
     this.addEvent(state, state.phase, null, "shake_break_teardown",
       `Shake & Break completed: ${result.categoriesTested.join(", ")} — ${result.findingsRecorded} finding(s) in ${result.durationMinutes}min`,
       { level: "info", status: result.findingsRecorded > 0 ? "warning" : "success" });
     this.write(state);
     return state;
+  }
+
+  /** Recompute the securityOverview read-model from raw state data */
+  private refreshSecurityOverview(state: ProjectState): void {
+    const allFindings: SASTFinding[] = [
+      ...state.slices.flatMap(s => s.sastFindings),
+      ...state.projectFindings,
+    ];
+
+    const roundHistory = state.adversarialReviewState?.roundHistory ?? [];
+    const focusHistory: HardeningAreaId[] = roundHistory
+      .filter((r): r is typeof r & { focusArea: HardeningAreaId } => !!r.focusArea)
+      .map(r => r.focusArea);
+
+    // Deduplicated areas explicitly hardened
+    const areasExplicitlyHardened = [...new Set(focusHistory)];
+
+    // All hardening area IDs
+    const ALL_AREAS: HardeningAreaId[] = [
+      "auth-session", "data-access", "business-logic", "input-output",
+      "api-surface", "external-integration", "infra-secrets", "vuln-chaining",
+    ];
+
+    // Count whitebox findings per hardening area via category mapping
+    const whiteboxDomainCounts = new Map<HardeningAreaId, number>();
+    for (const wbResult of state.whiteboxResults) {
+      for (const wbFinding of wbResult.findings) {
+        const mappedDomains = WHITEBOX_CATEGORY_TO_DOMAINS[wbFinding.category] ?? [];
+        for (const domain of mappedDomains) {
+          whiteboxDomainCounts.set(domain, (whiteboxDomainCounts.get(domain) ?? 0) + 1);
+        }
+      }
+    }
+
+    const coverageByArea: SecurityOverviewCoverageEntry[] = ALL_AREAS.map(areaId => {
+      const areaFindings = allFindings.filter(f => f.domains?.includes(areaId));
+      const wbCount = whiteboxDomainCounts.get(areaId) ?? 0;
+      const wasFocused = focusHistory.includes(areaId);
+      const totalFindingCount = areaFindings.length + wbCount;
+      const coverageEstimate = Math.min(100, totalFindingCount * 20 + (wasFocused ? 40 : 0));
+
+      // Find last hardened timestamp from round history
+      const lastRound = [...roundHistory].reverse().find(r => r.focusArea === areaId);
+
+      return {
+        id: areaId,
+        coverageEstimate,
+        findingCount: totalFindingCount,
+        lastHardenedAt: lastRound?.completedAt ?? null,
+      };
+    });
+
+    // Recommended: areas with lowest coverage, excluding fully covered
+    const recommended = coverageByArea
+      .filter(c => c.coverageEstimate < 80)
+      .sort((a, b) => a.coverageEstimate - b.coverageEstimate)
+      .slice(0, 5)
+      .map(c => c.id);
+
+    const lastWb = state.whiteboxResults.length > 0
+      ? state.whiteboxResults[state.whiteboxResults.length - 1].timestamp
+      : null;
+    const lastAv = state.activeVerificationResults.length > 0
+      ? state.activeVerificationResults[state.activeVerificationResults.length - 1].timestamp
+      : null;
+    const lastSb = state.shakeBreakResults.length > 0
+      ? state.shakeBreakResults[state.shakeBreakResults.length - 1].timestamp
+      : null;
+
+    // Last security activity = most recent timestamp among all security actions
+    const timestamps = [
+      state.adversarialReviewState?.completedAt,
+      lastWb, lastAv, lastSb,
+    ].filter((t): t is string => !!t);
+    const lastSecurityActivityAt = timestamps.length > 0
+      ? timestamps.sort().reverse()[0]
+      : null;
+
+    state.securityOverview = {
+      totalSecurityRounds: state.adversarialReviewState?.round ?? 0,
+      lastSecurityActivityAt,
+      lastWhiteboxAt: lastWb,
+      lastActiveVerificationAt: lastAv,
+      lastShakeBreakAt: lastSb,
+      areasExplicitlyHardened,
+      coverageByArea,
+      recommendedNextAreas: recommended,
+    };
   }
 
   private addEvent(

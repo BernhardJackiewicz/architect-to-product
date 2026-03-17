@@ -11,7 +11,20 @@ import type {
   SASTFinding,
   FindingSeverity,
   Slice,
+  HardeningAreaId,
 } from "../state/types.js";
+
+/** Map WhiteboxCategory to HardeningAreaId(s) for coverage tracking */
+export const WHITEBOX_CATEGORY_TO_DOMAINS: Record<WhiteboxCategory, HardeningAreaId[]> = {
+  InputOutputSafety: ["input-output"],
+  AuthAuthz: ["auth-session"],
+  TenantIsolation: ["data-access"],
+  Secrets: ["infra-secrets"],
+  FilesystemProcessCmd: ["external-integration"],
+  WorkflowGateEnforcement: ["business-logic"],
+  StateRecoverySafety: ["business-logic", "data-access"],
+  DeploymentArtifactSafety: ["infra-secrets"],
+};
 
 export const runWhiteboxAuditSchema = z.object({
   projectPath: z.string().describe("Absolute path to the project directory"),

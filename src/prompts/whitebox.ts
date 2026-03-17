@@ -101,6 +101,10 @@ Findings zu liefern.
   "hypothesis" (Verdacht ohne vollständige Code-Prüfung — wird bei high/critical auto-downgraded)
 - Setze \`evidence\`: File:Line-Referenz + was geprüft wurde und was fehlt
 - Melde via a2p_record_finding mit tool="adversarial-review", Datei + Zeile
+- Setze \`domains\` bei jedem a2p_record_finding mit den passenden Hardening-Bereichen:
+  auth-session, data-access, business-logic, input-output, api-surface,
+  external-integration, infra-secrets, vuln-chaining
+  Beispiel: domains=["auth-session","api-surface"] fuer ein IDOR-Finding auf einem API-Endpoint
 
 **Regeln:**
 - Fokus auf die TOP 5 wirkungsvollsten Schwachstellen
@@ -128,10 +132,16 @@ Nach Abschluss des adversarial Reviews: Rufe \`a2p_complete_adversarial_review\`
 **Ohne diesen Aufruf blockiert das Deployment-Gate.** Das ist ein code-enforced Gate, kein optionaler Schritt.
 
 **Nach Abschluss jeder Runde:**
-Sage dem User:
-"Adversarial Review Runde [N] abgeschlossen. [X] neue Findings in dieser Runde,
-[Y] Findings insgesamt ueber [N] Runden.
-Jede weitere Runde kann zusaetzliche Schwachstellen aufdecken. Noch eine Runde?"
+Zeige dem User den \`hint\` aus dem a2p_complete_adversarial_review Response WOERTLICH.
+Dieser enthaelt kontextabhaengige Empfehlungen und drei Modi:
+1. **Fokussiertes Hardening**: User waehlt einen Bereich (z.B. "auth-session") → naechste Runde
+   reviewt NUR die Domaenen dieses Bereichs → focusArea wird gesetzt → Coverage steigt
+2. **Volle Runde**: "alles" → wie bisher, alle 25 Domaenen → kein focusArea
+3. **Shake & Break**: Empfohlene S&B-Kategorien basierend auf empfohlenen Bereichen
+
+Bei fokussiertem Hardening: Uebergib den gewaehlten Bereich als focusArea an
+a2p_complete_adversarial_review am Ende der Runde.
+
 → Wenn ja: Wiederhole Phase 1b (previousFindings werden automatisch mitgegeben)
 → Wenn nein: Weiter zu Phase 2
 → Oder: Shake & Break fuer aktive Runtime-Tests verfuegbar.
