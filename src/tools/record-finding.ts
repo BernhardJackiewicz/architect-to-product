@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { requireProject, requirePhase } from "../utils/tool-helpers.js";
-import type { SASTFinding, FindingConfidence } from "../state/types.js";
+import { HardeningAreaIdSchema } from "../state/validators.js";
+import type { SASTFinding, FindingConfidence, HardeningAreaId } from "../state/types.js";
 
 export const recordFindingSchema = z.object({
   projectPath: z.string().describe("Absolute path to the project directory"),
@@ -17,6 +18,7 @@ export const recordFindingSchema = z.object({
   justification: z.string().optional().describe("Required when status is accepted, fixed, or false_positive — explain why this status is justified"),
   confidence: z.enum(["hypothesis", "evidence-backed", "hard-to-verify"]).optional().describe("Finding confidence level — REQUIRED for adversarial-review high/critical findings"),
   evidence: z.string().optional().describe("File:line reference proving what was checked — REQUIRED for adversarial-review high/critical findings"),
+  domains: z.array(HardeningAreaIdSchema).optional().describe("Security domains this finding belongs to (e.g. auth-session, data-access)"),
 });
 
 export type RecordFindingInput = z.infer<typeof recordFindingSchema>;
@@ -100,6 +102,7 @@ export function handleRecordFinding(input: RecordFindingInput): string {
     ...(input.justification ? { justification: input.justification } : {}),
     ...(input.confidence ? { confidence: input.confidence as FindingConfidence } : {}),
     ...(input.evidence ? { evidence: input.evidence } : {}),
+    ...(input.domains ? { domains: input.domains as HardeningAreaId[] } : {}),
   };
 
   sm.addSASTFinding(input.sliceId, finding);

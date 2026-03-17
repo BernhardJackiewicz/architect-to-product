@@ -2,11 +2,11 @@
 
 MCP server that turns AI-generated code into production-ready software with TDD, security scanning, and deployment automation. Up to 100 times fewer exploration tokens for claude code.
 
-**27 MCP tools** · **993 tests** · **Architecture → Plan → Build (evidence-gated) → Quality Audit (cadence) → Code Review → Signoff → E2E Testing → Security → Whitebox → Verify → [Shake & Break] → Release Audit → Deploy → Backup**
+**27 MCP tools** · **1022 tests** · **Architecture → Plan → Build (evidence-gated) → Quality Audit (cadence) → Code Review → Signoff → E2E Testing → Security → Whitebox → Verify → [Shake & Break] → Release Audit → Deploy → Backup**
 
 [![npm version](https://img.shields.io/npm/v/architect-to-product)](https://www.npmjs.com/package/architect-to-product)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Tests: 993 passing](https://img.shields.io/badge/tests-993%20passing-brightgreen)]()
+[![Tests: 1022 passing](https://img.shields.io/badge/tests-1022%20passing-brightgreen)]()
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue)]()
 
 ---

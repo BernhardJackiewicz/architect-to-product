@@ -3,6 +3,16 @@
  * All project state flows through these interfaces.
  */
 
+export type HardeningAreaId =
+  | "auth-session"
+  | "data-access"
+  | "business-logic"
+  | "input-output"
+  | "api-surface"
+  | "external-integration"
+  | "infra-secrets"
+  | "vuln-chaining";
+
 export type AuditMode = "quality" | "release";
 
 export interface AuditFinding {
@@ -155,6 +165,7 @@ export interface SASTFinding {
   justification?: string; // Required when status is accepted/fixed/false_positive
   confidence?: FindingConfidence; // Required for adversarial-review high/critical findings
   evidence?: string; // File:line reference proving what was checked — required for adversarial-review high/critical
+  domains?: HardeningAreaId[]; // Structural assignment to hardening areas
 }
 
 export interface QualityIssue {
@@ -352,6 +363,7 @@ export interface AdversarialReviewRound {
   completedAt: string;
   findingsRecorded: number;
   note: string;
+  focusArea?: HardeningAreaId;
 }
 
 export interface AdversarialReviewState {
@@ -359,6 +371,24 @@ export interface AdversarialReviewState {
   round: number;                // Current round (1, 2, 3, ...)
   totalFindingsRecorded: number; // Cumulative findings across all rounds
   roundHistory: AdversarialReviewRound[];
+}
+
+export interface SecurityOverviewCoverageEntry {
+  id: HardeningAreaId;
+  coverageEstimate: number;    // 0-100, heuristic
+  findingCount: number;
+  lastHardenedAt: string | null;
+}
+
+export interface SecurityOverview {
+  totalSecurityRounds: number;
+  lastSecurityActivityAt: string | null;
+  lastWhiteboxAt: string | null;
+  lastActiveVerificationAt: string | null;
+  lastShakeBreakAt: string | null;
+  areasExplicitlyHardened: HardeningAreaId[];
+  coverageByArea: SecurityOverviewCoverageEntry[];
+  recommendedNextAreas: HardeningAreaId[];
 }
 
 export type SecurityReentryReason = "security_only" | "post_deploy" | "post_complete";
@@ -426,6 +456,7 @@ export interface ProjectState {
   securityReentryReason: SecurityReentryReason | null;
   shakeBreakSession: ShakeBreakSession | null;
   shakeBreakResults: ShakeBreakResult[];
+  securityOverview: SecurityOverview | null;
   createdAt: string;
   updatedAt: string;
 }

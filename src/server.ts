@@ -218,6 +218,7 @@ export function createServer(): McpServer {
       justification: recordFindingSchema.shape.justification,
       confidence: recordFindingSchema.shape.confidence,
       evidence: recordFindingSchema.shape.evidence,
+      domains: recordFindingSchema.shape.domains,
     },
     wrapTool(handleRecordFinding as ToolHandler)
   );
@@ -321,6 +322,7 @@ export function createServer(): McpServer {
       projectPath: completeAdversarialReviewSchema.shape.projectPath,
       findingsRecorded: completeAdversarialReviewSchema.shape.findingsRecorded,
       note: completeAdversarialReviewSchema.shape.note,
+      focusArea: completeAdversarialReviewSchema.shape.focusArea,
     },
     wrapTool(handleCompleteAdversarialReview as ToolHandler)
   );

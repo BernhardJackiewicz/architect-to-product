@@ -303,7 +303,7 @@ describe("Adversarial Review: tool output", () => {
     expect(result.previousFindings[0].title).toBe("Rate Limit Memory Leak");
     expect(result.previousFindings[0].file).toBe("src/rate-limit.ts");
     expect(result.hint).toContain("Runde 2");
-    expect(result.hint).toContain("Noch eine Runde");
+    expect(result.hint).toContain("Optionen");
   });
 
   it("round 3 output contains ALL previousFindings from rounds 1+2", () => {

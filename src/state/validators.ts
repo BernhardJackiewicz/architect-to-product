@@ -1,5 +1,10 @@
 import { z } from "zod";
 
+export const HardeningAreaIdSchema = z.enum([
+  "auth-session", "data-access", "business-logic", "input-output",
+  "api-surface", "external-integration", "infra-secrets", "vuln-chaining",
+]);
+
 export const TechStackSchema = z.object({
   language: z.string().min(1),
   framework: z.string().min(1),
@@ -76,6 +81,7 @@ export const SASTFindingSchema = z.object({
   justification: z.string().optional(),
   confidence: z.enum(["hypothesis", "evidence-backed", "hard-to-verify"]).optional(),
   evidence: z.string().optional(),
+  domains: z.array(HardeningAreaIdSchema).optional(),
 });
 
 export const SliceSchema = z.object({
@@ -286,6 +292,7 @@ export const AdversarialReviewRoundSchema = z.object({
   completedAt: z.string(),
   findingsRecorded: z.number().int().min(0),
   note: z.string(),
+  focusArea: HardeningAreaIdSchema.optional(),
 });
 
 export const AdversarialReviewStateSchema = z.object({
@@ -293,6 +300,24 @@ export const AdversarialReviewStateSchema = z.object({
   round: z.number().int().min(1),
   totalFindingsRecorded: z.number().int().min(0),
   roundHistory: z.array(AdversarialReviewRoundSchema),
+});
+
+export const SecurityOverviewCoverageEntrySchema = z.object({
+  id: HardeningAreaIdSchema,
+  coverageEstimate: z.number().min(0).max(100),
+  findingCount: z.number().int().min(0),
+  lastHardenedAt: z.string().nullable(),
+});
+
+export const SecurityOverviewSchema = z.object({
+  totalSecurityRounds: z.number().int().min(0),
+  lastSecurityActivityAt: z.string().nullable(),
+  lastWhiteboxAt: z.string().nullable(),
+  lastActiveVerificationAt: z.string().nullable(),
+  lastShakeBreakAt: z.string().nullable(),
+  areasExplicitlyHardened: z.array(HardeningAreaIdSchema),
+  coverageByArea: z.array(SecurityOverviewCoverageEntrySchema),
+  recommendedNextAreas: z.array(HardeningAreaIdSchema),
 });
 
 export const ShakeBreakCategorySchema = z.enum([
@@ -401,6 +426,7 @@ export const ProjectStateSchema = z.preprocess(
   securityReentryReason: z.enum(["security_only", "post_deploy", "post_complete"]).nullable().default(null),
   shakeBreakSession: ShakeBreakSessionSchema.nullable().default(null),
   shakeBreakResults: z.array(ShakeBreakResultSchema).default([]),
+  securityOverview: SecurityOverviewSchema.nullable().default(null),
   createdAt: z.string(),
   updatedAt: z.string(),
 }));
