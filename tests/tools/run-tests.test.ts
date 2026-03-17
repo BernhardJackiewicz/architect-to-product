@@ -305,4 +305,22 @@ describe("handleRunTests", () => {
     expect(result.failed).toBe(0);
     expect(result.countsParsed).toBe(true);
   });
+
+  it("produces exactly 1 test_run event per run (no duplicates)", () => {
+    handleRunTests({
+      projectPath: tmpDir,
+      sliceId: "s01",
+      command: "echo '3 passed, 0 failed'",
+    });
+
+    const sm = new StateManager(tmpDir);
+    const state = sm.read();
+    const testRunEvents = state.buildHistory.filter(
+      (e: any) => e.action === "test_run"
+    );
+    expect(testRunEvents.length).toBe(1);
+    // The single event should carry metadata
+    expect(testRunEvents[0].metadata).toBeDefined();
+    expect(testRunEvents[0].metadata.passed).toBe(3);
+  });
 });

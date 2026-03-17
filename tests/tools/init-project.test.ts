@@ -85,6 +85,15 @@ describe("handleInitProject", () => {
     expect(hook.hooks[0].command).toContain("exit 2");
   });
 
+  it("PreToolUse hook matcher includes Bash to prevent shell bypass", () => {
+    handleInitProject({ projectPath: tmpDir, projectName: "test" });
+    const content = JSON.parse(
+      readFileSync(join(tmpDir, ".claude", "settings.json"), "utf-8")
+    );
+    const hook = content.hooks.PreToolUse[0];
+    expect(hook.matcher).toContain("Bash");
+  });
+
   it("rejects double init", () => {
     handleInitProject({ projectPath: tmpDir, projectName: "test" });
     const result = parse(handleInitProject({ projectPath: tmpDir, projectName: "test" }));

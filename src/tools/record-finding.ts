@@ -75,16 +75,39 @@ export function handleRecordFinding(input: RecordFindingInput): string {
     }
   }
 
-  // Check for ID collision
+  // Check for ID collision — update existing finding instead of rejecting
   const allFindings = state.slices.flatMap((s) => s.sastFindings).concat(state.projectFindings);
-  const existingIds = new Set(allFindings.map((f) => f.id));
-  if (existingIds.has(input.id)) {
+  const existingFinding = allFindings.find((f) => f.id === input.id);
+  if (existingFinding) {
+    // Update the existing finding in place
+    const updates: Record<string, unknown> = {};
+    if (input.status !== undefined) updates.status = input.status;
+    if (input.justification !== undefined) updates.justification = input.justification;
+    if (input.fix !== undefined) updates.fix = input.fix;
+    if (input.confidence !== undefined) updates.confidence = input.confidence;
+    if (input.evidence !== undefined) updates.evidence = input.evidence;
+    if (input.description !== undefined) {
+      updates.description = autoDowngraded
+        ? `[Auto-downgraded from ${input.severity} to medium — hypothesis without hard evidence] ${input.description}`
+        : input.description;
+    }
+    if (input.severity !== undefined) updates.severity = effectiveSeverity;
+
+    sm.updateSASTFinding(input.sliceId, input.id, updates);
+
     return JSON.stringify({
-      error: `Finding ID "${input.id}" already exists. Use a unique ID.`,
+      success: true,
+      updated: true,
+      finding: {
+        id: input.id,
+        severity: updates.severity ?? existingFinding.severity,
+        status: updates.status ?? existingFinding.status,
+        ...(autoDowngraded ? { autoDowngraded: true, originalSeverity: input.severity } : {}),
+      },
     });
   }
 
-  // Fingerprint-based dedup (same pattern as run-sast.ts)
+  // Fingerprint-based dedup (same pattern as run-sast.ts) — different ID, same tool:file:line:title
   const fingerprint = `${input.tool}:${input.file}:${input.line}:${input.title}`;
   const existingFingerprints = new Set(
     allFindings.map((f) => `${f.tool}:${f.file}:${f.line}:${f.title}`)

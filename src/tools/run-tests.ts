@@ -57,14 +57,10 @@ export function handleRunTests(input: RunTestsInput): string {
     output: sanitizeOutput(truncate(result.stdout + (result.stderr ? "\n---STDERR---\n" + result.stderr : ""), 5000)),
   };
 
-  sm.addTestResult(input.sliceId, testResult);
-
   const runId = generateRunId();
   const preview = truncatePreview(sanitizeOutput(result.stdout + (result.stderr ? "\n" + result.stderr : "")));
 
-  sm.log(result.exitCode === 0 ? "info" : "error", "test_run", `Tests: ${counts.passed} passed, ${counts.failed} failed`, {
-    sliceId: input.sliceId,
-    status: result.exitCode === 0 ? "success" : "failure",
+  sm.addTestResult(input.sliceId, testResult, {
     durationMs: result.durationMs,
     runId,
     metadata: { passed: counts.passed, failed: counts.failed, skipped: counts.skipped, exitCode: result.exitCode, command: testCommand } as EventMetadata,
