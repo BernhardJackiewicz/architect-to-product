@@ -1,14 +1,14 @@
 # Validation Summary
 
-> Last validated: 2026-03-17 | A2P v0.1.18 | 1032 tests passing
+> Last validated: 2026-03-17 | A2P v0.1.22 | 1073 tests passing
 
-## Code-Enforced (verified by 1022 unit/integration tests)
+## Code-Enforced (verified by 1073 unit/integration tests)
 
 All workflow gates are implemented in `state-manager.ts` and tested:
 
 - **Evidence gates**: green requires passing tests, sast requires SAST scan, done requires passing tests
 - **Build signoff**: mandatory, invalidated by slice/test changes, blocks building->security
-- **Deploy approval**: mandatory, invalidated by new findings/whitebox/audit, blocks deployment config generation
+- **Deploy approval**: mandatory, invalidated by new findings/whitebox/audit, blocks deployment config generation. Re-checks active verification + backup gates (v0.1.21)
 - **Quality gate**: mandatory quality audit before building->security, stale audit blocked
 - **Security gates**: no deploy with open CRITICAL/HIGH SAST, missing/blocking whitebox, critical audit findings, stale SAST, missing/stale active verification
 - **State file protection**: PreToolUse hook blocks direct edits to `.a2p/state.json` (forces use of a2p_ tools)
@@ -18,6 +18,9 @@ All workflow gates are implemented in `state-manager.ts` and tested:
 - **Backup inference**: database/uploads auto-detected, stack-specific commands (pg_dump, mysqldump, mongodump, sqlite3)
 - **Build logging**: structured events with levels, status, duration, run correlation, secret redaction
 - **Finding justification**: accepted/fixed/false_positive require justification (code-enforced via `a2p_record_finding`)
+- **Finding dedup**: fingerprint-based dedup (tool:file:line:title) in `a2p_record_finding` prevents duplicate findings (v0.1.21)
+- **Post-SAST test gate**: done transition requires tests to have run after SAST scan (v0.1.21)
+- **Whitebox suppression**: resolved SAST findings (false_positive/fixed/accepted) suppressed from whitebox candidates (v0.1.21)
 - **Code review integration**: build signoff includes code review pass, release audit includes code review
 - **Companion restart detection**: removed hard-block `restartRequired` (unreliable — cannot detect restart server-side); onboarding prompt handles restart message, planning/build prompts use soft hint
 - **Quality audit cadence**: evidence-gated claims require audit evidence, cadence tracking
@@ -231,3 +234,76 @@ All 28 tools are registered identically in `server.ts` using the same `server.to
 The core pipeline — evidence-gated TDD, security gates, whitebox audit, adversarial review with guided hardening, active verification, deployment artifact generation — works as documented. All mandatory gates (build signoff, deploy approval, finding justification, security re-entry invalidation) are code-enforced and verified forensically from state.json reads.
 
 **0.1.18 hardening:** Backup gate confirmed working (E2E anomaly not reproducible, defensive re-read added, 4 regression tests). UI/E2E warning added to build signoff. Audit output clarified when build/test commands not configured. All 28 tools confirmed registered and discoverable via MCP `tools/list`.
+
+---
+
+## Pre-Release Bug Fixes (v0.1.21, 2026-03-17)
+
+Real-deployment audit of mini-bookmarks on Hetzner revealed 5 bugs/gaps. All fixed with 12 new tests:
+
+| Bug | Fix | Tests Added |
+|---|---|---|
+| Deploy approval skips active verification + backup gates | `setDeployApproval()` now re-checks verification (existence, blocking, staleness) and backup | 5 |
+| Finding dedup weak (ID-only) | Fingerprint dedup (tool:file:line:title) in `a2p_record_finding` | 2 |
+| Whitebox re-evaluates resolved SAST findings | Suppress candidates matching resolved findings by tool:file:title | 3 |
+| Done guard accepts pre-SAST tests | `lastTest.timestamp >= slice.sastRanAt` check | 2 |
+| German tool-output strings in `complete-adversarial-review.ts` | Translated to English (hardening area reasons, hint text, nextActions) | 0 (existing assertions updated) |
+
+---
+
+## Prompt-Layer i18n Audit (v0.1.22, 2026-03-17)
+
+Full translation of all 10 prompt files from German to English. Verified via 3-agent parallel audit.
+
+### Scope Completeness
+
+| File | Status |
+|---|---|
+| shared.ts | Fully English |
+| audit.ts | Fully English |
+| refactor.ts | Fully English |
+| e2e-testing.ts | Fully English |
+| planning.ts | Fully English |
+| security-gate.ts | Fully English |
+| whitebox.ts | Fully English |
+| onboarding.ts | Fully English |
+| deploy.ts | Fully English |
+| build-slice.ts | Fully English |
+
+No German remnants. No mixed language. Grep-verified (umlauts, German articles, German verbs).
+
+### Behavioral Audit
+
+| Check | Result |
+|---|---|
+| Hard control instructions (STOP, NEVER, MUST, MANDATORY, NOT negotiable, VERBATIM) | All preserved, count-matched |
+| a2p_* tool names | Identical |
+| ${...} interpolations | Identical |
+| MCP tool names | Identical |
+| CLI commands | Identical |
+| Line counts | 9/10 identical, whitebox.ts -1 (whitespace) |
+| Section header hierarchy | Identical |
+| Semantic shifts | Zero |
+
+**Verdict: translation-only. Zero behavior changes.**
+
+### Test Audit
+
+| Test File | Tests Before | Tests After | German Remnants | Weakened | Removed |
+|---|---|---|---|---|---|
+| mcp-integration.test.ts | 152 | 152 | 0 | 0 | 0 |
+| deploy-paths.test.ts | 72 | 72 | 0 | 0 | 0 |
+| test-thinking.test.ts | 13 | 13 | 0 | 0 | 0 |
+| doc-first-and-model.test.ts | 15 | 15 | 0 | 0 | 0 |
+| logging.test.ts | 35 | 35 | 0 | 0 | 0 |
+
+61 string assertions updated. No tests removed or weakened. One missed German string (`"## Nach jedem"`) caught and fixed in post-audit.
+
+### Build/Test
+
+- `npm run build`: clean
+- `npm test`: 1073/1073 passed
+
+### i18n Audit Verdict
+
+**PASS — translation-only, release-safe.**
