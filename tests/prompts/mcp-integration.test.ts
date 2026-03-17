@@ -938,32 +938,54 @@ describe("Code Review integration in build-signoff and release audit", () => {
   });
 });
 
-// ─── Frontend Design Skill ──────────────────────────────────────────────────
-// Akzeptanzkriterium: /frontend-design skill is referenced in build-slice
-// and onboarding prompts for UI-aware projects.
+// ─── Frontend Aesthetics (enforced) ─────────────────────────────────────────
+// Akzeptanzkriterium: Anthropic's frontend aesthetics guidelines are enforced
+// in build-slice prompt for all hasUI slices.
 
-describe("frontend-design skill integration", () => {
-  it("build-slice recommends /frontend-design for UI slices", () => {
-    expect(BUILD_SLICE_PROMPT).toContain("/frontend-design");
-    expect(BUILD_SLICE_PROMPT).toContain("hasUI");
+describe("frontend aesthetics enforcement", () => {
+  it("build-slice contains mandatory frontend aesthetics section", () => {
+    expect(BUILD_SLICE_PROMPT).toContain("Frontend Aesthetics — MANDATORY");
   });
 
-  it("build-slice places skill reference before visual verification", () => {
-    const skillPos = BUILD_SLICE_PROMPT.indexOf("frontend-design");
+  it("build-slice aesthetics section appears before visual verification", () => {
+    const aestheticsPos = BUILD_SLICE_PROMPT.indexOf("Frontend Aesthetics");
     const verificationPos = BUILD_SLICE_PROMPT.indexOf("Visual Verification");
-    expect(skillPos).toBeGreaterThan(-1);
-    expect(skillPos).toBeLessThan(verificationPos);
+    expect(aestheticsPos).toBeGreaterThan(-1);
+    expect(aestheticsPos).toBeLessThan(verificationPos);
   });
 
-  it("build-slice mentions GREEN phase as when to invoke", () => {
+  it("prohibits generic AI font choices", () => {
     const section = BUILD_SLICE_PROMPT.substring(
-      BUILD_SLICE_PROMPT.indexOf("Frontend Design Skill"),
-      BUILD_SLICE_PROMPT.indexOf("UI Quality Rules")
+      BUILD_SLICE_PROMPT.indexOf("Frontend Aesthetics"),
+      BUILD_SLICE_PROMPT.indexOf("Visual Verification")
     );
-    expect(section).toContain("GREEN phase");
+    expect(section).toContain("Inter");
+    expect(section).toContain("Roboto");
+    expect(section).toContain("Space Grotesk");
+    expect(section).toMatch(/avoid|never/i);
   });
 
-  it("onboarding mentions /frontend-design tip for frontend projects", () => {
-    expect(ONBOARDING_PROMPT).toContain("/frontend-design");
+  it("enforces bold typography, color, motion, backgrounds", () => {
+    const section = BUILD_SLICE_PROMPT.substring(
+      BUILD_SLICE_PROMPT.indexOf("Frontend Aesthetics"),
+      BUILD_SLICE_PROMPT.indexOf("Visual Verification")
+    );
+    expect(section).toContain("Typography:");
+    expect(section).toContain("Color & Theme:");
+    expect(section).toContain("Motion:");
+    expect(section).toContain("Backgrounds");
+  });
+
+  it("prohibits purple/violet as primary colors", () => {
+    expect(BUILD_SLICE_PROMPT).toContain("purple/violet/fuchsia/indigo");
+  });
+
+  it("prohibits emojis in UI", () => {
+    expect(BUILD_SLICE_PROMPT).toContain("Unicode emojis");
+    expect(BUILD_SLICE_PROMPT).toContain("SVG icons");
+  });
+
+  it("onboarding references frontend aesthetics enforcement", () => {
+    expect(ONBOARDING_PROMPT).toContain("frontend aesthetics");
   });
 });

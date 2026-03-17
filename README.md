@@ -1,7 +1,7 @@
 # A2P — Architect-to-Product
 AI engineering framework delivered as an MCP server. Turns AI-generated code into production-ready software with evidence-gated TDD, security review, backup strategy, and deployment automation.
 
-**30 MCP tools · 1135 tests · Architecture → Plan → Build → Audit → Security → Deploy**
+**30 MCP tools · 1138 tests · Architecture → Plan → Build → Audit → Security → Deploy**
 
 [![npm version](https://img.shields.io/npm/v/architect-to-product)](https://www.npmjs.com/package/architect-to-product) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) [![Tests: 1097 passing](https://img.shields.io/badge/tests-1097%20passing-brightgreen)](docs/validation/) [![TypeScript](https://img.shields.io/badge/TypeScript-blue)](tsconfig.json)
 
@@ -95,7 +95,7 @@ A2P adds the missing engineering system around the agent.
 - **Backup-aware deployment** — Stateful systems are blocked from deployment unless backup requirements are satisfied.
 - **SSL/HTTPS enforcement** — Deployment cannot be marked complete without verified SSL certificate and auto-renewal. Caddy handles Let's Encrypt automatically; PaaS platforms handle SSL automatically.
 - **Secret management** — 4-tier secret management (env-file, Docker Swarm, Infisical, external) is code-enforced before deployment configs can be generated.
-- **Frontend design integration** — Recommends Anthropic's `/frontend-design` skill for UI slices to produce distinctive, production-grade interfaces that avoid generic AI aesthetics.
+- **Frontend aesthetics enforcement** — All UI slices follow Anthropic's frontend aesthetics guidelines: distinctive typography, cohesive color themes, motion, atmospheric backgrounds. Generic AI aesthetics (Inter font, purple gradients, cookie-cutter layouts) are explicitly prohibited.
 - **Deployment generation** — Produces stack-specific Dockerfile, docker-compose, Caddyfile, backup/restore/verify scripts, and hardening guides.
 - **Code intelligence** — `codebase-memory-mcp` builds a code graph instead of scanning files raw — up to 100x fewer exploration tokens.
 - **Structured build history** — Tool runs, statuses, durations, and findings are tracked in a queryable build log with secret redaction.
@@ -317,11 +317,9 @@ A2P auto-configures companion MCP servers based on your tech stack.
 
 > **Security note:** Companion MCPs are third-party software with access to your project files and databases. Review the source repo and generated `.mcp.json` before enabling any companion.
 
-**Claude Code Skills**
+**Frontend Aesthetics (enforced)**
 
-| Skill | When | What it does |
-|---|---|---|
-| `/frontend-design` (Anthropic) | Frontend/UI slices | Produces distinctive, production-grade frontend code with high design quality. Avoids generic AI aesthetics (purple gradients, Inter font, cookie-cutter layouts). A2P's build prompt recommends it during GREEN phase of `hasUI` slices. |
+A2P enforces [Anthropic's frontend aesthetics guidelines](https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/frontend-design) for all `hasUI` slices. The build prompt requires distinctive typography, cohesive color themes, motion, atmospheric backgrounds, and creative spatial composition. Generic AI aesthetics (Inter/Roboto fonts, purple gradients, cookie-cutter layouts, emoji icons) are explicitly prohibited.
 
 </details>
 
@@ -407,7 +405,7 @@ git clone https://github.com/BernhardJackiewicz/architect-to-product.git
 cd architect-to-product
 npm install
 npm run typecheck   # Type checking
-npm test            # 1135 tests
+npm test            # 1138 tests
 npm run build       # Build
 npm run dev         # Dev mode
 ```

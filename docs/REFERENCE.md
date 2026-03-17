@@ -185,15 +185,19 @@ A2P auto-configures companion MCP servers based on your tech stack. Each compani
 
 > **Security note:** Companion MCPs are third-party software with access to your project files and databases. Before enabling a companion: check the source repo (author, stars, open issues), review the `.mcp.json` that gets generated, and confirm you trust the server. Official packages (`@modelcontextprotocol/*`, `@playwright/mcp`, `mcp.supabase.com`) are maintained by their respective organizations. Community packages are not audited by us — use at your own discretion.
 
-### Claude Code Skills
+### Frontend Aesthetics (enforced in build prompt)
 
-Claude Code skills are built-in capabilities that complement the MCP workflow:
+A2P enforces [Anthropic's frontend aesthetics guidelines](https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/frontend-design) for all `hasUI: true` slices. This is not optional — it's part of the build-slice prompt.
 
-| Skill | Provider | When | What it does |
-|-------|----------|------|-------------|
-| `/frontend-design` | Anthropic | UI slices (`hasUI: true`) | Produces distinctive, production-grade frontend code. Avoids generic AI aesthetics (purple gradients, Inter/Roboto, cookie-cutter layouts). Uses bold typography, cohesive color themes, motion, spatial composition, and contextual visual details. A2P recommends it during GREEN phase of frontend slices — it handles the visual implementation while A2P handles TDD and quality gates. |
+**What's enforced:**
+- **Typography**: Distinctive, characterful fonts. Inter, Roboto, Arial, system fonts, Space Grotesk are explicitly prohibited. Weight extremes (100/200 vs 800/900), size jumps of 3x+.
+- **Color & Theme**: Cohesive aesthetic with CSS variables. Dominant colors with sharp accents. Purple/violet/fuchsia/indigo prohibited as primary colors.
+- **Motion**: High-impact page loads with staggered reveals, scroll-triggering, surprising hover states. CSS-only preferred, Motion library for React.
+- **Backgrounds**: Atmosphere and depth via gradient meshes, noise textures, geometric patterns, layered transparencies. No solid color defaults.
+- **Spatial Composition**: Unexpected layouts, asymmetry, overlap, grid-breaking elements.
+- **No emojis**: SVG icons or text labels only.
 
-Skills are invoked via `/` in Claude Code and do not require installation.
+**Design thinking required**: Before coding, the agent must commit to a bold aesthetic direction (purpose, tone, differentiation). Every project gets a unique visual identity.
 
 ---
 
