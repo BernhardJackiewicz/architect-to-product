@@ -213,7 +213,7 @@ These cannot be bypassed — they are enforced in code, not just in prompts:
 - **Full SAST gate**: Cannot deploy without at least one full SAST scan (`a2p_run_sast mode=full`)
 - **Whitebox gate**: Cannot deploy with blocking whitebox findings (confirmed exploitable auth/secrets/tenant issues)
 - **Audit gate**: Cannot deploy with critical release audit findings
-- **Deploy approval gate**: Cannot generate deployment configs without human deploy approval (`a2p_deploy_approval`). Approval is invalidated by new findings, whitebox results, or audit results — must re-approve
+- **Deploy approval gate**: Cannot generate deployment configs without human deploy approval (`a2p_deploy_approval`). Approval is invalidated by any new finding, audit result, or whitebox result — always approve as the last step before generating deployment configs
 - **Backup gate**: Stateful apps (database or uploads) are blocked from deploying without configured backup (enforced in code)
 - **Finding justification gate**: Cannot set finding status to `accepted`, `fixed`, or `false_positive` without a justification (code-enforced via `a2p_record_finding`)
 - **Adversarial evidence gate**: Adversarial-review findings with severity high/critical require `confidence` level and `evidence` with file:line reference. Hypotheses are auto-downgraded to medium (code-enforced)
@@ -233,6 +233,8 @@ A2P automatically infers a backup strategy from your tech stack during onboardin
 - **Stateless apps** → `enabled: true` but `required: false`, only `"deploy_artifacts"` backup (no warnings, no gates)
 
 **What gets generated during deployment:**
+
+The `a2p_generate_deployment` tool provides stack-specific backup guidance and commands. Claude then generates the actual files following the deployment prompt instructions:
 - `scripts/backup.sh` — database + artifact backup with retention and manifest
 - `scripts/restore.sh` — restore from backup with verification
 - `scripts/backup-verify.sh` — verify backup integrity and freshness

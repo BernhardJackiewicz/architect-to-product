@@ -179,6 +179,15 @@ export function handleSetArchitecture(input: SetArchitectureInput): string {
     preDeploySnapshot: isStateful,
   });
 
+  // Defensive consistency check: re-read state and verify backup persistence
+  const verifyState = sm.read();
+  if (verifyState.backupConfig.required !== isStateful) {
+    throw new Error(
+      `Backup config persistence mismatch: wrote required=${isStateful} but read back required=${verifyState.backupConfig.required}. ` +
+      `Database: ${techStack.database ?? "none"}, isStateful: ${isStateful}. This indicates a state persistence bug.`
+    );
+  }
+
   // Detect what companions are needed
   const suggestedCompanions: string[] = ["codebase-memory-mcp"];
 
