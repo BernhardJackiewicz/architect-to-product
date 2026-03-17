@@ -18,7 +18,21 @@ Vibe coding with Claude Code, Cursor, or any AI coding assistant generates code 
 
 **Architect-to-Product** is an MCP server that turns AI-generated code into production-ready software. It adds TDD, static code analysis, and deployment automation to AI coding workflows.
 
-Evidence-gated development requires passing tests before any slice can advance — enforced in code, not just in prompts. Built-in SAST tools (Semgrep for all languages, Bandit for Python) run static code analysis and OWASP Top 10 reviews before deploy. Stack-aware backup strategy infers what needs protecting — databases, uploads, deployment artifacts — and generates backup, restore, and verification scripts automatically. Stack-specific deployment configs mean you ship on day one, not day thirty.
+### How it works: Red, Green, Refactor
+
+A2P enforces the same development discipline that Anthropic's engineers use when building with Claude — write the test first, make it pass, then clean up. Every feature (called a "slice") moves through a strict cycle:
+
+1. **Red** — Write failing tests that define what the feature should do. No production code yet. The tests prove you understand the requirement.
+2. **Green** — Write the minimum code to make all tests pass. Nothing more. A2P verifies tests actually ran and passed before allowing this transition.
+3. **Refactor** — Clean up the code while tests stay green. Remove duplication, improve names, simplify logic.
+4. **SAST** — Static analysis scans the code for security vulnerabilities (Semgrep for all languages, Bandit for Python). Findings must be addressed.
+5. **Done** — Tests pass again after refactoring. The slice is complete.
+
+Each transition is evidence-gated — enforced in code, not just in prompts. You can't skip to "green" without test results. You can't skip to "done" without passing tests. The AI agent follows the same rules a disciplined engineer would, because the tooling won't let it cut corners.
+
+This matters because AI coding agents naturally take shortcuts. They'll generate code without tests, suppress errors instead of fixing them, and mark things "done" that aren't. The red-green-refactor cycle with hard gates prevents all of that.
+
+Built-in SAST tools run static code analysis and OWASP Top 10 reviews before deploy. Stack-aware backup strategy infers what needs protecting — databases, uploads, deployment artifacts — and generates backup, restore, and verification scripts automatically. Stack-specific deployment configs mean you ship on day one, not day thirty.
 
 ## Quick Start
 
