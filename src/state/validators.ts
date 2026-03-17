@@ -427,6 +427,12 @@ export const ProjectStateSchema = z.preprocess(
   shakeBreakSession: ShakeBreakSessionSchema.nullable().default(null),
   shakeBreakResults: z.array(ShakeBreakResultSchema).default([]),
   securityOverview: SecurityOverviewSchema.nullable().default(null),
+  pendingSecurityDecision: z.object({
+    round: z.number().int().min(1),
+    setAt: z.string(),
+    recommendedAreas: z.array(HardeningAreaIdSchema),
+    availableActions: z.array(z.string()),
+  }).nullable().default(null),
   createdAt: z.string(),
   updatedAt: z.string(),
 }));

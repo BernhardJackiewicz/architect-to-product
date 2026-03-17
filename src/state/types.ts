@@ -391,6 +391,13 @@ export interface SecurityOverview {
   recommendedNextAreas: HardeningAreaId[];
 }
 
+export interface PendingSecurityDecision {
+  round: number;
+  setAt: string;
+  recommendedAreas: HardeningAreaId[];
+  availableActions: string[];
+}
+
 export type SecurityReentryReason = "security_only" | "post_deploy" | "post_complete";
 
 export type ShakeBreakCategory =
@@ -457,6 +464,7 @@ export interface ProjectState {
   shakeBreakSession: ShakeBreakSession | null;
   shakeBreakResults: ShakeBreakResult[];
   securityOverview: SecurityOverview | null;
+  pendingSecurityDecision: PendingSecurityDecision | null;
   createdAt: string;
   updatedAt: string;
 }

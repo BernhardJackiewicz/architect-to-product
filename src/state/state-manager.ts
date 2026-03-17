@@ -133,6 +133,7 @@ export class StateManager {
       shakeBreakSession: null,
       shakeBreakResults: [],
       securityOverview: null,
+      pendingSecurityDecision: null,
       createdAt: now,
       updatedAt: now,
     };
@@ -755,11 +756,26 @@ export class StateManager {
     };
     this.invalidateDeployApproval(state);
     this.refreshSecurityOverview(state);
+    // Set pending security decision — forces user to acknowledge before proceeding
+    const recommendedAreas = state.securityOverview?.recommendedNextAreas ?? [];
+    state.pendingSecurityDecision = {
+      round: newRound,
+      setAt: now,
+      recommendedAreas,
+      availableActions: ["focused-hardening", "full-round", "shake-break", "continue"],
+    };
     this.addEvent(state, state.phase, null, "adversarial_review_completed",
       `Adversarial review round ${newRound} completed: ${findingsRecorded} finding(s) recorded (total: ${totalFindings})${note ? ` — ${note}` : ""}`,
       { level: "info", status: "success" });
     this.write(state);
     return state;
+  }
+
+  /** Clear the pending security decision (after user acknowledges or in tests). */
+  clearPendingSecurityDecision(): void {
+    const state = this.read();
+    state.pendingSecurityDecision = null;
+    this.write(state);
   }
 
   /** Mark that a full SAST scan has been completed */

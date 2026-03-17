@@ -311,7 +311,12 @@ export function handleCompleteAdversarialReview(input: CompleteAdversarialReview
     if (recommendations.length === 0) {
       hint = `Adversarial Review Runde ${reviewState.round} abgeschlossen. ` +
         `${input.findingsRecorded} neue Finding(s), ${reviewState.totalFindingsRecorded} insgesamt.\n\n` +
-        `Alle relevanten Bereiche haben ausreichende Coverage. Weiter zu Phase 2 (Active Verification).`;
+        `Alle relevanten Bereiche haben ausreichende Coverage.\n\n` +
+        `Optionen:\n` +
+        `→ "focused-hardening" fuer tiefere Analyse eines Bereichs\n` +
+        `→ "full-round" fuer eine weitere volle Runde\n` +
+        `→ "shake-break" fuer Runtime-Tests\n` +
+        `→ "continue" um zu Active Verification weiterzugehen`;
     } else {
       const recLines = recommendations.slice(0, 3).map((r, i) => {
         const coverageLabel = r.coverageEstimate === 0
@@ -335,6 +340,24 @@ export function handleCompleteAdversarialReview(input: CompleteAdversarialReview
         `→ "shake-break" fuer Runtime-Tests der empfohlenen Bereiche`;
     }
 
+    // Structured decision signals — always require user choice (code-enforced)
+    const requiresUserChoice = true;
+    const nextActions = [
+      { id: "focused-hardening", label: "Fokussiertes Hardening", description: "Einen Bereich wählen (z.B. auth-session)" },
+      { id: "full-round", label: "Volle Runde", description: "Alle 25 Domänen erneut prüfen" },
+      { id: "shake-break", label: "Shake & Break", description: "Runtime-Tests der empfohlenen Bereiche" },
+      { id: "continue", label: "Weiter zu Active Verification", description: "Security-Review abschliessen" },
+    ];
+    const recommendedAreas = recommendations.slice(0, 5).map(r => ({
+      id: r.id,
+      name: r.name,
+      coverageEstimate: r.coverageEstimate,
+    }));
+
+    const securityMessage = `Security is a never ending story. You can continue hardening or proceed to deployment.\n` +
+      `Since we keep full history, additional rounds never waste time — each builds on previous findings.\n` +
+      `Round ${reviewState.round} complete. ${coveredAreasCount} areas reviewed, ${reviewState.totalFindingsRecorded} findings total.`;
+
     return JSON.stringify({
       success: true,
       currentRound: reviewState.round,
@@ -349,6 +372,10 @@ export function handleCompleteAdversarialReview(input: CompleteAdversarialReview
       ...(olderSummary ? { olderRoundsSummary: olderSummary } : {}),
       securityOverview,
       recommendations: recommendations.slice(0, 5),
+      requiresUserChoice,
+      nextActions,
+      recommendedAreas,
+      securityMessage,
       note: input.note ?? null,
       hint,
     });

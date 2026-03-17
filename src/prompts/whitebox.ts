@@ -131,20 +131,23 @@ Nach Abschluss des adversarial Reviews: Rufe \`a2p_complete_adversarial_review\`
 - \`note\`: Kurze Zusammenfassung (z.B. "reviewed auth + payment routes, 2 findings recorded")
 **Ohne diesen Aufruf blockiert das Deployment-Gate.** Das ist ein code-enforced Gate, kein optionaler Schritt.
 
-**Nach Abschluss jeder Runde:**
-Zeige dem User den \`hint\` aus dem a2p_complete_adversarial_review Response WOERTLICH.
-Dieser enthaelt kontextabhaengige Empfehlungen und drei Modi:
-1. **Fokussiertes Hardening**: User waehlt einen Bereich (z.B. "auth-session") → naechste Runde
-   reviewt NUR die Domaenen dieses Bereichs → focusArea wird gesetzt → Coverage steigt
-2. **Volle Runde**: "alles" → wie bisher, alle 25 Domaenen → kein focusArea
-3. **Shake & Break**: Empfohlene S&B-Kategorien basierend auf empfohlenen Bereichen
+**Nach Abschluss jeder Runde — ENTSCHEIDUNGS-PUNKT (PFLICHT, code-enforced):**
+Der Response von a2p_complete_adversarial_review enthaelt strukturierte Entscheidungs-Felder.
+\`requiresUserChoice\` ist IMMER true. Reagiere wie folgt:
+
+  1. **STOP** — gehe NICHT autonom zur naechsten Phase weiter
+  2. Zeige dem User die \`securityMessage\` WOERTLICH
+  3. Zeige dem User den \`hint\` WOERTLICH (enthaelt Coverage + Empfehlungen)
+  4. Zeige die \`nextActions\` als nummerierte Optionen
+  5. Zeige \`recommendedAreas\` mit Coverage-Prozent (kann leer sein bei 100% Coverage)
+  6. Warte auf User-Auswahl bevor du fortfaehrst
+
+Wenn der User "continue" waehlt: Rufe \`a2p_run_active_verification\` mit
+\`acknowledgeSecurityDecision=true\` auf. Ohne diesen Parameter wird Active Verification
+durch ein code-enforced Gate blockiert.
 
 Bei fokussiertem Hardening: Uebergib den gewaehlten Bereich als focusArea an
 a2p_complete_adversarial_review am Ende der Runde.
-
-→ Wenn ja: Wiederhole Phase 1b (previousFindings werden automatisch mitgegeben)
-→ Wenn nein: Weiter zu Phase 2
-→ Oder: Shake & Break fuer aktive Runtime-Tests verfuegbar.
 
 ### Phase 2b: Shake & Break (Optional — Runtime Adversarial Testing)
 
