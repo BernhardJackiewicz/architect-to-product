@@ -589,7 +589,7 @@ describe("record-finding: hardening", () => {
     forcePhase(dir, "building");
   });
 
-  it("rejects duplicate finding ID", () => {
+  it("updates existing finding on same ID (upsert)", () => {
     const base = {
       projectPath: dir,
       sliceId: "s1",
@@ -606,8 +606,77 @@ describe("record-finding: hardening", () => {
     const first = JSON.parse(handleRecordFinding(base));
     expect(first.success).toBe(true);
 
-    const second = JSON.parse(handleRecordFinding(base));
-    expect(second.error).toContain("already exists");
+    const second = JSON.parse(handleRecordFinding({ ...base, status: "fixed", justification: "patched in commit abc" }));
+    expect(second.success).toBe(true);
+    expect(second.updated).toBe(true);
+
+    // Verify state has updated status
+    const sm = new StateManager(dir);
+    const state = sm.read();
+    const finding = state.slices[0].sastFindings.find((f: any) => f.id === "F001");
+    expect(finding).toBeDefined();
+    expect(finding!.status).toBe("fixed");
+    expect(finding!.justification).toBe("patched in commit abc");
+  });
+
+  it("updates justification on same ID", () => {
+    handleRecordFinding({
+      projectPath: dir,
+      sliceId: "s1",
+      id: "F002",
+      tool: "manual",
+      severity: "medium",
+      status: "open",
+      title: "Weak hash",
+      file: "b.ts",
+      line: 10,
+      description: "md5 usage",
+    });
+
+    const result = JSON.parse(handleRecordFinding({
+      projectPath: dir,
+      sliceId: "s1",
+      id: "F002",
+      tool: "manual",
+      severity: "medium",
+      status: "accepted",
+      title: "Weak hash",
+      file: "b.ts",
+      line: 10,
+      description: "md5 usage",
+      justification: "non-security context, used for cache keys only",
+    }));
+    expect(result.success).toBe(true);
+    expect(result.updated).toBe(true);
+  });
+
+  it("still rejects different ID with same fingerprint (dedup)", () => {
+    handleRecordFinding({
+      projectPath: dir,
+      sliceId: "s1",
+      id: "F003",
+      tool: "semgrep",
+      severity: "high",
+      status: "open",
+      title: "SQLi",
+      file: "c.ts",
+      line: 5,
+      description: "injection",
+    });
+
+    const dup = JSON.parse(handleRecordFinding({
+      projectPath: dir,
+      sliceId: "s1",
+      id: "F003-alt",
+      tool: "semgrep",
+      severity: "high",
+      status: "open",
+      title: "SQLi",
+      file: "c.ts",
+      line: 5,
+      description: "injection",
+    }));
+    expect(dup.error).toContain("Duplicate finding");
   });
 
   it("rejects accepted status without justification", () => {

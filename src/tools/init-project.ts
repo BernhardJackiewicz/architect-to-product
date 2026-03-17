@@ -98,7 +98,7 @@ const SETTINGS_JSON = {
   hooks: {
     PreToolUse: [
       {
-        matcher: "Write|Edit",
+        matcher: "Write|Edit|Bash",
         hooks: [
           {
             type: "command" as const,

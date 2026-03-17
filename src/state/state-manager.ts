@@ -569,7 +569,12 @@ export class StateManager {
   }
 
   /** Record a test result on the current slice */
-  addTestResult(sliceId: string, result: TestResult): ProjectState {
+  addTestResult(sliceId: string, result: TestResult, extras?: {
+    durationMs?: number;
+    runId?: string;
+    metadata?: EventMetadata;
+    outputSummary?: string;
+  }): ProjectState {
     const state = this.read();
     const slice = state.slices.find((s) => s.id === sliceId);
     if (!slice) throw new Error(`Slice "${sliceId}" not found`);
@@ -583,7 +588,13 @@ export class StateManager {
       sliceId,
       "test_run",
       `Tests: ${result.passed} passed, ${result.failed} failed (exit ${result.exitCode})`,
-      { status: result.exitCode === 0 ? "success" : "failure" },
+      {
+        status: result.exitCode === 0 ? "success" : "failure",
+        durationMs: extras?.durationMs,
+        runId: extras?.runId,
+        metadata: extras?.metadata,
+        outputSummary: extras?.outputSummary,
+      },
     );
     this.write(state);
     return state;
@@ -610,6 +621,52 @@ export class StateManager {
       "sast_finding",
       `[${finding.severity}] ${finding.title} in ${finding.file}:${finding.line}`,
       { level: "warn", status: "warning" },
+    );
+    this.write(state);
+    return state;
+  }
+
+  /** Update an existing SAST finding in place (for status changes, justifications, etc.) */
+  updateSASTFinding(sliceId: string | null, findingId: string, updates: Partial<Pick<SASTFinding, "status" | "justification" | "fix" | "confidence" | "evidence" | "description" | "severity">>): ProjectState {
+    const state = this.read();
+
+    let finding: SASTFinding | undefined;
+    if (sliceId) {
+      const slice = state.slices.find((s) => s.id === sliceId);
+      if (!slice) throw new Error(`Slice "${sliceId}" not found`);
+      finding = slice.sastFindings.find((f) => f.id === findingId);
+    } else {
+      finding = state.projectFindings.find((f) => f.id === findingId);
+    }
+    // Also search across all slices + project if not found in target
+    if (!finding) {
+      for (const s of state.slices) {
+        finding = s.sastFindings.find((f) => f.id === findingId);
+        if (finding) break;
+      }
+    }
+    if (!finding) {
+      finding = state.projectFindings.find((f) => f.id === findingId);
+    }
+    if (!finding) throw new Error(`Finding "${findingId}" not found`);
+
+    if (updates.status !== undefined) finding.status = updates.status;
+    if (updates.justification !== undefined) finding.justification = updates.justification;
+    if (updates.fix !== undefined) finding.fix = updates.fix;
+    if (updates.confidence !== undefined) finding.confidence = updates.confidence;
+    if (updates.evidence !== undefined) finding.evidence = updates.evidence;
+    if (updates.description !== undefined) finding.description = updates.description;
+    if (updates.severity !== undefined) finding.severity = updates.severity;
+
+    this.invalidateDeployApproval(state);
+    this.setLastSecurityRelevantChange(state);
+    this.addEvent(
+      state,
+      state.phase,
+      sliceId,
+      "sast_finding_updated",
+      `[${finding.severity}] ${finding.title} → ${finding.status}`,
+      { level: "info", status: "info" },
     );
     this.write(state);
     return state;
