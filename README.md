@@ -2,11 +2,11 @@
 
 MCP server that turns AI-generated code into production-ready software with TDD, security scanning, and deployment automation. Up to 100 times fewer exploration tokens for claude code.
 
-**28 MCP tools** · **1032 tests** · **Architecture → Plan → Build (evidence-gated) → Quality Audit (cadence) → Code Review → Signoff → E2E Testing → Security → Whitebox → Verify → [Shake & Break] → Release Audit → Deploy → Backup**
+**28 MCP tools** · **1061 tests** · **Architecture → Plan → Build (evidence-gated) → Quality Audit (cadence) → Code Review → Signoff → E2E Testing → Security → Whitebox → Verify → [Shake & Break] → Release Audit → Deploy → Backup**
 
 [![npm version](https://img.shields.io/npm/v/architect-to-product)](https://www.npmjs.com/package/architect-to-product)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Tests: 1022 passing](https://img.shields.io/badge/tests-1032%20passing-brightgreen)]()
+[![Tests: 1061 passing](https://img.shields.io/badge/tests-1061%20passing-brightgreen)]()
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue)]()
 
 ---
@@ -123,7 +123,7 @@ Most AI-generated — and human-built — architectures don't fail because the m
 - **Finding justification** — Security findings can't be silently dismissed — accepted/fixed/false_positive require justification (code-enforced)
 - **Audit before release** — Quality audits catch debug artifacts, hardcoded secrets, and test coverage gaps during development. Release audits verify README, .gitignore, temp files, and aggregate findings before publish. Critical release findings block deployment (enforced in code)
 - **Automated backup strategy** — Stack-aware inference of what needs protecting (database, uploads, artifacts). Generates backup, restore, and verification scripts with stack-specific commands (`pg_dump`, `mysqldump`, `mongodump`, `sqlite3 .backup`). Retention policies, offsite sync, and deployment gate enforcement for stateful apps
-- **Automated cloud deployment** — Hetzner Cloud: infrastructure planning (server sizing, cloud-init, firewall), provisioning via API, and deployment (rsync + docker compose) — all from Claude. Server hardening (SSH, fail2ban, UFW, unattended-upgrades) included in cloud-init
+- **Automated cloud deployment** — Hetzner Cloud: automatic server sizing based on tech stack (cx22 4GB for most stacks, cx32 8GB for JVM/multi-service — 20 TB traffic included per instance), cloud-init with production hardening (Docker log rotation, kernel sysctl, swap, fail2ban, SSH lockdown, unattended-upgrades), firewall provisioning, and deployment (rsync + docker compose) — all from Claude. 3-layer backup strategy: server snapshots + app-level backup + offsite replication. The standard VPS config is portable to any Ubuntu provider — only cloud firewall, snapshots, and storage products are Hetzner-specific. See [`docs/HETZNER-DEPLOYMENT.md`](docs/HETZNER-DEPLOYMENT.md)
 - **Deploy on day one** — Stack-specific Dockerfile, docker-compose, Caddyfile, backup/restore/verify scripts, hardening guides
 - **Code quality** — Built-in code quality tool: dead code detection, redundancy analysis, coupling metrics
 - **Documentation first** — When the architecture uses unfamiliar tech (exotic auth, new ORMs, niche APIs), Claude reads the official docs via WebSearch + WebFetch instead of hallucinating API signatures. Enforced in every prompt, documented in CLAUDE.md
@@ -285,6 +285,15 @@ The `a2p_generate_deployment` tool provides stack-specific backup guidance and c
 - SQLite restore: warns to stop the application first for consistent restore
 - Scheduler: recommends systemd timers over cron on VPS/Linux (better logging, failure notification)
 
+**3-layer backup model (Hetzner):**
+
+For Hetzner deployments, A2P recommends a 3-layer backup strategy:
+1. **Server Backup** — Hetzner automated snapshots of the root disk (daily, 7-slot retention, ~0.70 EUR/month). Covers OS, Docker, configs, and Docker named volumes on root disk. Does NOT cover attached Hetzner Volumes
+2. **App Backup** — `scripts/backup.sh` → `/backups/` with configurable retention (14+ days). Stack-specific DB dumps + artifact backup
+3. **Offsite Replication** — `rclone copy` to Hetzner Storage Box (SFTP) or Object Storage (S3). Protects against server deletion, account errors, provider outage. Uses `rclone copy` not `rclone sync` (sync deletes at target)
+
+See [`docs/HETZNER-DEPLOYMENT.md`](docs/HETZNER-DEPLOYMENT.md) for full details including storage product comparison and post-provisioning verification commands.
+
 **Deployment checklist integration:**
 - Backup scripts generated and tested locally
 - Backup scheduler active (daily at 02:00)
@@ -294,6 +303,7 @@ The `a2p_generate_deployment` tool provides stack-specific backup guidance and c
 - First backup completed successfully
 - Backup verification passed (restore to temp + integrity check)
 - Pre-deploy snapshot taken
+- (Hetzner) Server backups enabled, offsite copy configured, restore from both layers tested
 
 ### Model Preference
 
@@ -398,7 +408,7 @@ Phase 1: Plan → Build → BUILD SIGNOFF → E2E Testing → Security → White
 6. **Active Verification** (gate-enforced): Runtime gate tests that prove workflow invariants hold — state transitions require evidence, deployment gates block correctly, state survives round-trips. Deployment is blocked without a passing active verification.
 6b. **Shake & Break** (optional): Active runtime adversarial testing. Creates an isolated sandbox (git worktree + generated .env with neutralized external services + ephemeral port + optional Docker DB). Claude starts the app and sends real HTTP requests across 8 categories: auth/IDOR, race conditions, state manipulation, business logic, injection, token/session, file upload, webhook security. Findings are `evidence-backed` with actual request/response proof. Requires adversarial review completion. ANSI-red terminal warning before testing. SQLite fallback available when Docker is unavailable (with confidence downgrade for race conditions and injection tests).
 7. **Release Audit**: Code review pass (cross-file consistency, API coherence) + pre-publish verification — README completeness, temp file cleanup, aggregated SAST/quality findings, build/test pass, .gitignore coverage. Critical findings in the release audit block deployment (enforced in code).
-8. **Deployment**: **Mandatory deploy approval** before generating configs. Stack-specific Dockerfile, docker-compose, Caddyfile, backup/restore/verify scripts, backup strategy docs, hardening guides. **Artifact security validation** checks every generated file (Dockerfile non-root/multi-stage/no secrets copy, docker-compose security_opt/cap_drop, Caddyfile security headers/CORS, backup script credentials/encryption). Stateful apps are blocked from deployment if no backup is configured. Stack-specific launch checklist with cookie security, CORS, and backup encryption items. **Automated Hetzner Cloud deployment**: infrastructure planning (server sizing, cloud-init, firewall), provisioning via API, and deployment (rsync + docker compose) — all executed by Claude.
+8. **Deployment**: **Mandatory deploy approval** before generating configs. Stack-specific Dockerfile, docker-compose, Caddyfile, backup/restore/verify scripts, backup strategy docs, hardening guides. **Artifact security validation** checks every generated file (Dockerfile non-root/multi-stage/no secrets copy, docker-compose security_opt/cap_drop, Caddyfile security headers/CORS/Permissions-Policy, backup script credentials/encryption, body parser size limits, source map exclusion). Stateful apps are blocked from deployment if no backup is configured. Stack-specific launch checklist with cookie security, CORS, backup encryption, and Hetzner-specific items. **Automated Hetzner Cloud deployment**: auto-sizing (cx22/cx32 based on stack, 20 TB traffic included), cloud-init with production hardening (Docker log rotation, kernel sysctl, swap, logwatch, fail2ban, unattended-upgrades), 3-layer backup (server snapshots + app backup + offsite replication to Storage Box or Object Storage), and deployment (rsync + docker compose) — all executed by Claude. The VPS standard config is portable to any Ubuntu provider. See [`docs/HETZNER-DEPLOYMENT.md`](docs/HETZNER-DEPLOYMENT.md).
 
 ## Client Configuration
 
@@ -567,7 +577,7 @@ Two ways to add work during or after the build:
 
 | Target | What A2P generates |
 |--------|-------------------|
-| **Docker VPS** (Hetzner, DigitalOcean, any VPS) | File generation guidance for Dockerfile, docker-compose.prod.yml, Caddyfile, backup/restore/verify scripts, BACKUP.md, DEPLOYMENT.md. Security hardening checklist. Stack-specific recommendations. **Hetzner Cloud: automated provisioning** — `a2p_plan_infrastructure` computes server sizing + cloud-init + firewall rules, Claude provisions via Hetzner API, `a2p_deploy_to_server` generates rsync/docker deployment commands. |
+| **Docker VPS** (Hetzner, DigitalOcean, any VPS) | File generation guidance for Dockerfile, docker-compose.prod.yml, Caddyfile, backup/restore/verify scripts, BACKUP.md, DEPLOYMENT.md. Security hardening checklist. Stack-specific recommendations. **Hetzner Cloud: automated provisioning** — `a2p_plan_infrastructure` auto-selects server type based on tech stack (cx22 4GB ~4 EUR/mo or cx32 8GB ~7 EUR/mo, 20 TB traffic included), generates cloud-init with production hardening (Docker log rotation, kernel sysctl, swap, logwatch, fail2ban, unattended-upgrades without auto-reboot), firewall rules, and provisioning commands. `a2p_generate_deployment` adds 3-layer backup strategy (server snapshots + app backup + offsite via Storage Box/Object Storage) and Hetzner storage guidance. `a2p_deploy_to_server` generates rsync/docker deployment commands. **Portable:** The cloud-init, Docker hardening, sysctl, swap, backup scripts, and security checklist work on any Ubuntu VPS — only the cloud firewall API, snapshot model, and storage products are Hetzner-specific. See [`docs/HETZNER-DEPLOYMENT.md`](docs/HETZNER-DEPLOYMENT.md). |
 | **Vercel** | Recommendations (Edge Functions, env vars, preview deploys). Checklist items (project linked, env vars set, preview tested). |
 | **Cloudflare** (Pages/Workers) | Recommendations (wrangler.toml bindings, WAF, CDN). Checklist items (NS records, SSL Full Strict, WAF rules). |
 | **Railway** | Recommendations (railway up, managed DB add-ons). Checklist items (services configured, env vars, custom domain). |
@@ -639,7 +649,7 @@ git clone https://github.com/BernhardJackiewicz/architect-to-product.git
 cd architect-to-product
 npm install
 npm run typecheck   # Type checking
-npm test            # 993 tests
+npm test            # 1061 tests
 npm run build       # Build
 npm run dev         # Dev mode
 ```

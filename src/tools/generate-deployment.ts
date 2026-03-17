@@ -106,6 +106,44 @@ export function handleGenerateDeployment(input: GenerateDeploymentInput): string
     }
   }
 
+  // Hetzner-specific: 3-Layer Backup + Storage Guide
+  const hosting = tech.hosting?.toLowerCase() ?? "";
+  if (hosting.includes("hetzner") && hasServerContext) {
+    deploymentGuide.hetznerBackupRecommendation = {
+      serverBackups: {
+        description: "Hetzner automated server backups (Root-Disk snapshot)",
+        cost: "+20% of server price (~0.70 EUR/month for cx22)",
+        frequency: "Daily, 7-slot retention (Hetzner-managed)",
+        coversWhat: "OS, Docker, configs and all data on the server root disk. Docker named volumes are included when on root disk. Does NOT include attached Hetzner Volumes.",
+        enableHint: "Hetzner Console > Server > Backups > Enable, or via API",
+        limitation: "7 slots only — not sufficient as sole retention strategy",
+      },
+      appBackup: {
+        description: "App-level backup via scripts/backup.sh → /backups/",
+        frequency: "Daily via systemd timer (or more frequent via cron)",
+        coversWhat: "Database dumps, application data files",
+        requiredStep: "backup.sh must write to /backups/ on server disk",
+      },
+      offsiteCopy: {
+        description: "Offsite copy via rclone to Storage Box (SFTP) or Object Storage (S3)",
+        coversWhat: "Protection against server deletion, account errors, provider outage",
+        requiredStep: "rclone copy /backups/ remote:backup-path (NOT rclone sync — sync deletes at target). Use separate retention/pruning or tools with built-in versioning (restic, borg).",
+        defaultTarget: "Hetzner Storage Box via SFTP (simplest setup)",
+      },
+      strategy: "3-Layer: Server-Backup (server rebuild) + App-Backup (data recovery) + Offsite-Copy (disaster recovery). Server backups have only 7 slots and cover only root disk.",
+    };
+
+    deploymentGuide.hetznerStorageGuide = {
+      defaultForBackup: "Storage Box (SFTP via rclone). Supports SFTP/SCP (always on port 22), rsync, and BorgBackup. SSH-key auth supported but password auth remains active by default.",
+      alternativeForBackup: "Object Storage (S3-compatible via rclone). Better for versioning, automation, and scale.",
+      forTeamFiles: "Storage Share (managed Nextcloud)",
+      hardening: {
+        storageBox: "Activate only needed protocols (SFTP/SCP always active, FTP/SMB/Port-23-SSH only if needed). Set up SSH keys. Use sub-accounts with restricted directories for backup access. Read-only sub-accounts for download-only.",
+        objectStorage: "Access key + secret key, bucket-level permissions, no public access unless needed",
+      },
+    };
+  }
+
   // Mobile deployment note — guidance only, no artifact promises
   if (isMobilePlatform) {
     deploymentGuide.mobileDeploymentNote = "Mobile deployment is handled outside A2P via platform-specific toolchains (Xcode, Android Studio, flutter build, eas build). See recommendations for guidance. A2P does not generate mobile build scripts or store configs.";
@@ -294,7 +332,7 @@ function getOffsiteHint(provider: string): string {
     case "s3": return "aws s3 cp or rclone sync. Configure lifecycle rules for retention.";
     case "b2": return "b2 upload-file or rclone sync. Cost-effective for backups.";
     case "spaces": return "s3cmd or rclone. DigitalOcean Spaces is S3-compatible.";
-    case "hetzner_storage": return "rclone with Hetzner Storage Box (SFTP) or Object Storage (S3-compatible).";
+    case "hetzner_storage": return "Standard: rclone with Hetzner Storage Box (SFTP): rclone config → type=sftp, host=uNNNNNN.your-storagebox.de, user=uNNNNNN, key_file=~/.ssh/storagebox_key. Alternative: Hetzner Object Storage (S3-compatible): rclone config → type=s3, provider=Other, endpoint=fsn1.your-objectstorage.com. Storage Box: activate only needed protocols, use sub-account for backup.";
     default: return "No offsite configured. Consider S3, B2, or hosting provider's object storage.";
   }
 }
