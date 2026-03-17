@@ -53,7 +53,7 @@ These tools provide the persistence and state tracking layer. The actual analysi
 
 These behaviors are instructed via prompts, not enforced by gates:
 
-- Documentation-first (WebSearch before coding unfamiliar tech)
+- Documentation-first (WebSearch before coding unfamiliar tech) — **verified empirically** (mini-links run, 2026-03-17): Claude used WebSearch + WebFetch for Hono, Drizzle ORM, Turso, and Better Auth before writing code. Triggered by unfamiliar tech in architecture. Not code-enforced — prompt instructs "READ Documentation, do not guess" (RECOMMENDED, not MANDATORY)
 - Domain logic triggers WebSearch for facts (tax rates, regulations)
 - Quality audit frequency (~5-10 commits)
 - OWASP Top 10 manual review checklist
