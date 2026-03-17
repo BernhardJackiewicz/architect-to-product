@@ -14,11 +14,20 @@ export function handleBuildSignoff(input: BuildSignoffInput): string {
 
   try {
     const state = sm.setBuildSignoff(input.note);
+
+    // Check for UI slices without Playwright companion
+    const hasUISlices = state.slices.some((s) => s.hasUI);
+    const hasPlaywright = state.companions.some((c) => c.type === "playwright" && c.installed);
+    const e2eWarning = hasUISlices && !hasPlaywright
+      ? "UI slices detected but no Playwright companion installed. E2E testing will be skipped. Consider installing playwright-mcp for visual verification."
+      : undefined;
+
     return JSON.stringify({
       success: true,
       signedOffAt: state.buildSignoffAt,
       sliceHash: state.buildSignoffSliceHash,
       note: input.note ?? null,
+      ...(e2eWarning ? { e2eWarning } : {}),
     });
   } catch (err) {
     return JSON.stringify({ error: err instanceof Error ? err.message : String(err) });

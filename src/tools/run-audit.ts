@@ -308,6 +308,14 @@ export function handleRunAudit(input: RunAuditInput): string {
     },
   );
 
+  // Clarify when build/test commands are not configured
+  const buildNote = buildPassed === null && input.runBuild !== false
+    ? "No build command configured (config.buildCommand is empty). Configure via project setup or a2p_run_tests."
+    : undefined;
+  const testNote = testsPassed === null && input.runTests !== false
+    ? "No test command configured (config.testCommand is empty). Configure via project setup or a2p_run_tests."
+    : undefined;
+
   return JSON.stringify({
     success: true,
     auditId,
@@ -317,6 +325,8 @@ export function handleRunAudit(input: RunAuditInput): string {
     bySeverity: summary,
     buildPassed,
     testsPassed,
+    ...(buildNote ? { buildNote } : {}),
+    ...(testNote ? { testNote } : {}),
     aggregated: result.aggregated,
     hint: summary.critical > 0
       ? "CRITICAL findings detected. Fix these immediately."

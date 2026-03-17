@@ -57,6 +57,16 @@ export function handleGetChecklist(input: GetChecklistInput): string {
     ],
   };
 
+  // E2E testing item for UI slices
+  const hasUISlices = state.slices.some((s) => s.hasUI);
+  if (hasUISlices) {
+    const hasE2EResults = state.buildHistory.some((e) => e.action === "e2e_test");
+    checklist.preDeployment.push({
+      item: "E2E tests executed for UI slices (requires playwright-mcp companion)",
+      done: hasE2EResults,
+    });
+  }
+
   // Backup-specific items
   const backupConfig = state.backupConfig;
   if (backupConfig.enabled && backupConfig.required) {

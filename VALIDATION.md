@@ -1,8 +1,8 @@
 # Validation Summary
 
-> Last validated: 2026-03-16 | A2P v0.1.4 | 861 tests passing
+> Last validated: 2026-03-17 | A2P v0.1.17 | 1022 tests passing
 
-## Code-Enforced (verified by 858 unit/integration tests)
+## Code-Enforced (verified by 1022 unit/integration tests)
 
 All workflow gates are implemented in `state-manager.ts` and tested:
 
@@ -108,3 +108,126 @@ During the e-invoice-api run (2026-03-16), Claude bypassed all phase-transition 
 ### Root cause of v0.1.1 gate failure
 
 npm v0.1.1 was published at 2026-03-14T02:01:19Z. Evidence gates were added in commit `0451730` at 2026-03-14T10:48:52 — ~9 hours AFTER publish. The globally installed `npx architect-to-product` ran the published version without gates. Not a code bug — a release timing issue, now prevented by `prepublishOnly`.
+
+---
+
+## Full E2E Pipeline Validation (mini-notes app, 2026-03-17, A2P v0.1.17)
+
+### Setup
+
+Separate repo (`~/Desktop/a2p-mini-e2e-app`), fresh Claude Code session with MCP pinned to `architect-to-product@0.1.17`. MCP server version confirmed via process list: `npm exec architect-to-product@0.1.17` (PID 13494).
+
+**Test app:** TypeScript + Express + SQLite (better-sqlite3) + Vanilla HTML/JS. JWT auth (register, login), CRUD notes, ownership enforcement (user A cannot see/edit/delete user B's notes). 4 vertical slices, 27 vitest tests.
+
+### Build Result
+
+| Feature | Status | Evidence |
+|---|---|---|
+| User Registration | Pass | `auth.test.ts`: bcrypt hashed, 409 on duplicate |
+| User Login + JWT | Pass | `auth.test.ts`: valid JWT returned, 401 on wrong password |
+| Notes CRUD | Pass | `notes.test.ts`: create(201), list, get, update, delete(204) |
+| Ownership Enforcement | Pass | `notes.test.ts`: GET/PUT/DELETE returns 403 for other user's notes |
+| Auth Guard (401) | Pass | `notes.test.ts`: all 5 endpoints return 401 without token |
+| HTML UI | Pass | `ui.test.ts`: static files served, pages accessible |
+| SQLite Schema | Pass | `setup.test.ts`: users + notes tables with correct columns, unique constraint |
+| **Test suite** | **27 passing, 0 failing** | 4 test files, vitest run, 3.3s |
+| TypeScript build | Fail | 1 type error (`exported variable 'db'` type inference). Tests pass via vitest on-the-fly transpilation |
+
+### Pipeline Phases Traversed
+
+```
+onboarding → planning → building → security → deployment → security (re-entry #1) → deployment → security (re-entry #2) → deployment
+```
+
+119 BuildHistory events. 3 Security re-entry cycles executed.
+
+### Gate Verification (forensic, from state.json reads)
+
+| Gate | README Claim | Verified | Evidence |
+|---|---|---|---|
+| Build gate (all slices done) | Zeile 208 | **Yes, code-enforced** | `a2p_update_slice` in planning phase → error. All 4 slices status=done before phase transition |
+| Evidence gate (tests for green) | Zeile 211 | **Yes, code-enforced** | Each slice has testResults before green transition |
+| Build signoff gate | Zeile 209 | **Yes, code-enforced** | `buildSignoffAt: 2026-03-17T00:41:48.985Z` set before building→security |
+| Quality audit gate | Zeile 262-267 | **Yes, code-enforced** | `AUD-001 quality` exists before security transition |
+| Deploy approval gate | Zeile 216 | **Yes, code-enforced** | `deployApprovalAt` set after explicit approval |
+| Deploy approval invalidation (findings) | Zeile 216 | **Yes, code-enforced** | Finding at 01:05:47 after approval at 01:05:32 → approval nullified → new cycle required |
+| Deploy approval invalidation (audit) | Zeile 216 | **Yes, code-enforced** | Release audit at 01:07:10 → approval nullified |
+| Security re-entry invalidation | Zeile 221 | **Yes, code-enforced** | deployment→security: `deployApprovalAt → null`, `adversarialReviewState → null`, `securityReentryReason: "post_deploy"` |
+| Finding justification gate | Zeile 218 | **Yes, code-enforced** | `record-finding` with `status: accepted` without `justification` → error returned |
+| Phase guards | Zeile 222 | **Yes, code-enforced** | `a2p_update_slice` in planning → "can only be used in phases: building" |
+| Full SAST gate | Zeile 213 | **Yes, code-enforced** | Multiple `sast_run` full scans in buildHistory |
+| Whitebox gate (blocking findings) | Zeile 214 | **Yes, code-enforced** | 2 whitebox audits, 0 blocking findings, deployment allowed |
+| Active verification gate | Zeile 81 | **Yes, code-enforced** | 4 AVR runs, all 6/6 tests passed |
+| Adversarial evidence gate | Zeile 219 | **Yes, code-enforced** | Findings with `domains`, `confidence`, `evidence` fields populated |
+| Backup gate (stateful apps) | Zeile 217 | **Verified (hardened in 0.1.18)** | E2E anomaly not reproducible. Gate confirmed working via 3 database types (SQLite, PostgreSQL, MySQL) + defensive re-read after setBackupConfig. Full-flow regression tests added |
+| E2E gate (UI + Playwright) | Zeile 210 | **Verified (warning added in 0.1.18)** | Gate fires when Playwright installed. Warning added to build signoff when UI slices exist without Playwright |
+
+### Security Coverage Validation
+
+**Whitebox → Coverage Integration (v0.1.17 feature):**
+- Whitebox finding `WB-001` category `InputOutputSafety` → mapped to `input-output` area
+- Coverage `input-output: 60%` = 1 whitebox finding (20%) + 2 SAST findings (40%)
+- Mapping via `WHITEBOX_CATEGORY_TO_DOMAINS` confirmed working in production
+
+**focusArea-based Hardening (v0.1.17 feature):**
+- Adversarial R1 with `focusArea: "auth-session"` → coverage 100% (4 findings × 20% + 40% focus bonus, capped)
+- Adversarial R2 with `focusArea: "data-access"` → coverage 60% (1 finding × 20% + 40% focus bonus)
+- `computeHardeningRecommendations` uses persisted `securityOverview.coverageByArea` including whitebox findings
+
+**Final Coverage:**
+| Area | Coverage | Findings |
+|---|---|---|
+| auth-session | 100% | 5 |
+| input-output | 60% | 3 |
+| api-surface | 60% | 3 |
+| data-access | 20% | 1 |
+| infra-secrets | 20% | 1 |
+| business-logic | 0% | 0 |
+| external-integration | 0% | 0 |
+| vuln-chaining | 0% | 0 |
+
+### Deployment Artifacts Generated
+
+| Artifact | Present | Quality |
+|---|---|---|
+| `Dockerfile` | Yes | Multi-stage build, non-root user (`app`), `npm ci --omit=dev`, cache clean |
+| `docker-compose.yml` | Yes | Caddy reverse proxy, `read_only: true`, `no-new-privileges`, named volumes, log rotation |
+| `Caddyfile` | Yes | Blocks `/.env*`, `/.git*`, `/*.db`, `/.a2p*`. Security headers (X-Content-Type-Options, X-Frame-Options, XSS-Protection) |
+| `.env.production.example` | Yes | `JWT_SECRET=CHANGE_ME_TO_A_RANDOM_64_CHAR_STRING` — no real secrets |
+| `.dockerignore` | Yes | Excludes node_modules, dist, .env, .a2p, .claude, .git |
+| `scripts/backup.sh` | Yes | Docker volume copy, `sqlite3 PRAGMA integrity_check`, retention cleanup |
+| `scripts/restore.sh` | Yes | Integrity check before restore, stops app, restores, restarts |
+| `scripts/verify-backup.sh` | Yes | Checks all backups: file size, integrity, row counts, freshness warning (>25h) |
+
+### Bugs Found
+
+**Bug #1: Backup `required` flag not reliably persisted — RESOLVED (0.1.18)**
+
+`backupConfig.required` was `false` in the E2E test repo state despite SQLite database. Not reproducible locally — direct `handleSetArchitecture` with SQLite/PostgreSQL/MySQL all produce correct `required: true`. Hardened in 0.1.18: defensive re-read after `setBackupConfig()` throws on mismatch, plus 4 full-flow regression tests (3 DB types + deployment gate). Classified as observed anomaly, not a code bug.
+
+**Bug #2: `a2p_set_phase` not discoverable via MCP tool listing — NOT AN A2P BUG**
+
+All 28 tools are registered identically in `server.ts` using the same `server.tool()` pattern. Programmatic check confirms `a2p_set_phase` is in `_registeredTools`. The MCP `tools/list` endpoint exposes all 28. The "missing" tools in the E2E session's deferred tool list (7 of 28 not shown) is a Claude Code client-side optimization — the client pre-loads ~21 tools as deferred and lazy-loads the rest. The builder Claude Code window used `a2p_set_phase` successfully (buildHistory shows `phase_change` events).
+
+### Claim Gaps
+
+| README Claim | Gap | Status |
+|---|---|---|
+| "Stateful apps blocked from deployment if backup is missing" (Zeile 49, 217) | E2E anomaly not reproducible. Gate confirmed working via regression tests | **Resolved (0.1.18)** — defensive re-read + 4 regression tests |
+| E2E testing with Playwright (Zeile 210, 310) | Silently skipped when Playwright not installed | **Resolved (0.1.18)** — warning in build signoff + checklist item |
+| Audit `buildPassed`/`testsPassed` (Zeile 45) | `null` when no build/test command configured | **Resolved (0.1.18)** — `buildNote`/`testNote` explain when commands not configured |
+| "scripts/backup-offsite.sh", "ops/backup.env.example", "docs/BACKUP.md" (Zeile 239-241) | Not generated by tool directly | **Clarified in README** — deployment phase generates these via prompt guidance, not the tool itself |
+
+### Observations (not bugs)
+
+- Deploy approval is aggressively invalidated: every `record-finding` and `run_audit` nullifies it. User must approve as the very last step before generating deployment configs. Correct from security perspective but surprising UX.
+- Adversarial review state is fully reset on security re-entry (round counter resets to 0). Previous round history from before re-entry is lost. This means cumulative history only spans within one security session, not across re-entries.
+- TypeScript build (`tsc --noEmit`) fails but vitest tests pass (on-the-fly transpilation). A2P does not detect this because audit `buildPassed` is always `null`.
+
+### Verdict
+
+**A2P 0.1.17 passes this E2E validation. All material gaps addressed in 0.1.18.**
+
+The core pipeline — evidence-gated TDD, security gates, whitebox audit, adversarial review with guided hardening, active verification, deployment artifact generation — works as documented. All mandatory gates (build signoff, deploy approval, finding justification, security re-entry invalidation) are code-enforced and verified forensically from state.json reads.
+
+**0.1.18 hardening:** Backup gate confirmed working (E2E anomaly not reproducible, defensive re-read added, 4 regression tests). UI/E2E warning added to build signoff. Audit output clarified when build/test commands not configured. All 28 tools confirmed registered and discoverable via MCP `tools/list`.

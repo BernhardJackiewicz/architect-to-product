@@ -344,4 +344,107 @@ describe("Backup Integration", () => {
       expect(state.backupConfig.required).toBe(true);
     });
   });
+
+  // === Full-flow regression: tool-layer init→setArchitecture→read (3) ===
+
+  describe("full-flow regression: handleInitProject → handleSetArchitecture → sm.read()", () => {
+    it("SQLite → required=true persisted through full tool flow", () => {
+      handleInitProject({ projectPath: tmpDir, projectName: "sqlite-app" });
+      const output = parse(handleSetArchitecture({
+        projectPath: tmpDir,
+        name: "SQLite App", description: "App with SQLite",
+        language: "TypeScript", framework: "Express",
+        database: "SQLite",
+        features: ["CRUD notes"],
+        dataModel: "notes table", apiDesign: "REST",
+      }));
+      expect(output.backupConfig.required).toBe(true);
+
+      // Re-read from disk to confirm persistence
+      const sm = new StateManager(tmpDir);
+      const state = sm.read();
+      expect(state.backupConfig.required).toBe(true);
+      expect(state.backupConfig.targets).toContain("database");
+    });
+
+    it("PostgreSQL → required=true persisted through full tool flow", () => {
+      handleInitProject({ projectPath: tmpDir, projectName: "pg-app" });
+      const output = parse(handleSetArchitecture({
+        projectPath: tmpDir,
+        name: "PG App", description: "App with Postgres",
+        language: "Python", framework: "FastAPI",
+        database: "PostgreSQL",
+        features: ["user management"],
+        dataModel: "users table", apiDesign: "REST",
+      }));
+      expect(output.backupConfig.required).toBe(true);
+
+      const sm = new StateManager(tmpDir);
+      const state = sm.read();
+      expect(state.backupConfig.required).toBe(true);
+      expect(state.backupConfig.targets).toContain("database");
+    });
+
+    it("MySQL → required=true persisted through full tool flow", () => {
+      handleInitProject({ projectPath: tmpDir, projectName: "mysql-app" });
+      const output = parse(handleSetArchitecture({
+        projectPath: tmpDir,
+        name: "MySQL App", description: "App with MySQL",
+        language: "TypeScript", framework: "Express",
+        database: "MySQL",
+        features: ["inventory"],
+        dataModel: "products table", apiDesign: "REST",
+      }));
+      expect(output.backupConfig.required).toBe(true);
+
+      const sm = new StateManager(tmpDir);
+      const state = sm.read();
+      expect(state.backupConfig.required).toBe(true);
+      expect(state.backupConfig.targets).toContain("database");
+    });
+  });
+
+  // === Deployment gate full-flow regression (1) ===
+
+  describe("deployment gate full-flow: stateful app blocked then allowed", () => {
+    it("SQLite app → deployment blocked → setBackupStatus → deployment allowed", () => {
+      handleInitProject({ projectPath: tmpDir, projectName: "sqlite-gate" });
+      handleSetArchitecture({
+        projectPath: tmpDir,
+        name: "Gate Test", description: "SQLite gate test",
+        language: "TypeScript", framework: "Express",
+        database: "SQLite",
+        features: ["CRUD"],
+        dataModel: "items", apiDesign: "REST",
+      });
+      const sm = new StateManager(tmpDir);
+
+      // Walk through all phases to deployment
+      sm.setPhase("planning");
+      sm.setSlices([{
+        id: "s1", name: "S1", description: "s", acceptanceCriteria: ["ac"],
+        testStrategy: "unit", dependencies: [], status: "pending",
+        files: [], testResults: [], sastFindings: [],
+      }]);
+      sm.setPhase("building");
+      walkSliceToStatus(sm, "s1", "done");
+      sm.setBuildSignoff();
+      addQualityAudit(sm);
+      sm.setPhase("security");
+      sm.markFullSastRun(0);
+      addPassingWhitebox(sm);
+      addReleaseAudit(sm);
+      addPassingVerification(sm);
+
+      // Should be blocked — backup not configured
+      expect(() => sm.setPhase("deployment")).toThrow("backup configuration");
+
+      // Configure backup
+      sm.setBackupStatus({ configured: true, schedulerType: "cron" });
+
+      // Should now succeed
+      sm.setPhase("deployment");
+      expect(sm.read().phase).toBe("deployment");
+    });
+  });
 });

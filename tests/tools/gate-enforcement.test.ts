@@ -10,6 +10,7 @@ import {
 import { handleInitProject } from "../../src/tools/init-project.js";
 import { handleSetArchitecture } from "../../src/tools/set-architecture.js";
 import { handleCompleteAdversarialReview } from "../../src/tools/complete-adversarial-review.js";
+import { handleBuildSignoff } from "../../src/tools/build-signoff.js";
 
 let dir: string;
 
@@ -938,5 +939,53 @@ describe("Full Gate Sequence: correct order enforcement", () => {
     addPassingVerification(sm);
     const state = sm.setPhase("deployment");
     expect(state.phase).toBe("deployment");
+  });
+});
+
+// ============================================================================
+// Build Signoff: E2E warning for UI slices without Playwright
+// ============================================================================
+
+describe("Build Signoff: UI/E2E warning", () => {
+  function markSlicesHasUI(tmpDir: string): void {
+    const statePath = join(tmpDir, ".a2p", "state.json");
+    const state = JSON.parse(readFileSync(statePath, "utf-8"));
+    for (const s of state.slices) s.hasUI = true;
+    writeFileSync(statePath, JSON.stringify(state, null, 2), "utf-8");
+  }
+
+  it("UI slices + no Playwright → e2eWarning in build signoff output", () => {
+    const sm = initWithStateManager(dir);
+    markSlicesHasUI(dir);
+    forcePhase(dir, "building");
+    for (const s of sm.read().slices) walkSliceToStatus(sm, s.id, "done");
+    const result = JSON.parse(handleBuildSignoff({ projectPath: dir }));
+    expect(result.success).toBe(true);
+    expect(result.e2eWarning).toBeDefined();
+    expect(result.e2eWarning).toContain("UI slices detected");
+    expect(result.e2eWarning).toContain("playwright-mcp");
+  });
+
+  it("no UI slices → no e2eWarning in build signoff output", () => {
+    const sm = initWithStateManager(dir);
+    forcePhase(dir, "building");
+    for (const s of sm.read().slices) walkSliceToStatus(sm, s.id, "done");
+    const result = JSON.parse(handleBuildSignoff({ projectPath: dir }));
+    expect(result.success).toBe(true);
+    expect(result.e2eWarning).toBeUndefined();
+  });
+
+  it("UI slices + Playwright installed → no e2eWarning", () => {
+    const sm = initWithStateManager(dir);
+    sm.addCompanion({
+      name: "Playwright", type: "playwright",
+      command: "npx playwright test", installed: true, config: {},
+    });
+    markSlicesHasUI(dir);
+    forcePhase(dir, "building");
+    for (const s of sm.read().slices) walkSliceToStatus(sm, s.id, "done");
+    const result = JSON.parse(handleBuildSignoff({ projectPath: dir }));
+    expect(result.success).toBe(true);
+    expect(result.e2eWarning).toBeUndefined();
   });
 });
