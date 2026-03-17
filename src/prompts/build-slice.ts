@@ -118,21 +118,35 @@ If the current slice has \`hasUI: true\` AND \`architecture.uiDesign\` exists:
    - If \`type: "description"\` → use the text as design specification
 3. Implement the UI **according to these specifications** — not at your own discretion
 
-### Frontend Design Skill — RECOMMENDED for UI slices
-If the \`/frontend-design\` skill is available (Anthropic's built-in Claude Code skill):
-- Use it when building components, pages, or visual interfaces
-- It produces distinctive, production-grade frontend code that avoids generic AI aesthetics
-- Combines well with \`uiDesign\` references from the architecture — feed the style/description into the skill
-- Especially valuable for: landing pages, dashboards, forms, navigation, and any user-facing interface
+### Frontend Aesthetics — MANDATORY for all frontend slices
+**These rules are non-negotiable for every \`hasUI: true\` slice.** They apply regardless of whether a uiDesign exists. The goal: distinctive, production-grade frontends that avoid generic "AI slop" aesthetics.
 
-**When to invoke:** During GREEN phase of \`hasUI: true\` slices. The skill handles the visual implementation, A2P handles the TDD cycle and quality gates around it.
+Before writing any frontend code, commit to a BOLD aesthetic direction:
+- **Purpose**: What problem does this interface solve? Who uses it?
+- **Tone**: Pick a clear direction — brutally minimal, maximalist, retro-futuristic, organic/natural, luxury/refined, playful, editorial/magazine, brutalist/raw, art deco, soft/pastel, industrial/utilitarian. Commit fully.
+- **Differentiation**: What makes this UNFORGETTABLE? What's the one thing someone will remember?
 
-### UI Quality Rules (MANDATORY for all frontend slices)
-These rules always apply — regardless of whether a uiDesign exists:
+**Typography:** Choose fonts that are beautiful, unique, and interesting. Avoid generic fonts like Arial, Inter, Roboto, Open Sans, Lato, and system fonts. Opt for distinctive, characterful choices that elevate the frontend. Pair a distinctive display font with a refined body font. Load from Google Fonts. Use weight extremes (100/200 vs 800/900, not 400 vs 600). Size jumps of 3x+, not 1.5x.
 
-**No emojis in the UI.** Do not use Unicode emojis (📦, 💰, ✅, 🔍 etc.) in rendered HTML/JSX. Emojis look unprofessional. Use SVG icons or plain text labels instead.
+**Color & Theme:** Commit to a cohesive aesthetic. Use CSS variables for consistency. Dominant colors with sharp accents outperform timid, evenly-distributed palettes. Draw from IDE themes and cultural aesthetics for inspiration. No purple/violet/fuchsia/indigo as primary colors — these are the hallmark of generic AI output. Use the colors from uiDesign if available.
 
-**No purple/violet/fuchsia color schemes.** Avoid \`violet-*\`, \`purple-*\`, \`fuchsia-*\` and \`indigo-*\` as primary UI colors (Tailwind classes and CSS). These colors are a typical sign of unstyled AI-generated interfaces. Use \`blue-*\`, \`slate-*\`, \`zinc-*\`, \`neutral-*\` or the colors from the uiDesign instead — unless the user explicitly requested violet/purple.
+**Motion:** Use animations for effects and micro-interactions. Prioritize CSS-only solutions for HTML. Use Motion library for React when available. Focus on high-impact moments: one well-orchestrated page load with staggered reveals (\`animation-delay\`) creates more delight than scattered micro-interactions. Use scroll-triggering and hover states that surprise.
+
+**Backgrounds & Visual Details:** Create atmosphere and depth rather than defaulting to solid colors. Apply creative forms: gradient meshes, noise textures, geometric patterns, layered transparencies, dramatic shadows, decorative borders, custom cursors, grain overlays. Match the overall aesthetic.
+
+**Spatial Composition:** Unexpected layouts. Asymmetry. Overlap. Diagonal flow. Grid-breaking elements. Generous negative space OR controlled density.
+
+**NEVER use these generic AI aesthetics:**
+- Overused font families (Inter, Roboto, Arial, system fonts, Space Grotesk)
+- Purple/violet/fuchsia gradients on white backgrounds
+- Predictable layouts and component patterns
+- Cookie-cutter card grids with rounded corners and subtle shadows
+- Unicode emojis (📦, 💰, ✅, 🔍) as UI elements — use SVG icons or text labels
+- The same aesthetic across different slices — vary themes, fonts, color palettes
+
+**Match complexity to vision:** Maximalist designs need elaborate code with extensive animations. Minimalist designs need restraint, precision, and careful attention to spacing and typography. The right amount is whatever the vision demands.
+
+**Every frontend slice must feel genuinely designed for its context.** No two projects should look the same. Interpret creatively and make unexpected choices.
 
 ### Visual Verification (frontend slices only)
 If the current slice has \`hasUI: true\` (frontend components, pages, forms):
