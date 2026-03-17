@@ -55,6 +55,33 @@ Wenn hosting "hetzner", "digitalocean", "vps", "debian", "ubuntu", "linux" enth�
 
 Wenn der User Hetzner gewählt hat oder kein spezifischer Hoster feststeht:
 
+**Schritt 0: Deployment-Briefing — ZEIGE DEM USER VOR DEM START:**
+
+"**Was du fuer das Deployment brauchst:**
+
+**Minimum (reicht zum Starten):**
+- Hetzner Cloud Account + API Token (Read & Write)
+- SSH Key auf deinem Rechner (wird auf den Server kopiert)
+- Das wars. Kein extra Storage noetig.
+
+**Was du NICHT vorab brauchst:**
+- Keine Storage Box — lokale Backups laufen auf dem Server selbst (\`/backups/\`)
+- Kein Object Storage — kann spaeter jederzeit ergaenzt werden
+- Keine Domain — Caddy funktioniert auch mit IP, Domain kommt wenn du bereit bist
+
+**Backup-Stufen (kannst du jederzeit hochstufen):**
+1. \`Server + lokale Backups\` — Minimum fuer Start. backup.sh sichert DB nach /backups/ auf dem Server.
+2. \`+ Hetzner Server-Backups\` — Ein Klick in der Console, +20% Serverpreis (~0.70 EUR/mo). Sichert komplette Root-Disk taeglich, 7 Tage.
+3. \`+ Offsite-Backup\` — Fuer echtes Disaster-Recovery. Storage Box (ab 3.81 EUR/mo) oder S3. Schuetzt gegen Server-Loeschung/Account-Fehler.
+
+**Server-Sizing:** A2P waehlt automatisch basierend auf deinem Tech-Stack:
+- [HIER: Ergebnis von a2p_plan_infrastructure zeigen — Server-Typ, RAM, Kosten]
+- 20 TB Traffic inklusive bei jeder Hetzner-Instanz.
+
+**SSH-Key Setup:** Ich werde gleich deine lokalen SSH-Keys auflisten. Waehle einen aus. **Empfehlung:** Verbinde dich nach dem Provisioning einmal manuell per SSH (\`ssh deploy@SERVER_IP\`), um den Server-Fingerprint zu akzeptieren. Danach uebernimmt A2P den Rest automatisch (rsync, docker compose, etc.)."
+
+→ STOP. Warte auf Bestaetigung bevor du weitermachst.
+
 1. **API Token erfragen:**
    "Gib mir deinen Hetzner Cloud API Token (console.hetzner.cloud > Projekt > Security > API Tokens > Read & Write)."
    → Token NUR in Shell-Variable speichern: \`export HETZNER_TOKEN="<token>"\`
@@ -67,32 +94,44 @@ Wenn der User Hetzner gewählt hat oder kein spezifischer Hoster feststeht:
 
 3. **Infrastruktur planen:**
    - \`a2p_plan_infrastructure\` aufrufen
-   - Plan dem User zeigen (Server-Typ, Kosten, Standort, Security)
+   - Plan dem User zeigen (Server-Typ, RAM, vCPU, Kosten, Standort, Security-Setup)
+   - 20 TB Traffic inklusive erwaehnen
    - Auf explizite Bestätigung warten (kostenpflichtiger Server!)
 
 4. **Server provisionieren:**
    - curl-Commands aus dem Plan via Bash ausführen
    - Server-Status pollen bis running
-   - Cloud-init abwarten (~2-3 min), SSH-Zugang prüfen
+   - Cloud-init abwarten (~2-3 min)
 
-5. **Server registrieren:**
+5. **Erster SSH-Zugang — WICHTIG:**
+   - User auffordern: "Verbinde dich jetzt einmal manuell: \`ssh deploy@SERVER_IP\`"
+   - Erklaeren: "Das bestaetigt den Server-Fingerprint in deiner known_hosts. Danach funktionieren rsync und alle weiteren SSH-Commands automatisch."
+   - Warten bis User bestaetigt, dass SSH funktioniert
+   - Alternativ: \`ssh -o StrictHostKeyChecking=accept-new deploy@SERVER_IP "docker --version"\` wenn der User den Fingerprint automatisch akzeptieren will
+
+6. **Server registrieren:**
    - \`a2p_record_server\` mit Server-Details aufrufen
 
-6. **Deployment-Dateien generieren:**
+7. **Deployment-Dateien generieren:**
    - \`a2p_generate_deployment\` aufrufen (wie bisher)
    - Dockerfile, docker-compose.prod.yml, Caddyfile etc. erstellen
    - .env.production erstellen (Secrets generieren via openssl)
 
-7. **Deployen:**
+8. **Deployen:**
    - \`a2p_deploy_to_server\` aufrufen für Command-Liste
    - Projekt auf Server kopieren (rsync)
    - docker compose up
    - Health-Check + Smoke Tests
 
-8. **Domain (optional):**
+9. **Domain (optional):**
    - User nach Domain fragen
    - DNS A-Record Anleitung geben
    - Caddy holt automatisch Let's Encrypt Zertifikat
+
+10. **Backup hochstufen (nach erfolgreichem Deploy empfehlen):**
+    - "Dein Server laeuft. Lokale Backups via backup.sh nach /backups/ sind eingerichtet."
+    - "Empfehlung: Aktiviere Hetzner Server-Backups in der Console (1 Klick, ~0.70 EUR/mo)."
+    - "Fuer Disaster-Recovery: Storage Box einrichten und rclone copy konfigurieren. Kann ich dir dabei helfen?"
 
 ### VPS Post-Provisioning Hardening (nach Server-Setup pruefen)
 
