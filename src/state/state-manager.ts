@@ -497,6 +497,14 @@ export class StateManager {
           `Slice "${sliceId}": cannot mark as "done" — last test run failed (exit code ${lastTest.exitCode}). Tests must pass first.`
         );
       }
+      // Tests must be run after SAST scan
+      if (slice.sastRanAt) {
+        if (lastTest.timestamp < slice.sastRanAt) {
+          throw new Error(
+            `Slice "${sliceId}": tests must be re-run after SAST scan. Last test: ${lastTest.timestamp}, SAST: ${slice.sastRanAt}.`
+          );
+        }
+      }
     }
 
     // Reset SAST evidence when going back to red (forces re-run after fixes)
@@ -719,6 +727,32 @@ export class StateManager {
         state.lastFullSastAt < state.lastSecurityRelevantChangeAt) {
       throw new Error("Full SAST scan is stale. Re-run a2p_run_sast mode=full first.");
     }
+
+    // Active verification gate (mirrors setPhase check)
+    const verificationResults = state.activeVerificationResults;
+    if (verificationResults.length === 0) {
+      throw new Error("Deploy approval requires active verification. Run a2p_run_active_verification first.");
+    }
+    const lastVerification = verificationResults[verificationResults.length - 1];
+    if (lastVerification.blocking_count > 0) {
+      throw new Error(
+        `Deploy approval blocked: active verification (${lastVerification.id}) has ${lastVerification.blocking_count} blocking finding(s).`
+      );
+    }
+
+    // Verification staleness (mirrors setPhase check)
+    if (state.lastSecurityRelevantChangeAt &&
+        lastVerification.timestamp < state.lastSecurityRelevantChangeAt) {
+      throw new Error("Active verification is stale. Re-run a2p_run_active_verification.");
+    }
+
+    // Backup gate (mirrors setPhase check)
+    if (state.backupConfig.required && !state.backupStatus.configured) {
+      throw new Error(
+        "Deploy approval blocked: stateful app without backup configuration. Configure backup first."
+      );
+    }
+
     state.deployApprovalAt = new Date().toISOString();
     state.deployApprovalStateHash = this.computeDeployStateHash(state);
     this.addEvent(state, state.phase, null, "deploy_approval",

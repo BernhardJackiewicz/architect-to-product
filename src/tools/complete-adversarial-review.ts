@@ -79,8 +79,8 @@ const HARDENING_AREAS: HardeningArea[] = [
     relevantWhen: (ctx) => ({
       relevant: ctx.hasAuth || ctx.hasPublicAPI,
       reason: ctx.hasAuth
-        ? "Auth + Sessions erkannt (login, JWT, password reset)"
-        : "Public API erkannt — Auth-Pruefung empfohlen",
+        ? "Auth + Sessions detected (login, JWT, password reset)"
+        : "Public API detected — auth check recommended",
     }),
     shakeBreakCategories: ["auth_idor", "token_session"],
     description: "Session handling, JWT, password reset, login flows",
@@ -92,8 +92,8 @@ const HARDENING_AREAS: HardeningArea[] = [
     relevantWhen: (ctx) => ({
       relevant: !!ctx.techStack.database,
       reason: ctx.hasMultiTenant
-        ? `Multi-Tenant + Datenbank erkannt (${ctx.techStack.database}) — Row-Level Isolation noetig`
-        : `Datenbank erkannt (${ctx.techStack.database}) — Ownership-Checks relevant`,
+        ? `Multi-tenant + database detected (${ctx.techStack.database}) — row-level isolation required`
+        : `Database detected (${ctx.techStack.database}) — ownership checks relevant`,
     }),
     shakeBreakCategories: ["auth_idor"],
     description: "Ownership checks, tenant isolation, soft-delete access",
@@ -105,8 +105,8 @@ const HARDENING_AREAS: HardeningArea[] = [
     relevantWhen: (ctx) => ({
       relevant: ctx.hasPayments || ctx.hasStatefulFlows,
       reason: ctx.hasPayments
-        ? "Payments erkannt — Preismanipulation, Double-Spending relevant"
-        : "Stateful Flows erkannt (orders, checkout, workflows)",
+        ? "Payments detected — price manipulation, double-spending relevant"
+        : "Stateful flows detected (orders, checkout, workflows)",
     }),
     shakeBreakCategories: ["business_logic", "race_conditions", "state_manipulation"],
     description: "Price manipulation, state machines, race conditions, DoS",
@@ -118,8 +118,8 @@ const HARDENING_AREAS: HardeningArea[] = [
     relevantWhen: (ctx) => ({
       relevant: !!ctx.techStack.frontend || ctx.hasPublicAPI,
       reason: ctx.techStack.frontend
-        ? `Frontend erkannt (${ctx.techStack.frontend}) — XSS, CSRF relevant`
-        : "Public API erkannt — Input Validation noetig",
+        ? `Frontend detected (${ctx.techStack.frontend}) — XSS, CSRF relevant`
+        : "Public API detected — input validation required",
     }),
     shakeBreakCategories: ["injection_runtime"],
     description: "XSS, CSRF, deserialization, IDOR, cookie flags, CORS",
@@ -130,7 +130,7 @@ const HARDENING_AREAS: HardeningArea[] = [
     domains: [2, 22, 25],
     relevantWhen: (ctx) => ({
       relevant: ctx.hasPublicAPI,
-      reason: "Public API-Endpunkte erkannt — Auth, Rate-Limiting, Exposure-Pruefung noetig",
+      reason: "Public API endpoints detected — auth, rate-limiting, exposure check required",
     }),
     shakeBreakCategories: ["auth_idor", "injection_runtime"],
     description: "Missing auth, rate limiting, internal endpoint exposure, cache control",
@@ -144,7 +144,7 @@ const HARDENING_AREAS: HardeningArea[] = [
       reason: [
         ctx.hasUpload ? "File Upload" : null,
         ctx.hasWebhooks ? "Webhooks" : null,
-      ].filter(Boolean).join(" + ") + " in Features erkannt",
+      ].filter(Boolean).join(" + ") + " detected in features",
     }),
     shakeBreakCategories: ["file_upload", "webhook_callback"],
     description: "File upload, webhooks, SSRF, trust boundaries",
@@ -158,7 +158,7 @@ const HARDENING_AREAS: HardeningArea[] = [
       reason: [
         ctx.techStack.database ? ctx.techStack.database : null,
         ctx.techStack.hosting ? ctx.techStack.hosting : null,
-      ].filter(Boolean).join(" + ") + " — DB-Connection + Deployment Security",
+      ].filter(Boolean).join(" + ") + " — DB connection + deployment security",
     }),
     shakeBreakCategories: [],
     description: "Deployment config, secrets, DB connection, backup security",
@@ -169,7 +169,7 @@ const HARDENING_AREAS: HardeningArea[] = [
     domains: [5],
     relevantWhen: (_ctx) => ({
       relevant: true,
-      reason: "Chaining wird ab Runde 2+ relevant — Low-Severity Issues kombinieren",
+      reason: "Chaining becomes relevant from round 2+ — combine low-severity issues",
     }),
     shakeBreakCategories: ["business_logic", "state_manipulation"],
     description: "Combining low-severity issues into high-impact exploits",
@@ -309,44 +309,44 @@ export function handleCompleteAdversarialReview(input: CompleteAdversarialReview
     // Build hint with recommendations and modes
     let hint: string;
     if (recommendations.length === 0) {
-      hint = `Adversarial Review Runde ${reviewState.round} abgeschlossen. ` +
-        `${input.findingsRecorded} neue Finding(s), ${reviewState.totalFindingsRecorded} insgesamt.\n\n` +
-        `Alle relevanten Bereiche haben ausreichende Coverage.\n\n` +
-        `Optionen:\n` +
-        `→ "focused-hardening" fuer tiefere Analyse eines Bereichs\n` +
-        `→ "full-round" fuer eine weitere volle Runde\n` +
-        `→ "shake-break" fuer Runtime-Tests\n` +
-        `→ "continue" um zu Active Verification weiterzugehen`;
+      hint = `Adversarial Review Round ${reviewState.round} complete. ` +
+        `${input.findingsRecorded} new finding(s), ${reviewState.totalFindingsRecorded} total.\n\n` +
+        `All relevant areas have sufficient coverage.\n\n` +
+        `Options:\n` +
+        `→ "focused-hardening" for deeper analysis of a specific area\n` +
+        `→ "full-round" for another full round\n` +
+        `→ "shake-break" for runtime tests\n` +
+        `→ "continue" to proceed to Active Verification`;
     } else {
       const recLines = recommendations.slice(0, 3).map((r, i) => {
         const coverageLabel = r.coverageEstimate === 0
-          ? "noch nicht geprueft"
-          : `~${r.coverageEstimate}% geprueft`;
+          ? "not yet reviewed"
+          : `~${r.coverageEstimate}% reviewed`;
         const sbLine = r.shakeBreakCategories.length > 0
-          ? `\n   [Shake & Break verfuegbar: ${r.shakeBreakCategories.join(", ")}]`
+          ? `\n   [Shake & Break available: ${r.shakeBreakCategories.join(", ")}]`
           : "";
-        return `${i + 1}. **${r.name}** (${coverageLabel})\n   → Relevant weil ${r.reason}${sbLine}`;
+        return `${i + 1}. **${r.name}** (${coverageLabel})\n   → Relevant because ${r.reason}${sbLine}`;
       }).join("\n\n");
 
-      hint = `Adversarial Review Runde ${reviewState.round} abgeschlossen. ` +
-        `${input.findingsRecorded} neue Finding(s), ${reviewState.totalFindingsRecorded} insgesamt.\n\n` +
-        `Security-Fortschritt (kumulativ ueber ${reviewState.round} Runde(n)):\n` +
-        `- ${whiteboxCount} Whitebox-Audit(s), ${shakeBreakCount} Shake & Break Session(s), ${activeVerificationCount} Active Verification(s)\n` +
-        `- ${coveredAreasCount} von ${totalAreas} Bereichen teilweise geprueft\n\n` +
-        `Empfohlene Hardening-Bereiche:\n${recLines}\n\n` +
-        `Optionen:\n` +
-        `→ Bereich waehlen (z.B. "auth-session") fuer fokussiertes Hardening\n` +
-        `→ "alles" fuer eine weitere volle Runde (alle 25 Domaenen)\n` +
-        `→ "shake-break" fuer Runtime-Tests der empfohlenen Bereiche`;
+      hint = `Adversarial Review Round ${reviewState.round} complete. ` +
+        `${input.findingsRecorded} new finding(s), ${reviewState.totalFindingsRecorded} total.\n\n` +
+        `Security progress (cumulative over ${reviewState.round} round(s)):\n` +
+        `- ${whiteboxCount} whitebox audit(s), ${shakeBreakCount} Shake & Break session(s), ${activeVerificationCount} active verification(s)\n` +
+        `- ${coveredAreasCount} of ${totalAreas} areas partially reviewed\n\n` +
+        `Recommended hardening areas:\n${recLines}\n\n` +
+        `Options:\n` +
+        `→ Choose an area (e.g. "auth-session") for focused hardening\n` +
+        `→ "all" for another full round (all 25 domains)\n` +
+        `→ "shake-break" for runtime tests of recommended areas`;
     }
 
     // Structured decision signals — always require user choice (code-enforced)
     const requiresUserChoice = true;
     const nextActions = [
-      { id: "focused-hardening", label: "Fokussiertes Hardening", description: "Einen Bereich wählen (z.B. auth-session)" },
-      { id: "full-round", label: "Volle Runde", description: "Alle 25 Domänen erneut prüfen" },
-      { id: "shake-break", label: "Shake & Break", description: "Runtime-Tests der empfohlenen Bereiche" },
-      { id: "continue", label: "Weiter zu Active Verification", description: "Security-Review abschliessen" },
+      { id: "focused-hardening", label: "Focused Hardening", description: "Choose an area (e.g. auth-session)" },
+      { id: "full-round", label: "Full Round", description: "Re-check all 25 domains" },
+      { id: "shake-break", label: "Shake & Break", description: "Runtime tests of recommended areas" },
+      { id: "continue", label: "Continue to Active Verification", description: "Conclude security review" },
     ];
     const recommendedAreas = recommendations.slice(0, 5).map(r => ({
       id: r.id,

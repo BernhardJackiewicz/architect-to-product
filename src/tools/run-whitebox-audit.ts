@@ -87,8 +87,25 @@ export function handleRunWhiteboxAudit(input: RunWhiteboxAuditInput): string {
     return true;
   });
 
+  // Suppress candidates matching resolved SAST findings by tool:file:title
+  // (handles line-number shifts between SAST re-scans, but tool+title
+  //  makes it specific enough to not hide genuinely new findings)
+  const resolvedStatuses = new Set(["false_positive", "fixed", "accepted"]);
+  const resolvedKeys = new Set(
+    state.slices
+      .flatMap((s) => s.sastFindings)
+      .concat(state.projectFindings)
+      .filter((f) => resolvedStatuses.has(f.status))
+      .map((f) => `${f.tool}:${f.file}:${f.title}`)
+  );
+
+  const unsuppressed = unique.filter((c) => {
+    const key = `${c.source}:${c.file}:${c.title}`;
+    return !resolvedKeys.has(key);
+  });
+
   // Warn if no candidates — differentiate why
-  if (unique.length === 0) {
+  if (unsuppressed.length === 0) {
     if (!state.lastFullSastAt) {
       const hasSastEvidence = state.slices.some(s => s.sastRanAt);
       return JSON.stringify({
@@ -111,7 +128,7 @@ export function handleRunWhiteboxAudit(input: RunWhiteboxAuditInput): string {
     // Full SAST ran but found nothing — run independent security probes
     const probeFindings = runIndependentProbes(state.slices, input.projectPath);
     for (const pf of probeFindings) {
-      unique.push(pf);
+      unsuppressed.push(pf);
     }
   }
 
@@ -119,7 +136,7 @@ export function handleRunWhiteboxAudit(input: RunWhiteboxAuditInput): string {
   const findings: WhiteboxFinding[] = [];
   let findingIdx = 0;
 
-  for (const candidate of unique) {
+  for (const candidate of unsuppressed) {
     findingIdx++;
     const id = `WB-${String(findingIdx).padStart(3, "0")}`;
 
@@ -168,7 +185,7 @@ export function handleRunWhiteboxAudit(input: RunWhiteboxAuditInput): string {
     id: resultId,
     mode: input.mode,
     timestamp: new Date().toISOString(),
-    candidates_evaluated: unique.length,
+    candidates_evaluated: unsuppressed.length,
     findings,
     summary,
     blocking_count: findings.filter((f) => f.blocking).length,
@@ -185,7 +202,7 @@ export function handleRunWhiteboxAudit(input: RunWhiteboxAuditInput): string {
       status: result.blocking_count > 0 ? "failure" : findings.length > 0 ? "warning" : "success",
       durationMs,
       runId: generateRunId(),
-      metadata: { findingCount: findings.length, toolName: "whitebox", candidatesEvaluated: unique.length, blockingCount: result.blocking_count },
+      metadata: { findingCount: findings.length, toolName: "whitebox", candidatesEvaluated: unsuppressed.length, blockingCount: result.blocking_count },
     },
   );
 
@@ -193,7 +210,7 @@ export function handleRunWhiteboxAudit(input: RunWhiteboxAuditInput): string {
     success: true,
     whiteboxId: resultId,
     mode: input.mode,
-    candidatesEvaluated: unique.length,
+    candidatesEvaluated: unsuppressed.length,
     findings: findings.slice(0, 20),
     totalFindings: findings.length,
     bySeverity: summary,

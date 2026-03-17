@@ -76,12 +76,23 @@ export function handleRecordFinding(input: RecordFindingInput): string {
   }
 
   // Check for ID collision
-  const existingIds = new Set(
-    state.slices.flatMap((s) => s.sastFindings).map((f) => f.id)
-  );
+  const allFindings = state.slices.flatMap((s) => s.sastFindings).concat(state.projectFindings);
+  const existingIds = new Set(allFindings.map((f) => f.id));
   if (existingIds.has(input.id)) {
     return JSON.stringify({
       error: `Finding ID "${input.id}" already exists. Use a unique ID.`,
+    });
+  }
+
+  // Fingerprint-based dedup (same pattern as run-sast.ts)
+  const fingerprint = `${input.tool}:${input.file}:${input.line}:${input.title}`;
+  const existingFingerprints = new Set(
+    allFindings.map((f) => `${f.tool}:${f.file}:${f.line}:${f.title}`)
+  );
+  if (existingFingerprints.has(fingerprint)) {
+    return JSON.stringify({
+      error: `Duplicate finding: same tool+file+line+title already exists.`,
+      existingFingerprint: fingerprint,
     });
   }
 
