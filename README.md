@@ -20,7 +20,7 @@ Vibe coding with Claude Code, Cursor, or any AI coding assistant generates code 
 
 ### How it works: Red, Green, Refactor
 
-A2P enforces the same development discipline that Anthropic's engineers use when building with Claude — write the test first, make it pass, then clean up. Every feature (called a "slice") moves through a strict cycle:
+A2P enforces classic Test-Driven Development — write the test first, make it pass, then clean up. Every feature (called a "slice") moves through a strict cycle:
 
 1. **Red** — Write failing tests that define what the feature should do. No production code yet. The tests prove you understand the requirement.
 2. **Green** — Write the minimum code to make all tests pass. Nothing more. A2P verifies tests actually ran and passed before allowing this transition.
