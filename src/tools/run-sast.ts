@@ -69,6 +69,7 @@ export function handleRunSast(input: RunSastInput): string {
   const existingFingerprints = new Set(
     freshState.slices
       .flatMap((s) => s.sastFindings)
+      .concat(freshState.projectFindings)
       .map((f) => `${f.tool}:${f.file}:${f.line}:${f.title}`)
   );
 
@@ -155,7 +156,8 @@ function runSemgrep(input: RunSastInput): {
     const includes = input.files.map((f) => `--include "${f}"`).join(" ");
     cmd += ` ${includes}`;
   }
-  cmd += " --exclude=node_modules --exclude=.venv --exclude=venv --exclude=dist --exclude=__pycache__ 2>/dev/null";
+  cmd += " --exclude=node_modules --exclude=.venv --exclude=venv --exclude=dist --exclude=__pycache__" +
+    " --exclude=.next --exclude=.turbopack --exclude=.nuxt --exclude=.svelte-kit --exclude=.output --exclude=build --exclude=.vercel --exclude=.angular 2>/dev/null";
 
   const result = runProcess(cmd, input.projectPath, 120_000);
 
@@ -205,7 +207,7 @@ function runBandit(input: RunSastInput): {
   }
 
   const cmd =
-    "bandit -r . --exclude=./.venv,./venv,./__pycache__,./tests,./node_modules -f json 2>/dev/null";
+    "bandit -r . --exclude=./.venv,./venv,./__pycache__,./tests,./node_modules,./.next,./.turbopack,./.nuxt,./.svelte-kit,./.output,./build -f json 2>/dev/null";
   const result = runProcess(cmd, input.projectPath, 120_000);
 
   let findings: SASTFinding[] = [];

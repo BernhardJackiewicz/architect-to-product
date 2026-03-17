@@ -47,6 +47,148 @@ If hosting contains "hetzner", "digitalocean", "vps", "debian", "ubuntu", "linux
 - \`docs/DEPLOYMENT.md\` (step-by-step deployment guide)
 
 **Env var handling:** \`.env.production\` with generation commands (\`openssl rand -hex 32\`)
+
+**Secret management (IMPORTANT):**
+- \`.env.production\` is plaintext on disk — minimum hardening:
+  - \`chmod 600 .env.production\` (owner-only readable)
+  - Store outside the project directory (e.g. \`/etc/<app>/env\`) and reference via \`env_file\` in docker-compose
+  - NEVER copy \`.env.production\` into the Docker image
+- Caddy blocks \`/.env\` via HTTP — but SSH/server access still exposes the file
+
+**Secret management tiers — present ALL options to the user and let them choose:**
+
+**Tier 1: .env file (MVP / sandbox)**
+- \`.env.production\` in app dir with \`chmod 600\`, referenced via \`env_file:\` in docker-compose
+- Secrets never enter Docker image
+- Pro: zero setup, works everywhere
+- Con: plaintext on disk, no audit trail, no rotation, leaked SSH = leaked secrets
+
+**Tier 2: Docker Swarm secrets (single-VPS production)**
+- \`docker swarm init\` (even on a single node — enables secrets API)
+- Create secrets: \`echo "value" | docker secret create db_password -\`
+- Reference in docker-compose: \`secrets:\` section, app reads from \`/run/secrets/<name>\`
+- Pro: secrets encrypted at rest in Swarm Raft log, never in \`docker inspect\`, not in image layers
+- Pro: no external dependency, works offline, zero cost
+- Con: requires Swarm mode (\`docker swarm init\`), not plain Docker Compose — \`docker stack deploy\` replaces \`docker compose up\`
+- Con: no web UI, no audit trail, no automatic rotation, manual CLI management
+- Con: when to use: single VPS with 1-5 services, no compliance requirements, team of 1-2
+- Migration from .env: create one secret per env var, update compose to mount secrets, update app to read from \`/run/secrets/\` or use an entrypoint script that exports them as env vars
+
+**Tier 3: Infisical (production with audit trail)**
+- External secrets manager (cloud or self-hosted), free tier: 3 projects, 5 identities
+- Secrets stored centrally with encryption, versioning, audit log, and rotation
+- Integration via CLI: \`infisical run --projectId=xxx -- node index.js\`
+- For Docker: install Infisical CLI in Dockerfile, pass \`INFISICAL_TOKEN\` at runtime
+- Machine Identity with Universal Auth for non-interactive server access (\`clientId\` + \`clientSecret\`)
+- Pro: centralized management with web UI, audit trail, secret rotation, team access control
+- Pro: secrets never on disk — fetched at runtime and injected as env vars
+- Pro: free tier sufficient for small projects (3 projects, 5 identities)
+- Con: external dependency (API must be reachable at container start), adds latency to startup
+- Con: Machine Identity \`clientSecret\` still needs secure storage somewhere on the server
+- Con: self-hosting adds ops complexity; cloud version requires internet access
+- Setup: \`npm install -g @infisical/cli\`, create Machine Identity in Infisical dashboard, authenticate with Universal Auth
+- More info: https://infisical.com/docs/integrations/platforms/docker-compose
+
+**Tier 4: HashiCorp Vault / AWS Secrets Manager / Doppler (enterprise)**
+- For regulated environments with dynamic secrets, automatic rotation, and compliance requirements
+- Significantly more setup, ongoing ops cost
+- Only recommend if the user explicitly needs compliance-grade secret management
+
+**Ask the user:**
+"Which secret management tier fits your project?
+1. .env file (simplest — good for MVP)
+2. Docker Swarm secrets (encrypted at rest, no external dependency)
+3. Infisical (audit trail, rotation, web UI — free tier available)
+4. Enterprise (Vault/AWS SM — only if compliance requires it)"
+
+→ STOP. Wait for user choice before generating deployment configs.
+→ Then follow the matching implementation guide below.
+
+**After user chooses — Tier-specific implementation:**
+
+**If Tier 1 (.env file):**
+- Generate \`.env.production.example\` with placeholders + \`openssl rand\` generation commands
+- \`docker-compose.prod.yml\` uses \`env_file: .env.production\`
+- Deploy via \`a2p_deploy_to_server\` (SCP + chmod 600)
+- This is the default — no extra setup needed
+
+**If Tier 2 (Docker Swarm):**
+- Ask user to run on server: \`docker swarm init\`
+- Generate \`docker-compose.prod.yml\` with top-level \`secrets:\` section:
+  \`\`\`yaml
+  services:
+    app:
+      secrets:
+        - db_password
+        - jwt_secret
+      environment:
+        # Non-secret config still via env
+        NODE_ENV: production
+  secrets:
+    db_password:
+      external: true
+    jwt_secret:
+      external: true
+  \`\`\`
+- Generate \`scripts/create-secrets.sh\` that creates each secret:
+  \`\`\`bash
+  echo "Enter DB password:" && read -s val && echo "$val" | docker secret create db_password -
+  echo "Generating JWT secret..." && openssl rand -hex 32 | docker secret create jwt_secret -
+  \`\`\`
+- Generate \`scripts/docker-entrypoint.sh\` that exports secrets as env vars (for apps that can't read /run/secrets/):
+  \`\`\`bash
+  #!/bin/sh
+  for f in /run/secrets/*; do export "$(basename "$f")"="$(cat "$f")"; done
+  exec "$@"
+  \`\`\`
+- Deploy command changes: \`docker stack deploy -c docker-compose.prod.yml appname\` instead of \`docker compose up\`
+- Update/rotate: \`docker secret rm old && echo "new" | docker secret create old - && docker service update --force app\`
+- No \`.env.production\` file needed on server — skip SCP step in deployment
+- Important: \`docker stack deploy\` does not support \`build:\` — image must be pre-built: \`docker build -t app:latest . && docker stack deploy ...\`
+
+**If Tier 3 (Infisical):**
+- Ask user: "Give me your Infisical project ID and Machine Identity credentials (clientId + clientSecret)."
+  → Store ONLY in shell variable: \`export INFISICAL_CLIENT_ID="..." INFISICAL_CLIENT_SECRET="..."\`
+  → NEVER write to files, state, or commits.
+- Help user set up in Infisical dashboard:
+  1. Create project (or use existing)
+  2. Add all secrets from \`.env.production.example\` to the project (environment: "production")
+  3. Create Machine Identity: Project Settings → Access Control → Machine Identities → Create
+  4. Add Universal Auth method to the identity
+  5. Grant the identity access to the project (role: "member" is sufficient)
+- Modify \`Dockerfile\` — add Infisical CLI:
+  \`\`\`dockerfile
+  # After app build stage, in production stage:
+  RUN curl -1sLf 'https://dl.infisical.com/setup.deb.sh' | bash && apt-get install -y infisical
+  ENTRYPOINT ["infisical", "run", "--"]
+  CMD ["node", "index.js"]
+  \`\`\`
+- \`docker-compose.prod.yml\` — pass auth credentials at runtime:
+  \`\`\`yaml
+  services:
+    app:
+      environment:
+        - INFISICAL_MACHINE_IDENTITY_CLIENT_ID=\${INFISICAL_CLIENT_ID}
+        - INFISICAL_MACHINE_IDENTITY_CLIENT_SECRET=\${INFISICAL_CLIENT_SECRET}
+        - INFISICAL_PROJECT_ID=<project-id>
+        - INFISICAL_ENVIRONMENT=production
+  \`\`\`
+- On server, create \`/opt/app/.env.infisical\` with Machine Identity credentials only (2 vars, not all secrets):
+  \`\`\`
+  INFISICAL_CLIENT_ID=your-client-id
+  INFISICAL_CLIENT_SECRET=your-client-secret
+  \`\`\`
+  \`chmod 600 /opt/app/.env.infisical\`
+  Reference in docker-compose: \`env_file: .env.infisical\`
+- No \`.env.production\` needed — all secrets fetched from Infisical at container start
+- Rotation: update secret in Infisical web UI → restart container → done
+- Fallback: if Infisical API is unreachable, container won't start — ensure network connectivity
+
+**If Tier 4 (Enterprise):**
+- Provide general guidance only — implementation is provider-specific
+- Recommend user's DevOps/Security team handles the integration
+- Generate standard \`.env.production.example\` as documentation of required vars
+
 **Basic hardening:** SSH key-only auth, fail2ban, UFW + Docker patch, Docker security_opt
 **Smoke checks:** /health returns 200, /.env blocked, HTTPS enforced, Security Headers
 **Domain checklist:** DNS A record → server IP, SSL via Caddy/Let's Encrypt
@@ -128,7 +270,18 @@ If the user chose Hetzner or no specific host is set:
    - Provide DNS A record instructions
    - Caddy automatically obtains Let's Encrypt certificate
 
-10. **Upgrade backup (recommend after successful deploy):**
+10. **SSL Verification — MANDATORY GATE:**
+    After DNS configured and Caddy has provisioned the Let's Encrypt certificate:
+    - Verify: \`curl -sI https://DOMAIN\` → 200 with valid cert
+    - Check: \`curl -sI http://DOMAIN\` → redirects to HTTPS
+    - Check: Response includes \`Strict-Transport-Security\` header
+    - Call \`a2p_verify_ssl\` with method="caddy-auto", issuer="Let's Encrypt", autoRenewal=true
+    - **Without a2p_verify_ssl, deployment cannot be marked complete — code-enforced gate.**
+
+    **Auto-Renewal:** Caddy renews Let's Encrypt certificates automatically ~30 days before expiry.
+    No certbot, no cron job needed. Caddy handles the full ACME protocol internally.
+
+11. **Upgrade backup (recommend after successful deploy):**
     - "Your server is running. Local backups via backup.sh to /backups/ are set up."
     - "Recommendation: Enable Hetzner Server Backups in the console (1 click, ~0.70 EUR/mo)."
     - "For disaster recovery: Set up Storage Box and configure rclone copy. Can I help you with that?"
@@ -189,6 +342,7 @@ Optional:
 **Basic hardening:** Edge Middleware for rate limiting, CORS headers
 **Smoke checks:** Load preview URL, test API routes, check console errors
 **Domain checklist:** Vercel domain settings, DNS CNAME, SSL automatic
+**SSL gate:** After domain configured, call \`a2p_verify_ssl\` with method="paas-auto", issuer="Vercel", autoRenewal=true
 
 ### Deploy to Cloudflare (if Cloudflare MCP available or hosting=Cloudflare)
 1. For Pages: \`wrangler pages deploy\` with build output
@@ -200,6 +354,7 @@ Optional:
 **Basic hardening:** WAF Rules, Bot Management, Rate Limiting via dashboard
 **Smoke checks:** Test Worker/Pages URL, check KV/D1 connectivity
 **Domain checklist:** NS records to Cloudflare, proxy status orange, SSL Full (Strict)
+**SSL gate:** After domain configured, call \`a2p_verify_ssl\` with method="paas-auto", issuer="Cloudflare", autoRenewal=true
 
 ### Deploy to Railway
 1. Generate \`railway.toml\` or \`Procfile\`
@@ -211,6 +366,7 @@ Optional:
 **Basic hardening:** Private networking for DB, no public DB port
 **Smoke checks:** Load Railway URL, check logs, test DB connection
 **Domain checklist:** Custom domain in Railway settings, CNAME record
+**SSL gate:** After domain configured, call \`a2p_verify_ssl\` with method="paas-auto", issuer="Railway", autoRenewal=true
 
 ### Deploy to Fly.io
 1. Generate \`fly.toml\` with app config
@@ -223,6 +379,7 @@ Optional:
 **Basic hardening:** Private network for services, auto TLS
 **Smoke checks:** \`fly status\`, \`fly logs\`, check health endpoint
 **Domain checklist:** \`fly certs add\`, DNS CNAME to fly.dev
+**SSL gate:** After domain configured, call \`a2p_verify_ssl\` with method="paas-auto", issuer="Fly.io", autoRenewal=true
 
 ### Deploy to Render
 1. Generate \`render.yaml\` (Blueprint) with services + DBs
@@ -234,6 +391,7 @@ Optional:
 **Basic hardening:** Private services for backends, Render-managed TLS
 **Smoke checks:** Render dashboard logs, health check status, test API
 **Domain checklist:** Custom domain in Render, DNS CNAME
+**SSL gate:** After domain configured, call \`a2p_verify_ssl\` with method="paas-auto", issuer="Render", autoRenewal=true
 
 ### After EVERY deploy path: Universal Checks
 1. /health returns 200 OK
@@ -245,6 +403,7 @@ Optional:
 7. Monitoring active (UptimeRobot or equivalent)
 8. Backup mechanism active
 9. Rollback plan documented
+10. SSL certificate auto-renewal confirmed (Caddy or PaaS — a2p_verify_ssl gate)
 
 ## Step 2: Launch Checklist
 Call \`a2p_get_checklist\` and show the user the complete checklist.

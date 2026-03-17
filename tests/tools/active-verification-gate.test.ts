@@ -38,7 +38,7 @@ function setupWithPendingDecision(): StateManager {
 }
 
 describe("active verification security decision gate", () => {
-  it("blocks when pendingSecurityDecision is set and acknowledgeSecurityDecision is false", () => {
+  it("blocks when pendingSecurityDecision is set and no code provided", () => {
     setupWithPendingDecision();
 
     const result = parse(handleRunActiveVerification({
@@ -51,16 +51,44 @@ describe("active verification security decision gate", () => {
     expect(result.pendingDecision).toBeDefined();
     expect(result.pendingDecision.round).toBe(1);
     expect(result.securityMessage).toContain("never ending story");
-    expect(result.hint).toContain("acknowledgeSecurityDecision");
+    expect(result.confirmationRequired).toContain("code");
   });
 
-  it("proceeds when acknowledgeSecurityDecision is true and clears pending decision", () => {
+  it("blocks when wrong confirmation code provided", () => {
     setupWithPendingDecision();
 
     const result = parse(handleRunActiveVerification({
       projectPath: dir,
       round: 1,
-      acknowledgeSecurityDecision: true,
+      acknowledgeSecurityDecision: "wrong-code",
+    }));
+
+    expect(result.blocked).toBe(true);
+    expect(result.reason).toBe("pending_security_decision");
+  });
+
+  it("blocks when string 'true' is provided instead of confirmation code", () => {
+    setupWithPendingDecision();
+
+    const result = parse(handleRunActiveVerification({
+      projectPath: dir,
+      round: 1,
+      acknowledgeSecurityDecision: "true",
+    }));
+
+    expect(result.blocked).toBe(true);
+    expect(result.reason).toBe("pending_security_decision");
+  });
+
+  it("proceeds when correct confirmation code is provided and clears pending decision", () => {
+    const sm = setupWithPendingDecision();
+    const state = sm.read();
+    const code = state.pendingSecurityDecision!.confirmationCode;
+
+    const result = parse(handleRunActiveVerification({
+      projectPath: dir,
+      round: 1,
+      acknowledgeSecurityDecision: code,
     }));
 
     // Should not be blocked
@@ -68,9 +96,9 @@ describe("active verification security decision gate", () => {
     expect(result.success).toBe(true);
 
     // Pending decision should be cleared
-    const sm = new StateManager(dir);
-    const state = sm.read();
-    expect(state.pendingSecurityDecision).toBeNull();
+    const freshSm = new StateManager(dir);
+    const freshState = freshSm.read();
+    expect(freshState.pendingSecurityDecision).toBeNull();
   });
 
   it("runs normally when no pending security decision exists", () => {

@@ -196,6 +196,22 @@ describe("adversarial review structured output", () => {
       "focused-hardening", "full-round", "shake-break", "continue",
     ]);
     expect(state.pendingSecurityDecision!.setAt).toBeTruthy();
+    expect(state.pendingSecurityDecision!.confirmationCode).toBeTruthy();
+    expect(state.pendingSecurityDecision!.confirmationCode.length).toBe(6);
+  });
+
+  it("confirmationCode is included in completeAdversarialReview output", () => {
+    setupSecurityPhase();
+
+    const result = parse(handleCompleteAdversarialReview({
+      projectPath: dir,
+      findingsRecorded: 0,
+      note: "round 1",
+    }));
+
+    expect(result.confirmationCode).toBeDefined();
+    expect(typeof result.confirmationCode).toBe("string");
+    expect(result.confirmationCode.length).toBe(6);
   });
 
   it("securityMessage is always present in output", () => {

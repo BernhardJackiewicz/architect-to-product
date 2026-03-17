@@ -27,6 +27,7 @@ function setDeployReady(dir: string): void {
   const raw = JSON.parse(readFileSync(statePath, "utf-8"));
   raw.deployApprovalAt = new Date().toISOString();
   raw.deployApprovalStateHash = "test";
+  raw.secretManagementTier = "env-file";
   writeFileSync(statePath, JSON.stringify(raw, null, 2), "utf-8");
 }
 

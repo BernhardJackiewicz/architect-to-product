@@ -29,6 +29,52 @@ describe("Deploy paths", () => {
       expect(DEPLOY_PROMPT).toContain(".env.production.example");
     });
 
+    it("includes secret management section with chmod 600", () => {
+      const section = DEPLOY_PROMPT.substring(
+        DEPLOY_PROMPT.indexOf("Deploy to Docker VPS"),
+        DEPLOY_PROMPT.indexOf("Automated Hetzner Deployment")
+      );
+      expect(section).toContain("chmod 600");
+      expect(section).toContain("plaintext on disk");
+      expect(section).toContain("outside the project directory");
+      expect(section).toContain("/run/secrets/");
+    });
+
+    it("includes Docker Swarm secrets tier with pros and cons", () => {
+      const section = DEPLOY_PROMPT.substring(
+        DEPLOY_PROMPT.indexOf("Deploy to Docker VPS"),
+        DEPLOY_PROMPT.indexOf("Automated Hetzner Deployment")
+      );
+      expect(section).toContain("Docker Swarm secrets");
+      expect(section).toContain("docker swarm init");
+      expect(section).toContain("docker secret create");
+      expect(section).toContain("docker stack deploy");
+      expect(section).toContain("encrypted at rest");
+    });
+
+    it("includes Infisical tier with setup guidance", () => {
+      const section = DEPLOY_PROMPT.substring(
+        DEPLOY_PROMPT.indexOf("Deploy to Docker VPS"),
+        DEPLOY_PROMPT.indexOf("Automated Hetzner Deployment")
+      );
+      expect(section).toContain("Infisical");
+      expect(section).toContain("infisical run");
+      expect(section).toContain("Machine Identity");
+      expect(section).toContain("Universal Auth");
+      expect(section).toContain("infisical.com");
+    });
+
+    it("includes all 4 secret management tiers", () => {
+      expect(DEPLOY_PROMPT).toContain("Tier 1:");
+      expect(DEPLOY_PROMPT).toContain("Tier 2:");
+      expect(DEPLOY_PROMPT).toContain("Tier 3:");
+      expect(DEPLOY_PROMPT).toContain("Tier 4:");
+    });
+
+    it("asks user to choose secret management tier", () => {
+      expect(DEPLOY_PROMPT).toContain("Which secret management tier");
+    });
+
     it("includes SSH hardening", () => {
       expect(DEPLOY_PROMPT).toMatch(/SSH.*key/i);
     });
@@ -215,6 +261,37 @@ describe("Deploy paths", () => {
 
     it("checks backup mechanism", () => {
       expect(DEPLOY_PROMPT).toContain("Backup");
+    });
+  });
+
+  // ─── SSL verification gate ────────────────────────────────────────────────
+
+  describe("SSL verification gate", () => {
+    it("includes a2p_verify_ssl in Hetzner flow", () => {
+      expect(DEPLOY_PROMPT).toContain("a2p_verify_ssl");
+    });
+
+    it("includes SSL verification as mandatory gate", () => {
+      expect(DEPLOY_PROMPT).toContain("SSL Verification — MANDATORY GATE");
+    });
+
+    it("includes auto-renewal note for Caddy", () => {
+      expect(DEPLOY_PROMPT).toContain("Caddy renews Let's Encrypt certificates automatically");
+    });
+
+    it("includes SSL gate in universal checks", () => {
+      expect(DEPLOY_PROMPT).toContain("SSL certificate auto-renewal confirmed");
+    });
+
+    it("each PaaS path mentions SSL gate", () => {
+      // All PaaS paths should mention a2p_verify_ssl
+      const paths = ["Vercel", "Cloudflare", "Railway", "Fly.io", "Render"];
+      for (const path of paths) {
+        const idx = DEPLOY_PROMPT.indexOf(`Deploy to ${path}`);
+        if (idx === -1) continue;
+        const section = DEPLOY_PROMPT.substring(idx, idx + 1000);
+        expect(section).toContain("a2p_verify_ssl");
+      }
     });
   });
 

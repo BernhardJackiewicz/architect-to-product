@@ -23,6 +23,14 @@ export function handleGenerateDeployment(input: GenerateDeploymentInput): string
     return JSON.stringify({ error: "No architecture set." });
   }
 
+  if (!state.secretManagementTier) {
+    return JSON.stringify({
+      error: "Secret management tier not chosen. Call a2p_set_secret_management first. " +
+        "Options: env-file, docker-swarm, infisical, external. " +
+        "This is a mandatory decision — ask the user which tier fits their project.",
+    });
+  }
+
   if (!state.deployApprovalAt) {
     return JSON.stringify({
       error: "Deploy approval required. Call a2p_deploy_approval first.",
@@ -64,7 +72,7 @@ export function handleGenerateDeployment(input: GenerateDeploymentInput): string
       "SSH: key-only auth, non-standard port, fail2ban",
       "Docker logging: max-size 10m, max-file 5",
       "Internal services: expose (not ports) — only reverse proxy is public",
-      "Secrets: Docker secrets or .env (never in image)",
+      "Secrets: choose tier — .env (chmod 600), Docker Swarm secrets, Infisical, or Vault (see deploy prompt for guidance)",
     );
   }
 
@@ -104,6 +112,44 @@ export function handleGenerateDeployment(input: GenerateDeploymentInput): string
         missingTargets: backupConfig.targets,
       };
     }
+  }
+
+  // Secret management tiers
+  if (hasServerContext) {
+    deploymentGuide.secretManagement = {
+      chosenTier: state.secretManagementTier,
+      tiers: [
+        {
+          tier: 1,
+          name: ".env file",
+          setup: "chmod 600 .env.production, env_file in docker-compose, never COPY into image",
+          bestFor: "MVP, sandbox, solo developer",
+          tradeoff: "Plaintext on disk, no audit trail, no rotation",
+        },
+        {
+          tier: 2,
+          name: "Docker Swarm secrets",
+          setup: "docker swarm init → docker secret create → secrets: section in compose → docker stack deploy",
+          bestFor: "Single VPS, 1-5 services, no compliance requirements",
+          tradeoff: "Encrypted at rest, zero cost, but no web UI/audit trail. Requires swarm mode (docker stack deploy replaces docker compose up).",
+        },
+        {
+          tier: 3,
+          name: "Infisical",
+          setup: "Install CLI in Dockerfile, create Machine Identity (Universal Auth), pass INFISICAL_TOKEN at runtime, app starts via 'infisical run -- <cmd>'",
+          bestFor: "Production with team, audit requirements, secret rotation",
+          tradeoff: "External dependency (API call at startup), free tier: 3 projects / 5 identities. See https://infisical.com/docs/integrations/platforms/docker-compose",
+        },
+        {
+          tier: 4,
+          name: "Vault / AWS Secrets Manager / Doppler",
+          setup: "Provider-specific — significant setup and ops cost",
+          bestFor: "Enterprise, compliance-mandated environments",
+          tradeoff: "Full dynamic secrets + rotation, but complex to operate",
+        },
+      ],
+      hint: "Ask the user which tier they want. Default to Tier 1 for MVP, recommend Tier 2 or 3 for production.",
+    };
   }
 
   // Hetzner-specific: 3-Layer Backup + Storage Guide

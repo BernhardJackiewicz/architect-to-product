@@ -220,7 +220,8 @@ export type BuildAction =
   | "files_updated"
   | "phase_complete"
   | "shake_break_setup"
-  | "shake_break_teardown";
+  | "shake_break_teardown"
+  | "ssl_verification";
 
 export type EventStatus = "success" | "failure" | "warning" | "info";
 
@@ -396,6 +397,22 @@ export interface PendingSecurityDecision {
   setAt: string;
   recommendedAreas: HardeningAreaId[];
   availableActions: string[];
+  confirmationCode: string;
+}
+
+export type SecretManagementTier = "env-file" | "docker-swarm" | "infisical" | "external";
+
+export type SslVerificationMethod = "caddy-auto" | "paas-auto" | "manual";
+
+export interface SslVerification {
+  domain: string;
+  verifiedAt: string;
+  method: SslVerificationMethod;
+  issuer: string;           // "Let's Encrypt", "Cloudflare", "Vercel", etc.
+  expiresAt: string | null; // null for PaaS
+  autoRenewal: boolean;     // true for Caddy + all PaaS
+  httpsRedirect: boolean;   // HTTP → HTTPS verified
+  hstsPresent: boolean;     // Strict-Transport-Security header
 }
 
 export type SecurityReentryReason = "security_only" | "post_deploy" | "post_complete";
@@ -465,6 +482,9 @@ export interface ProjectState {
   shakeBreakResults: ShakeBreakResult[];
   securityOverview: SecurityOverview | null;
   pendingSecurityDecision: PendingSecurityDecision | null;
+  secretManagementTier: SecretManagementTier | null;
+  sslVerifiedAt: string | null;
+  sslVerification: SslVerification | null;
   createdAt: string;
   updatedAt: string;
 }

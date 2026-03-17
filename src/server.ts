@@ -27,7 +27,9 @@ import { deployApprovalSchema, handleDeployApproval } from "./tools/deploy-appro
 import { planInfrastructureSchema, handlePlanInfrastructure } from "./tools/plan-infrastructure.js";
 import { recordServerSchema, handleRecordServer } from "./tools/record-server.js";
 import { deployToServerSchema, handleDeployToServer } from "./tools/deploy-to-server.js";
+import { verifySslSchema, handleVerifySsl } from "./tools/verify-ssl.js";
 import { setPhaseSchema, handleSetPhase } from "./tools/set-phase.js";
+import { setSecretManagementSchema, handleSetSecretManagement } from "./tools/set-secret-management.js";
 import { shakeBreakSetupSchema, handleShakeBreakSetup } from "./tools/shake-break-setup.js";
 import { shakeBreakTeardownSchema, handleShakeBreakTeardown } from "./tools/shake-break-teardown.js";
 
@@ -339,6 +341,16 @@ export function createServer(): McpServer {
   );
 
   server.tool(
+    "a2p_set_secret_management",
+    "Set the secret management tier (env-file | docker-swarm | infisical | external) — MANDATORY before generating deployment configs. Ask the USER to choose, do NOT pick autonomously.",
+    {
+      projectPath: setSecretManagementSchema.shape.projectPath,
+      tier: setSecretManagementSchema.shape.tier,
+    },
+    wrapTool(handleSetSecretManagement as ToolHandler)
+  );
+
+  server.tool(
     "a2p_plan_infrastructure",
     "Plan server infrastructure (sizing, security, commands) for cloud deployment",
     {
@@ -376,6 +388,22 @@ export function createServer(): McpServer {
       projectPath: deployToServerSchema.shape.projectPath,
     },
     wrapTool(handleDeployToServer as ToolHandler)
+  );
+
+  server.tool(
+    "a2p_verify_ssl",
+    "Record SSL/HTTPS verification for a domain — MANDATORY gate before deployment can be marked complete",
+    {
+      projectPath: verifySslSchema.shape.projectPath,
+      domain: verifySslSchema.shape.domain,
+      method: verifySslSchema.shape.method,
+      issuer: verifySslSchema.shape.issuer,
+      expiresAt: verifySslSchema.shape.expiresAt,
+      autoRenewal: verifySslSchema.shape.autoRenewal,
+      httpsRedirect: verifySslSchema.shape.httpsRedirect,
+      hstsPresent: verifySslSchema.shape.hstsPresent,
+    },
+    wrapTool(handleVerifySsl as ToolHandler)
   );
 
   server.tool(

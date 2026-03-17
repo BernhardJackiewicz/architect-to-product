@@ -56,7 +56,7 @@ Code review pass (cross-file consistency, API coherence) + pre-publish verificat
 
 ### 7. Deployment
 
-Mandatory deploy approval before generating configs. Stack-specific Dockerfile, docker-compose, Caddyfile, backup/restore/verify scripts, backup strategy docs, hardening guides. Artifact security validation checks every generated file. Stateful apps are blocked from deployment if no backup is configured.
+Mandatory deploy approval before generating configs. Secret management tier must be chosen (4 tiers: env-file, Docker Swarm secrets, Infisical, external). Stack-specific Dockerfile, docker-compose, Caddyfile, backup/restore/verify scripts, backup strategy docs, hardening guides. Artifact security validation checks every generated file. Stateful apps are blocked from deployment if no backup is configured. SSL/HTTPS must be verified via `a2p_verify_ssl` before deployment can be marked complete — Caddy handles Let's Encrypt auto-renewal automatically, PaaS platforms handle SSL automatically.
 
 ---
 
@@ -92,6 +92,8 @@ Each transition is evidence-gated — enforced in code, not just in prompts. You
 | **Audit gate** | Cannot deploy with critical release audit findings | Code-enforced |
 | **Deploy approval** | Human approves deployment (`a2p_deploy_approval`). Invalidated by new findings — must be last step | Code-enforced |
 | **Backup gate** | Stateful apps blocked from deploying without backup configured | Code-enforced |
+| **Secret management gate** | Secret management tier must be chosen (`a2p_set_secret_management`) before generating deployment configs | Code-enforced |
+| **SSL gate** | SSL/HTTPS must be verified (`a2p_verify_ssl`) before deployment can be marked complete. Invalidated when infrastructure domain changes | Code-enforced |
 | **Finding justification** | Cannot dismiss findings without justification | Code-enforced |
 | **Adversarial evidence** | High/critical adversarial findings require confidence + file:line evidence | Code-enforced |
 | **Phase guards** | Tools restricted to appropriate phases | Code-enforced |
@@ -107,7 +109,7 @@ Each transition is evidence-gated — enforced in code, not just in prompts. You
 | planning → building | No (prompt-guided) | Yes (SM.setPhase + Guards) |
 | building → security | No (prompt-guided) | Yes (SM.setPhase + Signoff + Quality Gate) |
 | security → deployment | No (prompt-guided) | Yes (SM.setPhase + SAST/Whitebox/Audit/Verification/Backup Gates) |
-| deployment → complete | No (prompt-guided) | Yes (SM.setPhase) |
+| deployment → complete | No (prompt-guided) | Yes (SM.setPhase + SSL Gate) |
 
 Phase transitions that lack a dedicated MCP tool are prompt-guided — the AI agent calls `a2p_set_phase` based on prompt instructions. All transitions enforce their gate conditions in code regardless.
 
@@ -243,7 +245,14 @@ Release Audit (code review + pre-publish checks)
 DEPLOY APPROVAL [MANDATORY] ─── "Ready to ship?" + backup status
      │  🛑 Blocks deployment if stateful app has no backup configured
      ▼
+Secret Management Tier [MANDATORY] ─── env-file / docker-swarm / infisical / external
+     │
+     ▼
 Deployment (configs + backup/restore/verify scripts)
+     │
+     ▼
+SSL VERIFICATION [MANDATORY] ─── a2p_verify_ssl (HTTPS + auto-renewal confirmed)
+     │  🛑 Blocks deployment→complete without SSL verification
      │
      ├──→ Security Re-Entry ──→ Security Gate (re-scan after changes)
      │    (invalidates prior approvals, forces full security cycle)

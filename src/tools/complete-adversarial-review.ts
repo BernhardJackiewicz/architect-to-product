@@ -373,6 +373,7 @@ export function handleCompleteAdversarialReview(input: CompleteAdversarialReview
       securityOverview,
       recommendations: recommendations.slice(0, 5),
       requiresUserChoice,
+      confirmationCode: state.pendingSecurityDecision?.confirmationCode,
       nextActions,
       recommendedAreas,
       securityMessage,
