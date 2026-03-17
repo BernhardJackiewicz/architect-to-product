@@ -222,6 +222,29 @@ describe("a2p_run_audit", () => {
   });
 });
 
+describe("audit duplicate event prevention", () => {
+  let dir: string;
+
+  beforeEach(() => {
+    dir = makeTmpDir("a2p-audit-dup");
+  });
+
+  it("produces exactly 1 audit_run event per run (no duplicates)", () => {
+    initWithStateManager(dir);
+    forcePhase(dir, "building");
+
+    handleRunAudit({ projectPath: dir, mode: "quality", runBuild: false, runTests: false });
+
+    const sm = new StateManager(dir);
+    const state = sm.read();
+    const auditEvents = state.buildHistory.filter((e: any) => e.action === "audit_run");
+    expect(auditEvents.length).toBe(1);
+    // The single event should carry metadata
+    expect(auditEvents[0].metadata).toBeDefined();
+    expect(auditEvents[0].metadata.toolName).toBe("audit");
+  });
+});
+
 describe("audit sanitizes secrets in build/test failure output", () => {
   let dir: string;
 

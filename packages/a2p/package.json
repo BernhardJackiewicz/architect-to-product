@@ -1,6 +1,6 @@
 {
   "name": "a2p-mcp",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "CLI shorthand for architect-to-product — AI engineering framework",
   "bin": {
     "a2p": "index.js"

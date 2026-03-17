@@ -1047,3 +1047,18 @@ describe("whitebox suppression of resolved findings", () => {
     expect(rootCauses).not.toContain(finding.title);
   });
 });
+
+describe("whitebox duplicate event prevention", () => {
+  it("produces exactly 1 whitebox_audit event per run (no duplicates)", () => {
+    const sm = initWithStateManager(dir);
+    forcePhase(dir, "security");
+    sm.markFullSastRun(0);
+    handleRunWhiteboxAudit({ projectPath: dir, mode: "full" });
+
+    const state = new StateManager(dir).read();
+    const whiteboxEvents = state.buildHistory.filter((e: any) => e.action === "whitebox_audit");
+    expect(whiteboxEvents.length).toBe(1);
+    expect(whiteboxEvents[0].metadata).toBeDefined();
+    expect(whiteboxEvents[0].metadata.toolName).toBe("whitebox");
+  });
+});

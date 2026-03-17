@@ -72,16 +72,6 @@ export function handleRunSast(input: RunSastInput): string {
       .map((f) => `${f.tool}:${f.file}:${f.line}:${f.title}`)
   );
 
-  // Mark SAST as run for this slice (evidence for status transition guard)
-  if (input.sliceId) {
-    sm.markSastRun(input.sliceId);
-  }
-
-  // Mark full SAST run (evidence for deployment gate)
-  if (input.mode === "full") {
-    sm.markFullSastRun(allFindings.length);
-  }
-
   let newCount = 0;
   let duplicateCount = 0;
   for (const finding of allFindings) {
@@ -106,19 +96,22 @@ export function handleRunSast(input: RunSastInput): string {
   const totalDurationMs = results.reduce((sum, r) => sum + (r.durationMs ?? 0), 0);
   const summaryLine = `SAST: ${allFindings.length} findings (C:${bySeverity.critical} H:${bySeverity.high} M:${bySeverity.medium} L:${bySeverity.low})`;
 
-  sm.log(
-    bySeverity.critical + bySeverity.high > 0 ? "warn" : "info",
-    "sast_run",
-    summaryLine,
-    {
-      sliceId: input.sliceId,
-      status: bySeverity.critical + bySeverity.high > 0 ? "warning" : "success",
-      durationMs: totalDurationMs,
-      runId,
-      metadata: { findingCount: allFindings.length, toolName: "sast", bySeverity },
-      outputSummary: summaryLine,
-    },
-  );
+  const sastExtras = {
+    durationMs: totalDurationMs,
+    runId,
+    metadata: { findingCount: allFindings.length, toolName: "sast", bySeverity },
+    outputSummary: summaryLine,
+  };
+
+  // Mark SAST as run for this slice (evidence for status transition guard)
+  if (input.sliceId) {
+    sm.markSastRun(input.sliceId, sastExtras);
+  }
+
+  // Mark full SAST run (evidence for deployment gate)
+  if (input.mode === "full") {
+    sm.markFullSastRun(allFindings.length, sastExtras);
+  }
 
   return JSON.stringify({
     success: true,

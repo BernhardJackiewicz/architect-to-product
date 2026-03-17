@@ -122,20 +122,12 @@ export function handleRunActiveVerification(input: RunActiveVerificationInput): 
       requires_human_review: requiresHumanReview,
     };
 
-    sm.addActiveVerificationResult(result);
-
     const durationMs = Date.now() - verifyStart;
-    sm.log(
-      blockingCount > 0 ? "error" : failed > 0 ? "warn" : "info",
-      "active_verification",
-      `${resultId} round ${input.round}: ${passed}/${testsToRun.length} passed`,
-      {
-        status: blockingCount > 0 ? "failure" : failed > 0 ? "warning" : "success",
-        durationMs,
-        runId: generateRunId(),
-        metadata: { passed, failed, toolName: "active_verification" },
-      },
-    );
+    sm.addActiveVerificationResult(result, {
+      durationMs,
+      runId: generateRunId(),
+      metadata: { passed, failed, toolName: "active_verification" },
+    });
 
     return JSON.stringify({
       success: true,
