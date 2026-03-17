@@ -28,6 +28,7 @@ function setDeployReady(dir: string): void {
   const raw = JSON.parse(readFileSync(statePath, "utf-8"));
   raw.deployApprovalAt = new Date().toISOString();
   raw.deployApprovalStateHash = "test";
+  raw.secretManagementTier = "env-file";
   writeFileSync(statePath, JSON.stringify(raw, null, 2), "utf-8");
 }
 
@@ -130,9 +131,10 @@ describe("handleDeployToServer", () => {
     initProject(tmpDir);
     forcePhase(tmpDir, "deployment");
     addInfra(tmpDir);
-    // Remove deploy approval
+    // Set secret management but NOT deploy approval
     const statePath = join(tmpDir, ".a2p", "state.json");
     const raw = JSON.parse(readFileSync(statePath, "utf-8"));
+    raw.secretManagementTier = "env-file";
     raw.deployApprovalAt = null;
     writeFileSync(statePath, JSON.stringify(raw, null, 2), "utf-8");
 
@@ -156,5 +158,18 @@ describe("handleDeployToServer", () => {
     const result = parse(handleDeployToServer({ projectPath: tmpDir }));
     expect(result.domainSetup).toContain("No domain configured");
     expect(result.domainSetup).toContain("116.203.0.1");
+  });
+
+  it("includes chmod 600 step for .env.production", () => {
+    initProject(tmpDir);
+    setDeployReady(tmpDir);
+    addInfra(tmpDir);
+    const result = parse(handleDeployToServer({ projectPath: tmpDir }));
+    const chmodStep = result.deploymentSteps.find((s: any) =>
+      s.description.includes("Secure .env.production")
+    );
+    expect(chmodStep).toBeDefined();
+    expect(chmodStep.command).toContain("chmod 600");
+    expect(chmodStep.command).toContain(".env.production");
   });
 });

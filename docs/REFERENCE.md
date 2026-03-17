@@ -4,7 +4,7 @@ Full reference for MCP tools, prompts, supported stacks, deploy targets, and com
 
 ---
 
-## MCP Tools (27)
+## MCP Tools (30)
 
 | Tool | Phase | Description |
 |------|-------|-------------|
@@ -30,6 +30,8 @@ Full reference for MCP tools, prompts, supported stacks, deploy targets, and com
 | `a2p_plan_infrastructure` | 7 | Plan server infrastructure (sizing, security, cloud-init, provisioning commands) for Hetzner Cloud |
 | `a2p_record_server` | 7 | Record provisioned server details in project state |
 | `a2p_deploy_to_server` | 7 | Generate rsync/ssh/docker deployment commands for a provisioned server |
+| `a2p_verify_ssl` | 7 | Record SSL/HTTPS verification — mandatory gate before deployment can be marked complete |
+| `a2p_set_secret_management` | 7 | Set secret management tier (env-file / docker-swarm / infisical / external) — mandatory before generating deployment configs |
 | `a2p_generate_deployment` | 7 | Stack-specific deployment guidance |
 | `a2p_shake_break_setup` | 5 | Set up isolated sandbox for runtime adversarial testing (worktree, safe .env, port, DB) |
 | `a2p_shake_break_teardown` | 5 | Tear down sandbox, auto-calculate finding count, record results |

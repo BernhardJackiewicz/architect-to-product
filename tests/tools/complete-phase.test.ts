@@ -197,6 +197,7 @@ describe("handleCompletePhase", () => {
     addReleaseAudit(sm);
     addPassingVerification(sm);
     sm.setPhase("deployment");
+    sm.setSslVerification({ domain: "test.com", verifiedAt: new Date().toISOString(), method: "caddy-auto", issuer: "Let's Encrypt", expiresAt: null, autoRenewal: true, httpsRedirect: true, hstsPresent: true });
 
     const result = parse(handleCompletePhase({ projectPath: tmpDir }));
     expect(result.success).toBe(true);

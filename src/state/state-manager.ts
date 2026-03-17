@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { readFileSync, writeFileSync, mkdirSync, existsSync, copyFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { ProjectStateSchema } from "./validators.js";
@@ -29,6 +30,8 @@ import type {
   HardeningAreaId,
   SecurityOverview,
   SecurityOverviewCoverageEntry,
+  SecretManagementTier,
+  SslVerification,
 } from "./types.js";
 import { pruneEvents, sanitizeOutput, truncatePreview } from "../utils/log-sanitizer.js";
 
@@ -134,6 +137,9 @@ export class StateManager {
       shakeBreakResults: [],
       securityOverview: null,
       pendingSecurityDecision: null,
+      secretManagementTier: null,
+      sslVerifiedAt: null,
+      sslVerification: null,
       createdAt: now,
       updatedAt: now,
     };
@@ -395,8 +401,7 @@ export class StateManager {
         throw new Error(
           `Security decision pending (round ${state.pendingSecurityDecision.round}). ` +
           `Choose an action: ${state.pendingSecurityDecision.availableActions.join(", ")}. ` +
-          `Use a2p_run_active_verification with acknowledgeSecurityDecision=true to continue, ` +
-          `or run another security round.`
+          `Show the user the security decision options. They must provide the confirmation code to proceed.`
         );
       }
 
@@ -444,6 +449,16 @@ export class StateManager {
       if (state.backupConfig.required && !state.backupStatus.configured) {
         throw new Error(
           "Cannot deploy stateful app without backup configuration. Set backupStatus.configured=true via a2p_generate_deployment backup setup, or set backupConfig.required=false if backups are not needed."
+        );
+      }
+    }
+
+    // SSL gate: deployment→complete requires SSL verification
+    if (state.phase === "deployment" && newPhase === "complete") {
+      if (!state.sslVerifiedAt) {
+        throw new Error(
+          "Cannot complete deployment without SSL/HTTPS verification. " +
+          "Call a2p_verify_ssl after confirming HTTPS works on your domain."
         );
       }
     }
@@ -634,7 +649,6 @@ export class StateManager {
     }
 
     this.invalidateDeployApproval(state);
-    this.setLastSecurityRelevantChange(state);
     this.addEvent(
       state,
       state.phase,
@@ -680,7 +694,6 @@ export class StateManager {
     if (updates.severity !== undefined) finding.severity = updates.severity;
 
     this.invalidateDeployApproval(state);
-    this.setLastSecurityRelevantChange(state);
     this.addEvent(
       state,
       state.phase,
@@ -840,6 +853,36 @@ export class StateManager {
     return state;
   }
 
+  /** Set the secret management tier — required before generating deployment configs */
+  setSecretManagementTier(tier: SecretManagementTier): ProjectState {
+    const state = this.read();
+    if (state.phase !== "deployment") {
+      throw new Error("Secret management tier can only be set in deployment phase");
+    }
+    state.secretManagementTier = tier;
+    this.invalidateDeployApproval(state);
+    this.addEvent(state, state.phase, null, "config_update",
+      `Secret management tier set: ${tier}`,
+      { level: "info", status: "success" });
+    this.write(state);
+    return state;
+  }
+
+  /** Set SSL verification record — required before deployment can be marked complete */
+  setSslVerification(verification: SslVerification): ProjectState {
+    const state = this.read();
+    if (state.phase !== "deployment") {
+      throw new Error("SSL verification can only be recorded in deployment phase");
+    }
+    state.sslVerifiedAt = verification.verifiedAt;
+    state.sslVerification = verification;
+    this.addEvent(state, state.phase, null, "ssl_verification",
+      `SSL verified: ${verification.domain} (${verification.method}, issuer: ${verification.issuer})`,
+      { level: "info", status: "success" });
+    this.write(state);
+    return state;
+  }
+
   /** Confirm adversarial review completion — agent confirmed Phase 1b is done. Supports multiple rounds. */
   completeAdversarialReview(findingsRecorded: number, note?: string, focusArea?: HardeningAreaId): ProjectState {
     const state = this.read();
@@ -870,11 +913,13 @@ export class StateManager {
     this.refreshSecurityOverview(state);
     // Set pending security decision — forces user to acknowledge before proceeding
     const recommendedAreas = state.securityOverview?.recommendedNextAreas ?? [];
+    const confirmationCode = randomUUID().slice(0, 6);
     state.pendingSecurityDecision = {
       round: newRound,
       setAt: now,
       recommendedAreas,
       availableActions: ["focused-hardening", "full-round", "shake-break", "continue"],
+      confirmationCode,
     };
     this.addEvent(state, state.phase, null, "adversarial_review_completed",
       `Adversarial review round ${newRound} completed: ${findingsRecorded} finding(s) recorded (total: ${totalFindings})${note ? ` — ${note}` : ""}`,
@@ -996,6 +1041,12 @@ export class StateManager {
     const isLast = state.currentProductPhase >= phases.length - 1;
 
     if (isLast) {
+      if (!state.sslVerifiedAt) {
+        throw new Error(
+          "Cannot complete final phase without SSL/HTTPS verification. " +
+          "Call a2p_verify_ssl first."
+        );
+      }
       state.phase = "complete";
       this.addEvent(state, "complete", null, "phase_complete", `Final product phase "${currentPhase.name}" completed → project complete`, { status: "success" });
     } else {
@@ -1143,6 +1194,11 @@ export class StateManager {
   /** Set infrastructure record (server provisioned) */
   setInfrastructure(record: InfrastructureRecord): ProjectState {
     const state = this.read();
+    // Invalidate SSL verification if domain changed
+    if (state.infrastructure?.domain && record.domain !== state.infrastructure.domain) {
+      state.sslVerifiedAt = null;
+      state.sslVerification = null;
+    }
     state.infrastructure = record;
     this.addEvent(state, state.phase, null, "infrastructure_set",
       `Server provisioned: ${record.serverName} (${record.provider}/${record.serverType} @ ${record.location})`,

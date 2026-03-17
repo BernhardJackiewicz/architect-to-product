@@ -200,9 +200,17 @@ describe("Enforcement Guards", () => {
       expect(() => sm.setDeployApproval()).toThrow("deployment phase");
     });
 
-    it("generate-deployment without approval → error", () => {
+    it("generate-deployment without secret management tier → error", () => {
       const sm = initWithStateManager(dir);
       forcePhase(dir, "deployment");
+      const result = parse(handleGenerateDeployment({ projectPath: dir }));
+      expect(result.error).toContain("Secret management tier");
+    });
+
+    it("generate-deployment without approval (but with tier) → error", () => {
+      const sm = initWithStateManager(dir);
+      forcePhase(dir, "deployment");
+      sm.setSecretManagementTier("env-file");
       const result = parse(handleGenerateDeployment({ projectPath: dir }));
       expect(result.error).toContain("approval");
     });
@@ -634,6 +642,7 @@ describe("Enforcement Guards", () => {
         setAt: new Date().toISOString(),
         recommendedAreas: [],
         availableActions: ["focused-hardening", "full-round", "shake-break", "continue"],
+        confirmationCode: "abc123",
       });
 
       expect(() => sm.setPhase("deployment")).toThrow("Security decision pending");
@@ -658,6 +667,7 @@ describe("Enforcement Guards", () => {
         setAt: new Date().toISOString(),
         recommendedAreas: [],
         availableActions: ["focused-hardening", "full-round", "shake-break", "continue"],
+        confirmationCode: "abc123",
       });
       sm.clearPendingSecurityDecision();
 

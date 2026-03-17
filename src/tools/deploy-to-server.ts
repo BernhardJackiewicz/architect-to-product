@@ -23,6 +23,13 @@ export function handleDeployToServer(input: DeployToServerInput): string {
     return JSON.stringify({ error: "No infrastructure recorded. Call a2p_record_server first." });
   }
 
+  if (!state.secretManagementTier) {
+    return JSON.stringify({
+      error: "Secret management tier not chosen. Call a2p_set_secret_management first. " +
+        "Options: env-file, docker-swarm, infisical, external.",
+    });
+  }
+
   if (!state.deployApprovalAt) {
     return JSON.stringify({ error: "Deploy approval required. Call a2p_deploy_approval first." });
   }
@@ -62,6 +69,12 @@ export function handleDeployToServer(input: DeployToServerInput): string {
       note: "Ensure .env.production exists locally with all required secrets before running this",
     },
     {
+      step: 2.5,
+      description: "Secure .env.production file permissions",
+      command: `ssh ${sshTarget} "chmod 600 ${appDir}/.env.production"`,
+      note: "Restricts .env.production to owner-only read. For production secrets, consider Docker secrets or an external secrets manager.",
+    },
+    {
       step: 3,
       description: "Build and start containers on server",
       command: `ssh ${sshTarget} "cd ${appDir} && docker compose -f docker-compose.prod.yml up -d --build"`,
@@ -85,6 +98,13 @@ export function handleDeployToServer(input: DeployToServerInput): string {
     },
   ];
 
+  // Secret management tier guidance
+  const secretManagementNote = {
+    tier1: "Default: .env.production via SCP + chmod 600 (steps 2 + 2.5 above).",
+    tier2: "Docker Swarm: skip steps 2 + 2.5. Instead run 'docker swarm init' and 'scripts/create-secrets.sh' on server, then 'docker stack deploy -c docker-compose.prod.yml appname' instead of docker compose up.",
+    tier3: "Infisical: replace step 2 with SCP of .env.infisical (2 vars: clientId + clientSecret only), chmod 600. All other secrets fetched at runtime from Infisical API.",
+  };
+
   // Record deployment timestamp
   sm.updateLastDeployed();
 
@@ -96,6 +116,7 @@ export function handleDeployToServer(input: DeployToServerInput): string {
       sshUser: infra.sshUser,
       domain: infra.domain ?? null,
     },
+    secretManagementNote,
     deploymentSteps: steps,
     postDeployChecks: [
       `curl -sf http://${host}/health — should return 200`,
@@ -103,6 +124,7 @@ export function handleDeployToServer(input: DeployToServerInput): string {
       `curl -sf http://${host}/.git/config — should return 403/404 (blocked)`,
       "Check HTTPS works (after DNS + Caddy configured)",
       "Check security headers (HSTS, X-Frame-Options, etc.)",
+      "After HTTPS verified: call a2p_verify_ssl to record SSL verification (required gate before deployment complete)",
     ],
     domainSetup: infra.domain
       ? `DNS A-Record: ${infra.domain} -> ${infra.serverIp}. Caddy will auto-provision Let's Encrypt certificate.`

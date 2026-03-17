@@ -220,6 +220,49 @@ During deployment artifact validation, A2P checks:
 - **Rate limiter store** — Persistent store (Redis/DB) more robust than in-memory (resets on crash)
 - **Source maps** — `.map` files excluded from production Docker image
 
+## SSL/HTTPS & Auto-Renewal
+
+Caddy (the reverse proxy in A2P's Docker VPS stack) handles Let's Encrypt certificates automatically:
+
+- **Provisioning:** Caddy obtains a Let's Encrypt certificate when a request arrives for a configured domain
+- **Auto-renewal:** Caddy renews certificates ~30 days before expiry — no certbot, no cron job needed
+- **HTTPS redirect:** Caddy redirects HTTP → HTTPS by default
+- **HSTS:** Configured in the generated Caddyfile
+
+### SSL Verification Gate
+
+After DNS is configured and Caddy has provisioned the certificate, SSL must be verified before the project can be marked complete:
+
+```bash
+# Verify HTTPS works
+curl -sI https://DOMAIN         # → 200 with valid cert
+
+# Verify HTTP redirects to HTTPS
+curl -sI http://DOMAIN           # → 301/308 to https://
+
+# Verify HSTS header present
+curl -sI https://DOMAIN | grep -i strict-transport-security
+```
+
+Then call `a2p_verify_ssl` with `method="caddy-auto"`, `issuer="Let's Encrypt"`, `autoRenewal=true`.
+
+**This is a code-enforced gate** — `deployment → complete` is blocked without SSL verification. The gate is automatically invalidated if the infrastructure domain changes.
+
+For PaaS deployments (Vercel, Cloudflare, Railway, Fly.io, Render), SSL is handled automatically by the platform. Call `a2p_verify_ssl` with `method="paas-auto"` and the platform as issuer.
+
+## Secret Management Tiers
+
+A2P enforces a secret management choice before deployment configs can be generated. Four tiers are available:
+
+| Tier | Method | Best for | Trade-off |
+|------|--------|----------|-----------|
+| **1: env-file** | `.env.production` + `chmod 600` | MVP / sandbox | Simplest — plaintext on disk, no audit trail |
+| **2: docker-swarm** | `docker secret create` + `/run/secrets/` | Single-VPS production | Encrypted at rest, no external dependency, zero cost |
+| **3: infisical** | Infisical CLI + Machine Identity | Production with audit trail | Centralized management, web UI, rotation, free tier available |
+| **4: external** | Vault / AWS SM / Doppler | Enterprise / compliance | Provider-specific, significant ops overhead |
+
+Set via `a2p_set_secret_management` — the tool records the choice in state and adapts deployment config generation accordingly.
+
 ## Full Provisioning Flow
 
 1. `a2p_plan_infrastructure` — computes server type, generates cloud-init, firewall rules, provisioning commands
@@ -229,9 +272,12 @@ During deployment artifact validation, A2P checks:
 5. Create server with cloud-init user_data
 6. Wait for cloud-init (~2-3 min)
 7. Verify SSH access: `ssh deploy@SERVER_IP "docker --version"`
-8. `a2p_generate_deployment` — generates deployment guidance + Hetzner backup/storage recommendations
-9. `a2p_deploy_to_server` — rsync project, docker compose up
-10. Verify: health check, HTTPS, security headers, blocked paths
-11. Enable Hetzner server backups
-12. Configure offsite replication
-13. Test restore from both backup layers
+8. `a2p_set_secret_management` — user chooses secret management tier
+9. `a2p_generate_deployment` — generates deployment guidance + Hetzner backup/storage recommendations
+10. `a2p_deploy_to_server` — rsync project, docker compose up
+11. Configure DNS A-record → server IP
+12. `a2p_verify_ssl` — verify HTTPS + auto-renewal after Caddy provisions certificate
+13. Verify: health check, security headers, blocked paths
+14. Enable Hetzner server backups
+15. Configure offsite replication
+16. Test restore from both backup layers

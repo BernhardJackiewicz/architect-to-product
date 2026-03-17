@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, rmSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { StateManager } from "../src/state/state-manager.js";
@@ -117,6 +117,7 @@ describe("StateManager", () => {
       sm.addAuditResult({ id: "AR1", mode: "release", timestamp: new Date().toISOString(), findings: [], summary: { critical: 0, high: 0, medium: 0, low: 0 }, buildPassed: true, testsPassed: true, aggregated: { openSastFindings: 0, openQualityIssues: 0, slicesDone: 0, slicesTotal: 0 } });
       sm.addActiveVerificationResult({ id: "AV1", timestamp: new Date().toISOString(), round: 1, tests_run: 1, tests_passed: 1, tests_failed: 0, findings: [], summary: { critical: 0, high: 0, medium: 0, low: 0 }, blocking_count: 0, requires_human_review: false });
       sm.setPhase("deployment");
+      sm.setSslVerification({ domain: "test.com", verifiedAt: new Date().toISOString(), method: "caddy-auto", issuer: "Let's Encrypt", expiresAt: null, autoRenewal: true, httpsRedirect: true, hstsPresent: true });
       sm.setPhase("complete");
       expect(() => sm.setPhase("onboarding")).toThrow("Cannot transition");
     });
@@ -578,6 +579,12 @@ describe("StateManager", () => {
       ]);
       // Complete phase 0
       sm.completeProductPhase();
+      // Set SSL verification directly on state (setSslVerification requires deployment phase)
+      const statePath = join(tmpDir, ".a2p", "state.json");
+      const raw = JSON.parse(readFileSync(statePath, "utf-8"));
+      raw.sslVerifiedAt = new Date().toISOString();
+      raw.sslVerification = { domain: "test.com", verifiedAt: new Date().toISOString(), method: "caddy-auto", issuer: "Let's Encrypt", expiresAt: null, autoRenewal: true, httpsRedirect: true, hstsPresent: true };
+      writeFileSync(statePath, JSON.stringify(raw, null, 2), "utf-8");
       // Complete phase 1
       const state = sm.completeProductPhase();
       expect(state.phase).toBe("complete");
@@ -680,6 +687,63 @@ describe("StateManager", () => {
 
       const state = sm.read();
       expect(state.adversarialReviewState).toBeNull();
+    });
+  });
+
+  describe("addSASTFinding does not trigger stale SAST", () => {
+    it("markFullSastRun → addSASTFinding → SAST not stale", () => {
+      sm.init("test", tmpDir);
+      sm.setSlices([makeSlice("s1")]);
+      sm.markFullSastRun(0);
+
+      sm.addSASTFinding("s1", {
+        id: "F1",
+        tool: "semgrep",
+        severity: "medium",
+        status: "open",
+        title: "test finding",
+        file: "app.ts",
+        line: 1,
+        description: "test",
+        fix: "",
+      });
+
+      const state = sm.read();
+      // lastFullSastAt should still be >= lastSecurityRelevantChangeAt
+      // (addSASTFinding should NOT call setLastSecurityRelevantChange)
+      expect(state.lastFullSastAt).not.toBeNull();
+      if (state.lastSecurityRelevantChangeAt) {
+        expect(new Date(state.lastFullSastAt!).getTime())
+          .toBeGreaterThanOrEqual(new Date(state.lastSecurityRelevantChangeAt).getTime());
+      }
+    });
+
+    it("markFullSastRun → updateSASTFinding → SAST not stale", () => {
+      sm.init("test", tmpDir);
+      sm.setSlices([makeSlice("s1")]);
+
+      sm.addSASTFinding("s1", {
+        id: "F1",
+        tool: "semgrep",
+        severity: "medium",
+        status: "open",
+        title: "test finding",
+        file: "app.ts",
+        line: 1,
+        description: "test",
+        fix: "",
+      });
+
+      sm.markFullSastRun(1);
+
+      sm.updateSASTFinding("s1", "F1", { status: "false_positive", justification: "not applicable" });
+
+      const state = sm.read();
+      expect(state.lastFullSastAt).not.toBeNull();
+      if (state.lastSecurityRelevantChangeAt) {
+        expect(new Date(state.lastFullSastAt!).getTime())
+          .toBeGreaterThanOrEqual(new Date(state.lastSecurityRelevantChangeAt).getTime());
+      }
     });
   });
 

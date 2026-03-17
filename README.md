@@ -1,9 +1,9 @@
 # A2P — Architect-to-Product
 AI engineering framework delivered as an MCP server. Turns AI-generated code into production-ready software with evidence-gated TDD, security review, backup strategy, and deployment automation.
 
-**27 MCP tools · 1084 tests · Architecture → Plan → Build → Audit → Security → Deploy**
+**30 MCP tools · 1131 tests · Architecture → Plan → Build → Audit → Security → Deploy**
 
-[![npm version](https://img.shields.io/npm/v/architect-to-product)](https://www.npmjs.com/package/architect-to-product) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) [![Tests: 1084 passing](https://img.shields.io/badge/tests-1084%20passing-brightgreen)](docs/validation/) [![TypeScript](https://img.shields.io/badge/TypeScript-blue)](tsconfig.json)
+[![npm version](https://img.shields.io/npm/v/architect-to-product)](https://www.npmjs.com/package/architect-to-product) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) [![Tests: 1097 passing](https://img.shields.io/badge/tests-1097%20passing-brightgreen)](docs/validation/) [![TypeScript](https://img.shields.io/badge/TypeScript-blue)](tsconfig.json)
 
 ---
 
@@ -93,6 +93,8 @@ A2P adds the missing engineering system around the agent.
 - **Security review built into the workflow** — Includes SAST (Semgrep + Bandit), exploitability-focused whitebox review, and optional runtime adversarial testing (Shake & Break).
 - **Human oversight at critical gates** — Build signoff and deploy approval are mandatory. All other checkpoints are configurable.
 - **Backup-aware deployment** — Stateful systems are blocked from deployment unless backup requirements are satisfied.
+- **SSL/HTTPS enforcement** — Deployment cannot be marked complete without verified SSL certificate and auto-renewal. Caddy handles Let's Encrypt automatically; PaaS platforms handle SSL automatically.
+- **Secret management** — 4-tier secret management (env-file, Docker Swarm, Infisical, external) is code-enforced before deployment configs can be generated.
 - **Deployment generation** — Produces stack-specific Dockerfile, docker-compose, Caddyfile, backup/restore/verify scripts, and hardening guides.
 - **Code intelligence** — `codebase-memory-mcp` builds a code graph instead of scanning files raw — up to 100x fewer exploration tokens.
 - **Structured build history** — Tool runs, statuses, durations, and findings are tracked in a queryable build log with secret redaction.
@@ -134,6 +136,8 @@ security re-entry → /a2p_security_gate → /a2p_whitebox → /a2p_deploy
 | Security is manual or late | SAST + whitebox + optional runtime adversarial testing |
 | Deployment is improvised | Stack-specific configs, backup/restore scripts, hardening guides |
 | Backups are an afterthought | Backup strategy inferred from stack, gates enforced |
+| SSL is "we'll add it later" | SSL/HTTPS verified before deployment completes, auto-renewal confirmed |
+| Secrets in .env, maybe committed | 4-tier secret management enforced before deploy |
 | "Done" is subjective | Gates are enforced in code, not just in prompts |
 | No build history | Structured build log with levels, duration, run correlation |
 
@@ -226,7 +230,7 @@ MCP prompts are invoked with `/` in Claude Code:
 - [Validation](docs/validation/) — claim verification, test evidence, reality checks
 
 <details>
-<summary>MCP Tools reference (27 tools)</summary>
+<summary>MCP Tools reference (30 tools)</summary>
 
 | Tool | Phase | Description |
 |---|---|---|
@@ -249,9 +253,11 @@ MCP prompts are invoked with `/` in Claude Code:
 | `a2p_run_active_verification` | 5 | Active verification — runtime gate tests |
 | `a2p_build_signoff` | 2 | Confirm build works (mandatory before security phase) |
 | `a2p_deploy_approval` | 7 | Approve deployment (mandatory before generating configs) |
+| `a2p_set_secret_management` | 7 | Set secret management tier (mandatory before deployment configs) |
 | `a2p_plan_infrastructure` | 7 | Plan server infrastructure for Hetzner Cloud |
 | `a2p_record_server` | 7 | Record provisioned server details in project state |
 | `a2p_deploy_to_server` | 7 | Generate rsync/ssh/docker deployment commands |
+| `a2p_verify_ssl` | 7 | Record SSL/HTTPS verification (mandatory gate before deployment complete) |
 | `a2p_generate_deployment` | 7 | Stack-specific deployment guidance |
 | `a2p_shake_break_setup` | 5 | Set up isolated sandbox for runtime adversarial testing |
 | `a2p_shake_break_teardown` | 5 | Tear down sandbox, record results |
@@ -339,6 +345,28 @@ A2P auto-configures companion MCP servers based on your tech stack.
 
 ## Upgrading
 
+### 1.0.3 → 1.0.4
+
+**New: SSL/HTTPS verification gate (code-enforced)**
+- New tool `a2p_verify_ssl` — records SSL/HTTPS verification with domain, method, issuer, auto-renewal status
+- `deployment → complete` is now blocked without SSL verification — code-enforced gate, not just a checklist item
+- `completeProductPhase` (final phase) is also blocked without SSL verification
+- SSL verification is automatically invalidated when the infrastructure domain changes
+- Caddy auto-renewal is documented — no certbot or cron jobs needed
+- All PaaS paths (Vercel, Cloudflare, Railway, Fly.io, Render) include SSL gate instructions
+
+**State changes:** New fields `sslVerifiedAt` (string | null) and `sslVerification` (object | null) in project state. Existing projects get `null` defaults automatically via Zod schema defaults — no migration needed.
+
+### 1.0.2 → 1.0.3
+
+**What changed (5 bugs from Mini Shop E2E):**
+- SAST now excludes framework build artifacts (`.next/`, `.nuxt/`, `.svelte-kit/`, `.turbopack/`, `.output/`, `build/`, `.vercel/`, `.angular/`)
+- SAST finding deduplication now includes `projectFindings` (was only checking slice findings)
+- `addSASTFinding` / `updateSASTFinding` no longer trigger false "stale SAST" — recording a finding is not a code change
+- Adversarial review security decision now requires a user-provided confirmation code (prevents agent auto-bypass)
+- Deploy flow adds `chmod 600` for `.env.production` + secret management guidance in prompt and checklist
+- New tool `a2p_set_secret_management` — 4-tier secret management choice (env-file / docker-swarm / infisical / external) is **code-enforced** before deployment configs can be generated
+
 ### 1.0.1 → 1.0.2
 
 ```bash
@@ -372,7 +400,7 @@ git clone https://github.com/BernhardJackiewicz/architect-to-product.git
 cd architect-to-product
 npm install
 npm run typecheck   # Type checking
-npm test            # 1084 tests
+npm test            # 1131 tests
 npm run build       # Build
 npm run dev         # Dev mode
 ```

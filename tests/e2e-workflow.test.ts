@@ -49,6 +49,13 @@ function setDeployReady(dir: string): void {
   const raw = JSON.parse(readFileSync(statePath, "utf-8"));
   raw.deployApprovalAt = new Date().toISOString();
   raw.deployApprovalStateHash = "test";
+  raw.secretManagementTier = "env-file";
+  raw.sslVerifiedAt = new Date().toISOString();
+  raw.sslVerification = {
+    domain: "test.com", verifiedAt: new Date().toISOString(),
+    method: "caddy-auto", issuer: "Let's Encrypt", expiresAt: null,
+    autoRenewal: true, httpsRedirect: true, hstsPresent: true,
+  };
   writeFileSync(statePath, JSON.stringify(raw, null, 2), "utf-8");
 }
 
@@ -1058,6 +1065,7 @@ describe("E2E Workflow: Full project lifecycle", () => {
       sm.addAuditResult({ id: `AR-${Date.now()}`, mode: "release", timestamp: new Date().toISOString(), findings: [], summary: { critical: 0, high: 0, medium: 0, low: 0 }, buildPassed: true, testsPassed: true, aggregated: { openSastFindings: 0, openQualityIssues: 0, slicesDone: 0, slicesTotal: 0 } });
       sm.addActiveVerificationResult({ id: `AV-${Date.now()}`, timestamp: new Date().toISOString(), round: 1, tests_run: 1, tests_passed: 1, tests_failed: 0, findings: [], summary: { critical: 0, high: 0, medium: 0, low: 0 }, blocking_count: 0, requires_human_review: false });
       sm.setPhase("deployment");
+      sm.setSslVerification({ domain: "test.com", verifiedAt: new Date().toISOString(), method: "caddy-auto", issuer: "Let's Encrypt", expiresAt: null, autoRenewal: true, httpsRedirect: true, hstsPresent: true });
 
       // Complete phase 1 (last phase) → project complete
       phaseResult = parse(handleCompletePhase({ projectPath: tmpDir }));

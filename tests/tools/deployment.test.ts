@@ -34,6 +34,7 @@ function setDeployReady(dir: string): void {
   const raw = JSON.parse(readFileSync(statePath, "utf-8"));
   raw.deployApprovalAt = new Date().toISOString();
   raw.deployApprovalStateHash = "test";
+  raw.secretManagementTier = "env-file";
   writeFileSync(statePath, JSON.stringify(raw, null, 2), "utf-8");
 }
 
@@ -208,6 +209,27 @@ describe("handleGenerateDeployment", () => {
     const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
     expect(result.error).toBeTruthy();
   });
+
+  it("includes secretManagement with 4 tiers for server deployments", () => {
+    initWithArchOverrides(tmpDir, { hosting: "Hetzner" });
+    setDeployReady(tmpDir);
+    const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
+    const sm = result.deploymentGuide.secretManagement;
+    expect(sm).toBeDefined();
+    expect(sm.tiers).toHaveLength(4);
+    expect(sm.tiers[0].name).toBe(".env file");
+    expect(sm.tiers[1].name).toBe("Docker Swarm secrets");
+    expect(sm.tiers[2].name).toBe("Infisical");
+    expect(sm.tiers[2].setup).toContain("infisical run");
+    expect(sm.tiers[3].name).toContain("Vault");
+  });
+
+  it("no secretManagement for mobile-only projects", () => {
+    initWithArchOverrides(tmpDir, { language: "Dart", framework: "Flutter", platform: "mobile" });
+    setDeployReady(tmpDir);
+    const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
+    expect(result.deploymentGuide.secretManagement).toBeUndefined();
+  });
 });
 
 describe("handleGetChecklist", () => {
@@ -251,6 +273,29 @@ describe("handleGetChecklist", () => {
     expect(result.checklist.preDeployment.length).toBeGreaterThanOrEqual(8);
     expect(result.checklist.infrastructure.length).toBeGreaterThanOrEqual(6);
     expect(result.checklist.postDeployment.length).toBeGreaterThanOrEqual(8);
+  });
+
+  it("checklist includes .env.production permissions item", () => {
+    initWithArchOverrides(tmpDir);
+    const result = parse(handleGetChecklist({ projectPath: tmpDir }));
+    const preItems = result.checklist.preDeployment.map((i: any) => i.item).join(" ");
+    expect(preItems).toContain(".env.production permissions");
+    expect(preItems).toContain("600");
+  });
+
+  it("checklist includes Docker image secrets item", () => {
+    initWithArchOverrides(tmpDir);
+    const result = parse(handleGetChecklist({ projectPath: tmpDir }));
+    const preItems = result.checklist.preDeployment.map((i: any) => i.item).join(" ");
+    expect(preItems).toContain("Production secrets not stored inside Docker image");
+  });
+
+  it("checklist includes secret management tier choice item", () => {
+    initWithArchOverrides(tmpDir);
+    const result = parse(handleGetChecklist({ projectPath: tmpDir }));
+    const preItems = result.checklist.preDeployment.map((i: any) => i.item).join(" ");
+    expect(preItems).toContain("Secret management tier");
+    expect(preItems).toContain("Infisical");
   });
 
   it("done flags correct when all slices completed and 0 findings", () => {
