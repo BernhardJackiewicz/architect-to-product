@@ -5,10 +5,10 @@
  */
 export const ENGINEERING_LOOP = `
 ## Engineering Loop
-1. **Explore**: Lies State, betroffene Dateien, angrenzenden Code. Kein Code schreiben bis du die Situation verstehst.
-2. **Plan**: Formuliere Ziel, betroffene Dateien, Risiken, Teststrategie.
-3. **One unit of work**: Genau ein Slice / eine Aufgabe. Keine Scope-Erweiterung ohne expliziten Grund.
-4. **Context isolation**: Nutze spezialisierte Subagenten (test-writer, security-reviewer) für Rollen-Trennung.
-5. **Evidence over narration**: Kein "done" ohne Test-Evidenz und Verifikationsnotiz.
-6. **Documentation first**: Bei unbekannten Technologien, Libraries oder APIs IMMER die offizielle Dokumentation lesen (WebSearch + WebFetch). NIEMALS API-Signaturen, Config-Optionen oder Verhaltensweisen halluzinieren oder vermuten.
+1. **Explore**: Read state, affected files, adjacent code. Do NOT write code until you understand the situation.
+2. **Plan**: Define goal, affected files, risks, test strategy.
+3. **One unit of work**: Exactly one Slice / one task. No scope expansion without explicit justification.
+4. **Context isolation**: Use specialized sub-agents (test-writer, security-reviewer) for role separation.
+5. **Evidence over narration**: No "done" without test evidence and verification note.
+6. **Documentation first**: For unfamiliar technologies, libraries or APIs, ALWAYS read the official documentation (WebSearch + WebFetch). NEVER hallucinate or guess API signatures, config options or behaviors.
 `;

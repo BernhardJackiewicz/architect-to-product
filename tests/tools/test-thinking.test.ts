@@ -134,11 +134,11 @@ describe("add-slice response includes testHint", () => {
 
 describe("Planning prompt requires structured test thinking", () => {
   it("mentions happy-path test in slice requirements", () => {
-    expect(PLANNING_PROMPT).toContain("Happy-Path-Test");
+    expect(PLANNING_PROMPT).toContain("happy path test");
   });
 
   it("mentions error cases in slice requirements", () => {
-    expect(PLANNING_PROMPT).toContain("Fehlerfälle");
+    expect(PLANNING_PROMPT).toContain("error cases");
   });
 
   it("mentions real service tests for integration/UI slices", () => {
@@ -146,15 +146,15 @@ describe("Planning prompt requires structured test thinking", () => {
   });
 
   it("mentions done-criteria in test strategy", () => {
-    expect(PLANNING_PROMPT).toContain("Done-Maßstab");
+    expect(PLANNING_PROMPT).toContain("Done metric");
   });
 });
 
 // ─── Build-slice prompt: RED review step ─────────────────────────────────────
 
 describe("Build-slice prompt has RED review step", () => {
-  it("has RED-Nachschärfung section before GREEN", () => {
-    const redReviewPos = BUILD_SLICE_PROMPT.indexOf("RED-Nachschärfung");
+  it("has RED Refinement section before GREEN", () => {
+    const redReviewPos = BUILD_SLICE_PROMPT.indexOf("RED Refinement");
     const greenPos = BUILD_SLICE_PROMPT.indexOf("### Phase GREEN");
     expect(redReviewPos).toBeGreaterThan(-1);
     expect(redReviewPos).toBeLessThan(greenPos);
@@ -162,11 +162,11 @@ describe("Build-slice prompt has RED review step", () => {
 
   it("RED review checks AC coverage", () => {
     const section = BUILD_SLICE_PROMPT.slice(
-      BUILD_SLICE_PROMPT.indexOf("RED-Nachschärfung"),
+      BUILD_SLICE_PROMPT.indexOf("RED Refinement"),
       BUILD_SLICE_PROMPT.indexOf("### Phase GREEN"),
     );
-    expect(section).toContain("Akzeptanzkriterium");
-    expect(section).toContain("Fehlerfall");
+    expect(section).toContain("acceptance criterion");
+    expect(section).toContain("error case");
     expect(section).toContain("Mock");
   });
 });

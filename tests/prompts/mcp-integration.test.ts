@@ -35,7 +35,7 @@ describe("codebase-memory-mcp integration", () => {
 
     it("calls index_repository AFTER each slice for graph freshness", () => {
       // Should appear in the "Nach jedem Slice" section
-      const afterSliceSection = BUILD_SLICE_PROMPT.indexOf("Nach jedem Slice");
+      const afterSliceSection = BUILD_SLICE_PROMPT.indexOf("After Every Slice");
       const indexAfter = BUILD_SLICE_PROMPT.indexOf("index_repository", afterSliceSection);
       expect(indexAfter).toBeGreaterThan(afterSliceSection);
     });
@@ -52,7 +52,7 @@ describe("codebase-memory-mcp integration", () => {
     });
 
     it("warns against creating slices for already-built functionality", () => {
-      expect(PLANNING_PROMPT).toMatch(/bereits (gebaut|existiert)/i);
+      expect(PLANNING_PROMPT).toMatch(/already built/i);
     });
   });
 
@@ -74,7 +74,7 @@ describe("codebase-memory-mcp integration", () => {
 
     it("uses search_graph for redundancy detection", () => {
       // search_graph should appear in the redundancy section
-      const redundancyPos = REFACTOR_PROMPT.indexOf("Redundanz");
+      const redundancyPos = REFACTOR_PROMPT.indexOf("Redundancy");
       const searchAfter = REFACTOR_PROMPT.indexOf("search_graph", redundancyPos);
       expect(searchAfter).toBeGreaterThan(redundancyPos);
     });
@@ -117,7 +117,7 @@ describe("codebase-memory-mcp integration", () => {
 describe("DB-MCP integration", () => {
   describe("build-slice", () => {
     it("references DB-MCP for database slices", () => {
-      expect(BUILD_SLICE_PROMPT).toContain("DB-MCP");
+      expect(BUILD_SLICE_PROMPT).toContain("DB MCP");
     });
 
     it("checks schema with list_tables and describe_table", () => {
@@ -127,31 +127,31 @@ describe("DB-MCP integration", () => {
 
     it("verifies migrations and seed data", () => {
       expect(BUILD_SLICE_PROMPT).toMatch(/[Mm]igration/);
-      expect(BUILD_SLICE_PROMPT).toContain("Seed-Data");
+      expect(BUILD_SLICE_PROMPT).toContain("seed data");
     });
 
     it("tests CRUD with real DB queries", () => {
       expect(BUILD_SLICE_PROMPT).toContain("CRUD");
-      expect(BUILD_SLICE_PROMPT).toMatch(/DB-Quer/i);
+      expect(BUILD_SLICE_PROMPT).toMatch(/DB quer/i);
     });
   });
 
   describe("planning", () => {
     it("checks existing DB schema before planning", () => {
-      expect(PLANNING_PROMPT).toContain("DB-MCP");
-      expect(PLANNING_PROMPT).toContain("DB-Schema");
+      expect(PLANNING_PROMPT).toContain("DB MCP");
+      expect(PLANNING_PROMPT).toContain("DB schema");
     });
 
     it("considers existing tables in planning", () => {
-      expect(PLANNING_PROMPT).toMatch(/Tabellen.*existieren/);
+      expect(PLANNING_PROMPT).toMatch(/tables already exist/i);
     });
   });
 
   describe("security-gate", () => {
     it("checks password fields are hashed", () => {
-      const dbSection = SECURITY_GATE_PROMPT.indexOf("Datenbank prüfen");
+      const dbSection = SECURITY_GATE_PROMPT.indexOf("Check Database");
       expect(dbSection).toBeGreaterThan(-1);
-      expect(SECURITY_GATE_PROMPT).toMatch(/Passwort.*gehasht/);
+      expect(SECURITY_GATE_PROMPT).toMatch(/password.*hashed/i);
     });
 
     it("checks PII handling", () => {
@@ -159,33 +159,33 @@ describe("DB-MCP integration", () => {
     });
 
     it("checks foreign keys and constraints", () => {
-      expect(SECURITY_GATE_PROMPT).toContain("Foreign Keys");
-      expect(SECURITY_GATE_PROMPT).toContain("Constraints");
+      expect(SECURITY_GATE_PROMPT).toContain("foreign keys");
+      expect(SECURITY_GATE_PROMPT).toContain("constraints");
     });
   });
 
   describe("e2e-testing", () => {
     it("prepares test data via DB-MCP before tests", () => {
-      expect(E2E_TESTING_PROMPT).toContain("DB-MCP");
-      const dbSection = E2E_TESTING_PROMPT.indexOf("Testdaten vorbereiten");
-      const scenariosSection = E2E_TESTING_PROMPT.indexOf("Test-Szenarien");
+      expect(E2E_TESTING_PROMPT).toContain("DB MCP");
+      const dbSection = E2E_TESTING_PROMPT.indexOf("Prepare test data");
+      const scenariosSection = E2E_TESTING_PROMPT.indexOf("Test Scenarios");
       expect(dbSection).toBeGreaterThan(-1);
       expect(dbSection).toBeLessThan(scenariosSection);
     });
 
     it("verifies data persistence after E2E tests", () => {
-      expect(E2E_TESTING_PROMPT).toMatch(/[Dd]aten.*korrekt.*DB/);
+      expect(E2E_TESTING_PROMPT).toMatch(/data.*correctly.*DB/i);
     });
   });
 
   describe("deploy", () => {
     it("checks migrations before deployment", () => {
       expect(DEPLOY_PROMPT).toContain("DB-MCP");
-      expect(DEPLOY_PROMPT).toContain("Migrations");
+      expect(DEPLOY_PROMPT).toContain("migrations");
     });
 
     it("verifies schema matches expected state", () => {
-      expect(DEPLOY_PROMPT).toContain("Schema");
+      expect(DEPLOY_PROMPT).toContain("schema");
     });
 
     it("checks backup mechanisms", () => {
@@ -193,8 +193,8 @@ describe("DB-MCP integration", () => {
     });
 
     it("DB checks appear before deployment steps", () => {
-      const dbCheckPos = DEPLOY_PROMPT.indexOf("Datenbank prüfen");
-      const deployPathPos = DEPLOY_PROMPT.indexOf("Deploy-Pfad wählen");
+      const dbCheckPos = DEPLOY_PROMPT.indexOf("Check Database");
+      const deployPathPos = DEPLOY_PROMPT.indexOf("Choose Deploy Path");
       expect(dbCheckPos).toBeGreaterThan(-1);
       expect(dbCheckPos).toBeLessThan(deployPathPos);
     });
@@ -221,12 +221,12 @@ describe("Semgrep + Bandit integration", () => {
     });
 
     it("provides fallback message if installation fails", () => {
-      expect(ONBOARDING_PROMPT).toMatch(/[Ii]nstallation.*fehl/);
+      expect(ONBOARDING_PROMPT).toMatch(/installation fails/i);
     });
 
     it("SAST tools section comes after companion MCPs setup", () => {
       const companionPos = ONBOARDING_PROMPT.indexOf("a2p_setup_companions");
-      const sastPos = ONBOARDING_PROMPT.indexOf("SAST-Tools installieren");
+      const sastPos = ONBOARDING_PROMPT.indexOf("Install SAST Tools");
       expect(companionPos).toBeGreaterThan(-1);
       expect(sastPos).toBeGreaterThan(companionPos);
     });
@@ -398,7 +398,7 @@ describe("Sequential Thinking MCP integration", () => {
     });
 
     it("mentions complex dependencies as trigger", () => {
-      expect(PLANNING_PROMPT).toMatch(/komple.*Abhängigkeit/i);
+      expect(PLANNING_PROMPT).toMatch(/complex dependenc/i);
     });
   });
 
@@ -408,7 +408,7 @@ describe("Sequential Thinking MCP integration", () => {
     });
 
     it("mentions decoupling strategies", () => {
-      expect(REFACTOR_PROMPT).toMatch(/[Ee]ntkoppl/);
+      expect(REFACTOR_PROMPT).toMatch(/[Dd]ecoupl/);
     });
   });
 });
@@ -433,7 +433,7 @@ describe("Semgrep MCP integration", () => {
     });
 
     it("falls back to a2p_run_sast", () => {
-      const semgrepSection = BUILD_SLICE_PROMPT.indexOf("Semgrep MCP bevorzugt");
+      const semgrepSection = BUILD_SLICE_PROMPT.indexOf("Prefer Semgrep MCP");
       const fallback = BUILD_SLICE_PROMPT.indexOf("a2p_run_sast", semgrepSection);
       expect(fallback).toBeGreaterThan(semgrepSection);
     });
@@ -457,8 +457,8 @@ describe("Semgrep MCP integration", () => {
     });
 
     it("CLI fallback appears after MCP preference", () => {
-      const mcpPos = SECURITY_GATE_PROMPT.indexOf("Semgrep MCP bevorzugt");
-      const cliPos = SECURITY_GATE_PROMPT.indexOf("Standard: CLI via a2p_run_sast");
+      const mcpPos = SECURITY_GATE_PROMPT.indexOf("Prefer Semgrep MCP");
+      const cliPos = SECURITY_GATE_PROMPT.indexOf("Default: CLI via a2p_run_sast");
       expect(mcpPos).toBeGreaterThan(-1);
       expect(cliPos).toBeGreaterThan(mcpPos);
     });
@@ -510,11 +510,11 @@ describe("Stripe MCP integration", () => {
     });
 
     it("mentions Webhooks", () => {
-      expect(BUILD_SLICE_PROMPT).toContain("Webhooks");
+      expect(BUILD_SLICE_PROMPT).toContain("webhooks");
     });
 
     it("validates webhook signatures", () => {
-      expect(BUILD_SLICE_PROMPT).toMatch(/[Ww]ebhook.*[Ss]ignatur/);
+      expect(BUILD_SLICE_PROMPT).toMatch(/[Ww]ebhook.*[Ss]ignature/);
     });
   });
 });
@@ -532,7 +532,7 @@ describe("Atlassian MCP integration", () => {
     });
 
     it("uses Sprint planning for prioritization", () => {
-      expect(PLANNING_PROMPT).toContain("Sprint");
+      expect(PLANNING_PROMPT).toContain("sprint");
     });
   });
 });
@@ -546,7 +546,7 @@ describe("Sentry MCP integration", () => {
     });
 
     it("sets Sentry tags for slices", () => {
-      expect(BUILD_SLICE_PROMPT).toContain("Sentry-Tags");
+      expect(BUILD_SLICE_PROMPT).toContain("Sentry tags");
     });
 
     it("checks source maps upload", () => {
@@ -572,7 +572,7 @@ describe("Sentry MCP integration", () => {
 describe("Onboarding completeness", () => {
   it("always sets up codebase-memory-mcp", () => {
     expect(ONBOARDING_PROMPT).toContain("codebase-memory-mcp");
-    expect(ONBOARDING_PROMPT).toMatch(/IMMER/);
+    expect(ONBOARDING_PROMPT).toMatch(/ALWAYS/);
   });
 
   it("sets up database MCP for Supabase", () => {
@@ -657,16 +657,16 @@ describe("Onboarding completeness", () => {
   });
 
   it("instructs user to restart Claude Code", () => {
-    expect(ONBOARDING_PROMPT).toMatch(/[Ss]tarte Claude Code.*neu/);
+    expect(ONBOARDING_PROMPT).toMatch(/[Rr]estart Claude Code/);
   });
 
   it("shows security warning about third-party MCPs", () => {
-    expect(ONBOARDING_PROMPT).toContain("Sicherheitshinweis");
+    expect(ONBOARDING_PROMPT).toContain("Security Notice");
     expect(ONBOARDING_PROMPT).toContain(".mcp.json");
   });
 
   it("asks user to verify unknown packages before enabling", () => {
-    expect(ONBOARDING_PROMPT).toMatch(/[Pp]rüfe/);
+    expect(ONBOARDING_PROMPT).toMatch(/[Cc]heck/);
     expect(ONBOARDING_PROMPT).toMatch(/npm|GitHub/);
   });
 
@@ -677,7 +677,7 @@ describe("Onboarding completeness", () => {
   });
 
   it("requires explicit user confirmation after security note", () => {
-    expect(ONBOARDING_PROMPT).toMatch(/[Bb]estätige/);
+    expect(ONBOARDING_PROMPT).toMatch(/[Cc]onfirm/);
   });
 });
 
@@ -694,7 +694,7 @@ describe("Anthropic engineering patterns in build-slice", () => {
   });
 
   it("has slice spec section between EXPLORE and RED", () => {
-    const specPos = BUILD_SLICE_PROMPT.indexOf("Slice-Spezifikation");
+    const specPos = BUILD_SLICE_PROMPT.indexOf("Slice Specification");
     const redPos = BUILD_SLICE_PROMPT.indexOf("### Phase RED");
     const exploreEnd = BUILD_SLICE_PROMPT.indexOf("Evidence-Driven Development Cycle");
     expect(specPos).toBeGreaterThan(-1);
@@ -703,33 +703,33 @@ describe("Anthropic engineering patterns in build-slice", () => {
   });
 
   it("slice spec requires spec-test-mapping and initial-rot-hypothese", () => {
-    const specPos = BUILD_SLICE_PROMPT.indexOf("Slice-Spezifikation");
+    const specPos = BUILD_SLICE_PROMPT.indexOf("Slice Specification");
     const redPos = BUILD_SLICE_PROMPT.indexOf("### Phase RED");
     const section = BUILD_SLICE_PROMPT.slice(specPos, redPos);
-    expect(section).toContain("Spec-Test-Mapping");
-    expect(section).toContain("Initial-Rot-Hypothese");
-    expect(section).toContain("Minimale grüne Änderung");
+    expect(section).toContain("Spec-Test Mapping");
+    expect(section).toContain("Initial Red Hypothesis");
+    expect(section).toContain("Minimal Green Change");
   });
 
   it("summary template includes TDD-Abweichungen and Spec-Test-Mapping", () => {
-    const summaryPos = BUILD_SLICE_PROMPT.indexOf("Nach jedem abgeschlossenen Slice");
-    const checkpointPos = BUILD_SLICE_PROMPT.indexOf("Checkpoint nach Slice-Completion");
+    const summaryPos = BUILD_SLICE_PROMPT.indexOf("After Every Completed Slice");
+    const checkpointPos = BUILD_SLICE_PROMPT.indexOf("Checkpoint After Slice Completion");
     const section = BUILD_SLICE_PROMPT.slice(summaryPos, checkpointPos);
-    expect(section).toContain("Spec-Test-Mapping");
-    expect(section).toContain("TDD-Abweichungen");
+    expect(section).toContain("Spec-Test Mapping");
+    expect(section).toContain("TDD Deviations");
   });
 
   it("invariants section separates code-enforced from prompt-guided", () => {
-    const invPos = BUILD_SLICE_PROMPT.indexOf("## Invarianten");
+    const invPos = BUILD_SLICE_PROMPT.indexOf("## Invariants");
     const section = BUILD_SLICE_PROMPT.slice(invPos);
     expect(section).toContain("Code-enforced");
     expect(section).toContain("Prompt-guided");
   });
 
   it("has scope-lock section that prevents feature creep", () => {
-    expect(BUILD_SLICE_PROMPT).toContain("Scope-Lock");
-    expect(BUILD_SLICE_PROMPT).toContain("Keine neuen Features im GREEN");
-    expect(BUILD_SLICE_PROMPT).toMatch(/Keine.*Umbauten.*REFACTOR/);
+    expect(BUILD_SLICE_PROMPT).toContain("Scope Lock");
+    expect(BUILD_SLICE_PROMPT).toContain("No new features in GREEN");
+    expect(BUILD_SLICE_PROMPT).toMatch(/No architecture overhauls in REFACTOR/);
   });
 
   it("requires test-writer subagent for RED phase (not optional)", () => {
@@ -757,26 +757,26 @@ describe("Anthropic engineering patterns in build-slice", () => {
 
   it("SAST findings are fixed in place with re-verification", () => {
     const sastSection = BUILD_SLICE_PROMPT.indexOf("Phase SAST");
-    const endSection = BUILD_SLICE_PROMPT.indexOf("## Nach jedem", sastSection);
+    const endSection = BUILD_SLICE_PROMPT.indexOf("## After Every", sastSection);
     const section = BUILD_SLICE_PROMPT.slice(sastSection, endSection);
-    expect(section).toContain("fixen");
-    expect(section).toContain("wiederholen");
+    expect(section).toContain("fix");
+    expect(section).toContain("repeat");
   });
 
   it("invariants section enforces scope rule", () => {
-    expect(BUILD_SLICE_PROMPT).toContain("Invarianten");
-    expect(BUILD_SLICE_PROMPT).toMatch(/Scope.*Slice/);
+    expect(BUILD_SLICE_PROMPT).toContain("Invariants");
+    expect(BUILD_SLICE_PROMPT).toMatch(/Scope.*slice/i);
   });
 
   it("git commits are proper phase-end steps", () => {
-    const gitSection = BUILD_SLICE_PROMPT.indexOf("Git-Commits");
+    const gitSection = BUILD_SLICE_PROMPT.indexOf("Git Commits");
     expect(gitSection).toBeGreaterThan(-1);
     const sectionEnd = BUILD_SLICE_PROMPT.indexOf("\n## ", gitSection + 5);
     const block = BUILD_SLICE_PROMPT.slice(gitSection, sectionEnd > -1 ? sectionEnd : undefined);
     // Should mention committing after each phase
-    expect(block).toContain("Nach RED");
-    expect(block).toContain("Nach GREEN");
-    expect(block).toContain("Nach REFACTOR");
+    expect(block).toContain("After RED");
+    expect(block).toContain("After GREEN");
+    expect(block).toContain("After REFACTOR");
   });
 
   it("explore phase contains all three codebase-memory tools", () => {
@@ -798,30 +798,30 @@ describe("Enforcement rules in build-slice", () => {
     const sastSection = BUILD_SLICE_PROMPT.indexOf("Phase SAST");
     const nextSection = BUILD_SLICE_PROMPT.indexOf("## Nach jedem", sastSection);
     const section = BUILD_SLICE_PROMPT.slice(sastSection, nextSection);
-    expect(section).toContain("MUSST");
+    expect(section).toContain("MUST");
     expect(section).toContain("a2p_run_sast");
-    expect(section).toMatch(/NICHT.*[Üü]berspringen|PFLICHT/);
+    expect(section).toMatch(/NOT skip|MANDATORY/);
   });
 
   it("Visual Verification is recommended for hasUI slices — honest about enforcement", () => {
     const visualSection = BUILD_SLICE_PROMPT.indexOf("Visual Verification");
     const refactorSection = BUILD_SLICE_PROMPT.indexOf("Phase REFACTOR");
     const section = BUILD_SLICE_PROMPT.slice(visualSection, refactorSection);
-    expect(section).toContain("EMPFOHLEN");
-    expect(section).toContain("kein Code-Gate");
+    expect(section).toContain("RECOMMENDED");
+    expect(section).toContain("not a code gate");
     expect(section).toContain("browser_take_screenshot");
     expect(section).toContain("browser_navigate");
   });
 
   it("review checkpoint is a hard stop — not negotiable", () => {
-    const checkpointSection = BUILD_SLICE_PROMPT.indexOf("Checkpoint nach Slice-Completion");
-    const nextSection = BUILD_SLICE_PROMPT.indexOf("## Git-Commits", checkpointSection);
+    const checkpointSection = BUILD_SLICE_PROMPT.indexOf("Checkpoint After Slice Completion");
+    const nextSection = BUILD_SLICE_PROMPT.indexOf("## Git Commits", checkpointSection);
     const section = BUILD_SLICE_PROMPT.slice(checkpointSection, nextSection);
     expect(section).toContain("HARD STOP");
-    expect(section).toContain("NICHT verhandelbar");
+    expect(section).toContain("NOT negotiable");
     expect(section).toContain("awaitingHumanReview");
     // Must explicitly say: don't continue even if user said "do everything"
-    expect(section).toMatch(/auch wenn.*User/i);
+    expect(section).toMatch(/even if.*user/i);
   });
 });
 
@@ -829,46 +829,46 @@ describe("Enforcement rules in build-slice", () => {
 
 describe("Enforcement rules in onboarding", () => {
   it("UI-Design checkpoint is recommended for frontend projects (honest about enforcement)", () => {
-    const uiSection = ONBOARDING_PROMPT.indexOf("UI-Design erfassen");
+    const uiSection = ONBOARDING_PROMPT.indexOf("Capture UI Design");
     expect(uiSection).toBeGreaterThan(-1);
-    const nextSection = ONBOARDING_PROMPT.indexOf("Frage den User", uiSection);
+    const nextSection = ONBOARDING_PROMPT.indexOf("Ask the user", uiSection);
     const section = ONBOARDING_PROMPT.slice(uiSection, nextSection);
-    expect(section).toContain("EMPFOHLEN");
-    expect(section).toContain("kein Code-Gate");
+    expect(section).toContain("RECOMMENDED");
+    expect(section).toContain("not a code gate");
   });
 
   it("companions setup is recommended — honest about enforcement", () => {
-    const companionSection = ONBOARDING_PROMPT.indexOf("Companions einrichten");
+    const companionSection = ONBOARDING_PROMPT.indexOf("Set Up Companions");
     expect(companionSection).toBeGreaterThan(-1);
-    const nextSection = ONBOARDING_PROMPT.indexOf("**IMMER installieren", companionSection);
+    const nextSection = ONBOARDING_PROMPT.indexOf("**ALWAYS install", companionSection);
     const section = ONBOARDING_PROMPT.slice(companionSection, nextSection);
-    expect(section).toContain("EMPFOHLEN");
-    expect(section).toContain("kein Code-Gate");
+    expect(section).toContain("RECOMMENDED");
+    expect(section).toContain("not a code gate");
   });
 
   it("prerequisites check analyzes architecture for required local services", () => {
-    expect(ONBOARDING_PROMPT).toContain("Prerequisites-Check");
+    expect(ONBOARDING_PROMPT).toContain("Prerequisites Check");
     expect(ONBOARDING_PROMPT).toContain("Docker Desktop");
-    expect(ONBOARDING_PROMPT).toContain("Datenbank-Server");
-    expect(ONBOARDING_PROMPT).toContain("Emulatoren");
+    expect(ONBOARDING_PROMPT).toContain("Database Server");
+    expect(ONBOARDING_PROMPT).toContain("Emulators");
     // Must tell user what to start
-    expect(ONBOARDING_PROMPT).toMatch(/stelle sicher.*läuft/i);
+    expect(ONBOARDING_PROMPT).toMatch(/make sure.*running/i);
   });
 
   it("prerequisites check comes before the final handoff", () => {
-    const prereqPos = ONBOARDING_PROMPT.indexOf("Prerequisites-Check");
-    const handoffPos = ONBOARDING_PROMPT.indexOf("Abschluss: Nahtloser Übergang");
+    const prereqPos = ONBOARDING_PROMPT.indexOf("Prerequisites Check");
+    const handoffPos = ONBOARDING_PROMPT.indexOf("Completion: Seamless Transition");
     expect(prereqPos).toBeGreaterThan(-1);
     expect(prereqPos).toBeLessThan(handoffPos);
   });
 
   it("Oversight checkpoint is recommended — honest about enforcement", () => {
-    const reviewSection = ONBOARDING_PROMPT.indexOf("Human Oversight konfigurieren");
+    const reviewSection = ONBOARDING_PROMPT.indexOf("Configure Human Oversight");
     expect(reviewSection).toBeGreaterThan(-1);
-    const sectionEnd = ONBOARDING_PROMPT.indexOf("### Architektur festhalten", reviewSection);
+    const sectionEnd = ONBOARDING_PROMPT.indexOf("### Save Architecture", reviewSection);
     const section = ONBOARDING_PROMPT.slice(reviewSection, sectionEnd);
-    expect(section).toContain("EMPFOHLEN");
-    expect(section).toContain("kein Code-Gate");
+    expect(section).toContain("RECOMMENDED");
+    expect(section).toContain("not a code gate");
   });
 });
 
@@ -892,15 +892,15 @@ describe("MCP operationalization in prompts", () => {
   });
 
   it("planning prompt mentions companion availability as soft hint (not hard block)", () => {
-    expect(PLANNING_PROMPT).toContain("Companion-Tools");
-    expect(PLANNING_PROMPT).toContain("Neustart");
-    expect(PLANNING_PROMPT).toContain("blockiere die Planung NICHT");
+    expect(PLANNING_PROMPT).toContain("companion tools");
+    expect(PLANNING_PROMPT).toContain("restart");
+    expect(PLANNING_PROMPT).toContain("do NOT block the planning");
   });
 
   it("build-slice prompt mentions companion availability as soft hint (not hard block)", () => {
-    expect(BUILD_SLICE_PROMPT).toContain("Companion-Tools");
-    expect(BUILD_SLICE_PROMPT).toContain("Neustart");
-    expect(BUILD_SLICE_PROMPT).toContain("blockiere den Build NICHT");
+    expect(BUILD_SLICE_PROMPT).toContain("companion tools");
+    expect(BUILD_SLICE_PROMPT).toContain("restart");
+    expect(BUILD_SLICE_PROMPT).toContain("do NOT block the build");
   });
 });
 
@@ -908,32 +908,32 @@ describe("MCP operationalization in prompts", () => {
 
 describe("Code Review integration in build-signoff and release audit", () => {
   it("build-slice has Code Review section before signoff summary", () => {
-    const reviewPos = BUILD_SLICE_PROMPT.indexOf("Code Review vor Signoff");
-    const summaryPos = BUILD_SLICE_PROMPT.indexOf("Signoff-Summary");
+    const reviewPos = BUILD_SLICE_PROMPT.indexOf("Code Review Before Signoff");
+    const summaryPos = BUILD_SLICE_PROMPT.indexOf("Signoff Summary");
     expect(reviewPos).toBeGreaterThan(-1);
     expect(summaryPos).toBeGreaterThan(-1);
     expect(reviewPos).toBeLessThan(summaryPos);
   });
 
   it("build-signoff code review checks cross-slice consistency", () => {
-    const reviewPos = BUILD_SLICE_PROMPT.indexOf("Code Review vor Signoff");
-    const summaryPos = BUILD_SLICE_PROMPT.indexOf("### Signoff-Summary");
+    const reviewPos = BUILD_SLICE_PROMPT.indexOf("Code Review Before Signoff");
+    const summaryPos = BUILD_SLICE_PROMPT.indexOf("### Signoff Summary");
     const section = BUILD_SLICE_PROMPT.slice(reviewPos, summaryPos);
-    expect(section).toContain("Cross-Slice-Konsistenz");
+    expect(section).toContain("Cross-Slice Consistency");
     expect(section).toContain("Error Handling");
-    expect(section).toContain("Review-Ergebnis");
+    expect(section).toContain("Review Result");
   });
 
   it("release audit pass 2 is framed as Code Review", () => {
-    expect(AUDIT_PROMPT).toContain("Code Review (Claude prüft)");
+    expect(AUDIT_PROMPT).toContain("Code Review (Claude reviews)");
   });
 
   it("release audit code review checks cross-file consistency and API coherence", () => {
-    const reviewPos = AUDIT_PROMPT.indexOf("Code Review (Claude prüft)");
+    const reviewPos = AUDIT_PROMPT.indexOf("Code Review (Claude reviews)");
     const section = AUDIT_PROMPT.slice(reviewPos);
-    expect(section).toContain("Cross-File-Konsistenz");
-    expect(section).toContain("API-Kohärenz");
-    expect(section).toContain("Unused Code");
-    expect(section).toContain("Review-Punkte gefunden");
+    expect(section).toContain("Cross-file consistency");
+    expect(section).toContain("API coherence");
+    expect(section).toContain("Unused code");
+    expect(section).toContain("Review issues found");
   });
 });
