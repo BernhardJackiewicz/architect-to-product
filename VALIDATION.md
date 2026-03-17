@@ -1,6 +1,6 @@
 # Validation Summary
 
-> Last validated: 2026-03-17 | A2P v0.1.17 | 1022 tests passing
+> Last validated: 2026-03-17 | A2P v0.1.18 | 1032 tests passing
 
 ## Code-Enforced (verified by 1022 unit/integration tests)
 
