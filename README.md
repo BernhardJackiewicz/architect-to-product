@@ -32,6 +32,30 @@ Each transition is evidence-gated — enforced in code, not just in prompts. You
 
 This matters because AI coding agents naturally take shortcuts. They'll generate code without tests, suppress errors instead of fixing them, and mark things "done" that aren't. The red-green-refactor cycle with hard gates prevents all of that.
 
+### State machine and gates
+
+The entire project lifecycle is a state machine with enforced gates between phases:
+
+```
+onboarding → planning → building → security → deployment → complete
+                ↑           ↓          ↑            ↓
+                └── refactoring    ←───┘     (re-entry: full
+                        ↓                    security cycle
+                   e2e_testing               required again)
+```
+
+Each arrow is a gate — a set of conditions that must be met before the transition is allowed. Gates are enforced in code, not prompts. The AI agent cannot skip them:
+
+| Gate | What it checks |
+|---|---|
+| **building → security** | All slices done, build signoff from human, quality audit run |
+| **security → deployment** | Full SAST scan, no open critical/high findings, whitebox audit, adversarial review, release audit clean, active verification passing, backup configured (stateful apps) |
+| **deployment → configs** | Human deploy approval (invalidated by any new finding — must be the last step) |
+
+If the AI tries to advance without meeting a gate, the tool throws an error. There's no way around it — direct state file edits are blocked by a PreToolUse hook.
+
+Security re-entry (deployment → security or complete → security) automatically invalidates all prior approvals — deploy approval, adversarial review, SAST timestamps. The full security cycle must be re-satisfied before deploying again.
+
 Built-in SAST tools run static code analysis and OWASP Top 10 reviews before deploy. Stack-aware backup strategy infers what needs protecting — databases, uploads, deployment artifacts — and generates backup, restore, and verification scripts automatically. Stack-specific deployment configs mean you ship on day one, not day thirty.
 
 ## Quick Start
