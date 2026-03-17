@@ -15,7 +15,7 @@ Turns AI-generated code into production-ready software with evidence-gated TDD, 
 ### Quickstart
 
 ```bash
-npx a2p init        # creates .mcp.json in your project
+npx architect-to-product init   # creates .mcp.json in your project
 ```
 
 Restart Claude Code, then type `/a2p` to start.
@@ -73,7 +73,7 @@ Built-in SAST tools run static code analysis and OWASP Top 10 reviews before dep
 ## Quick Start
 
 ```bash
-npx a2p init        # creates .mcp.json in your project
+npx architect-to-product init   # creates .mcp.json in your project
 ```
 
 Restart Claude Code, then type `/a2p` to start. The onboarding will co-develop your architecture, auto-configure companion MCP servers, and install SAST tools.
