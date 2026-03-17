@@ -937,3 +937,33 @@ describe("Code Review integration in build-signoff and release audit", () => {
     expect(section).toContain("Review issues found");
   });
 });
+
+// ─── Frontend Design Skill ──────────────────────────────────────────────────
+// Akzeptanzkriterium: /frontend-design skill is referenced in build-slice
+// and onboarding prompts for UI-aware projects.
+
+describe("frontend-design skill integration", () => {
+  it("build-slice recommends /frontend-design for UI slices", () => {
+    expect(BUILD_SLICE_PROMPT).toContain("/frontend-design");
+    expect(BUILD_SLICE_PROMPT).toContain("hasUI");
+  });
+
+  it("build-slice places skill reference before visual verification", () => {
+    const skillPos = BUILD_SLICE_PROMPT.indexOf("frontend-design");
+    const verificationPos = BUILD_SLICE_PROMPT.indexOf("Visual Verification");
+    expect(skillPos).toBeGreaterThan(-1);
+    expect(skillPos).toBeLessThan(verificationPos);
+  });
+
+  it("build-slice mentions GREEN phase as when to invoke", () => {
+    const section = BUILD_SLICE_PROMPT.substring(
+      BUILD_SLICE_PROMPT.indexOf("Frontend Design Skill"),
+      BUILD_SLICE_PROMPT.indexOf("UI Quality Rules")
+    );
+    expect(section).toContain("GREEN phase");
+  });
+
+  it("onboarding mentions /frontend-design tip for frontend projects", () => {
+    expect(ONBOARDING_PROMPT).toContain("/frontend-design");
+  });
+});

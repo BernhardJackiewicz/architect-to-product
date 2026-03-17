@@ -112,6 +112,8 @@ The user can provide text AND images. Multiple references are possible.
 
 **If no frontend is planned:** Skip this step.
 
+**Tip:** For distinctive, high-quality frontend design during the build phase, the \`/frontend-design\` skill (Anthropic's built-in Claude Code skill) can be used. It produces production-grade interfaces that avoid generic AI aesthetics. The uiDesign captured here will be used as reference for the skill.
+
 Show the options and → STOP. Wait for the user's response. Do NOT call any tool before the user has responded.
 
 Pass the result as \`uiDesign\` object to \`a2p_set_architecture\`:

@@ -118,6 +118,15 @@ If the current slice has \`hasUI: true\` AND \`architecture.uiDesign\` exists:
    - If \`type: "description"\` → use the text as design specification
 3. Implement the UI **according to these specifications** — not at your own discretion
 
+### Frontend Design Skill — RECOMMENDED for UI slices
+If the \`/frontend-design\` skill is available (Anthropic's built-in Claude Code skill):
+- Use it when building components, pages, or visual interfaces
+- It produces distinctive, production-grade frontend code that avoids generic AI aesthetics
+- Combines well with \`uiDesign\` references from the architecture — feed the style/description into the skill
+- Especially valuable for: landing pages, dashboards, forms, navigation, and any user-facing interface
+
+**When to invoke:** During GREEN phase of \`hasUI: true\` slices. The skill handles the visual implementation, A2P handles the TDD cycle and quality gates around it.
+
 ### UI Quality Rules (MANDATORY for all frontend slices)
 These rules always apply — regardless of whether a uiDesign exists:
 
