@@ -94,6 +94,51 @@ Wenn der User Hetzner gewählt hat oder kein spezifischer Hoster feststeht:
    - DNS A-Record Anleitung geben
    - Caddy holt automatisch Let's Encrypt Zertifikat
 
+### VPS Post-Provisioning Hardening (nach Server-Setup pruefen)
+
+Nach dem Server-Setup die folgenden Verifikations-Commands ausfuehren:
+
+- Root-Login deaktiviert: \`ssh root@SERVER_IP\` muss rejected werden
+- Docker-Log-Rotation aktiv: \`cat /etc/docker/daemon.json\` → max-size/max-file gesetzt
+- Swap aktiv: \`swapon --show\` (Groesse nach Workload anpassen, z.B. 4G bei JVM/Multi-Service)
+- Kernel-Hardening: \`sysctl net.ipv4.tcp_syncookies\` muss 1 sein
+- Docker-Volume-Speicherort: \`docker volume inspect <volume>\` → pruefen ob Mountpoint auf Root-Disk liegt (relevant fuer Hetzner Server-Backups, die nur Root-Disk sichern)
+- Backup-Timer: \`systemctl list-timers\` → Timer fuer backup.sh aktiv?
+- Offsite erreichbar: \`rclone ls remote:path\` → Verbindung zum Offsite-Storage pruefen
+- Test-Restore: DB aus Backup in separates Temp-Dir restoren + Integrity-Check
+
+**UFW/Docker-Hinweis:** Docker umgeht UFW standardmaessig ueber eigene iptables-Regeln. Fuer Projekte mit oeffentlichen Ports: Docker-Doku zu DOCKER-USER chain lesen und Regeln an die eigene Netzwerk-Topologie anpassen. Kein generisches Ruleset verwenden ohne das eigene Setup zu verstehen.
+
+Optional:
+- Auto-Reboot nach Kernel-Updates: \`Unattended-Upgrade::Automatic-Reboot "true"\` in \`/etc/apt/apt.conf.d/51no-auto-reboot\` — Ops-Entscheidung, fuer Single-Server-Setups oft sinnvoll
+- SSH-Port aendern (Warnung: Firewall + fail2ban Port synchron anpassen!)
+- rkhunter/AIDE installieren fuer File-Integrity-Monitoring
+
+### Hetzner Storage: Welches Produkt wann
+
+| Produkt | Use Case | Hardening |
+|---|---|---|
+| Storage Box (BX11, ab 3.81 EUR/mo) | Offsite-Backup via rclone/SFTP/rsync/BorgBackup | Nur benoetigte Protokolle aktivieren (SFTP/SCP immer aktiv auf Port 22, FTP/SMB/Port-23-SSH nur bei Bedarf), SSH-Keys einrichten, Sub-Accounts fuer Backup mit eingeschraenkten Verzeichnissen |
+| Storage Share (ab 3.49 EUR/mo) | Team-File-Sharing (Nextcloud) | Starke Passwoerter, Share-Links mit Passwort+Ablauf, container-isoliert |
+| Object Storage (S3-kompatibel, pay-per-use) | Programmatisches Backup mit Versionierung, CDN-Origin | Access-Key + Secret-Key, Bucket-Permissions |
+
+**Default-Empfehlung fuer Hetzner-VPS Offsite-Backup:**
+- Standard: \`backup.sh\` → \`/backups/\` auf Server → \`rclone copy\` → Storage Box (SFTP), mit separater Retention/Pruning
+- Alternative: Object Storage (S3), wenn Versionierung oder hoehere Automatisierung gewuenscht
+
+**Hinweis zu Storage Box Auth:** Auch wenn ein SSH-Key hinterlegt wird, bleibt Passwort-Authentifizierung aktiv. Das ist Hetzner-Standardverhalten. Sub-Accounts mit eigenen SSH-Keys und eingeschraenkten Verzeichnissen sind die empfohlene Trennung.
+
+### Backup-Strategie: 3-Layer-Modell
+
+- **Layer 1 — Hetzner Server-Backup** (Snapshots): Sichert die Root-Disk / kompletten Serverzustand, taeglich, 7 Slots Retention, ~0.70 EUR/mo. Deckt ab: OS, Docker, Configs und alle Daten auf der Server-Root-Disk (inkl. Docker named volumes, solange diese auf der Root-Disk liegen). NICHT enthalten: angehaengte Hetzner Volumes. Einschraenkung: 7 Slots = 7 Tage — reicht nicht als alleinige Retention-Strategie. Fuer: schnellen Server-Rebuild.
+- **Layer 2 — App-Level-Backup** (\`scripts/backup.sh\` → \`/backups/\`): DB-Dump + Datei-Backup, hoehere Frequenz moeglich (stuendlich), laengere Retention (14+ Tage konfigurierbar). Fuer: gezielte Daten-Wiederherstellung (korrupte Daten, versehentliches Loeschen, Rollback auf bestimmten Zeitpunkt).
+- **Layer 3 — Offsite-Replikation**: Kopierende Offsite-Replikation der App-Backups mit eigener Retention/Versionierung. Optionen: \`rclone copy\` + separate Pruning-Logik, oder Tools mit eingebauter Versionierung wie restic/borg, oder Object Storage mit aktivierter Versionierung. **Wichtig:** \`rclone sync\` ist fuer Backups riskant (loescht am Ziel, was an der Quelle fehlt). Ziel: Storage Box (SFTP) oder Object Storage (S3). Fuer: Schutz gegen Server-Loeschung, Account-/Projektfehler, Provider-Ausfall.
+
+**Wann reicht was:**
+- Hetzner Server-Backup allein: nur fuer schnellen Server-Rebuild, nicht fuer Daten-Recovery ueber 7 Tage hinaus
+- App-Backup allein: Daten-Recovery, aber kein Schutz gegen Server-/Standort-Ausfall
+- Alle 3 Layer: vollstaendiger Schutz
+
 ### Deploy to Vercel (wenn Vercel MCP verfügbar oder hosting=Vercel)
 1. Generiere \`vercel.json\` mit Framework-Preset + Environment Variables
 2. Konfiguriere Build-Settings (Output Directory, Install Command)
@@ -229,6 +274,17 @@ Melde jedes Problem als Finding via a2p_record_finding mit tool="deployment-audi
 - Backup-Output verschluesselt oder Access-Control auf Backup-Dir?
 - Keine Plaintext-Credentials in Skript (sollen aus env kommen)?
 - Restore-Skript prueft Integritaet vor Wiederherstellung?
+
+### App-Level Security (zusaetzlich pruefen)
+- express.json() / bodyParser mit size limit (z.B. limit: '100kb')? Ohne → DoS-Risiko
+- Permissions-Policy Header im Reverse Proxy empfohlen (camera=(), microphone=(), geolocation=())
+- JWT: iss und aud Claims empfohlen bei Multi-Service/Multi-Audience Setups
+- Bcrypt-Rounds: mindestens 10, Zielwert 12+ je nach Performance-Budget
+- Rate-Limiter: persistenter Store (Redis/DB) robuster als in-memory (resettet bei Crash)
+- Source-Maps (.map Dateien) im Production-Docker-Image ausgeschlossen?
+
+### Caddyfile (zusaetzlich)
+- Permissions-Policy Header empfohlen: camera=(), microphone=(), geolocation=() (anpassen an App-Anforderungen)
 
 ## Wichtig
 - ALLE Server-Deployment-Dateien werden dynamisch generiert — nicht aus Templates kopiert

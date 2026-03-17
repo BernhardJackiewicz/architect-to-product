@@ -143,4 +143,49 @@ describe("handlePlanInfrastructure", () => {
     const result = parse(handlePlanInfrastructure({ projectPath: tmpDir, provider: "hetzner", location: "nbg1" }));
     expect(result.securityNote).toContain("Never persisted");
   });
+
+  it("cloud-init contains daemon.json for Docker log rotation", () => {
+    initWithLang(tmpDir);
+    setDeployReady(tmpDir);
+    const result = parse(handlePlanInfrastructure({ projectPath: tmpDir, provider: "hetzner", location: "nbg1" }));
+    expect(result.cloudInitScript).toContain("daemon.json");
+    expect(result.cloudInitScript).toContain("max-size");
+  });
+
+  it("cloud-init contains kernel hardening sysctl with tcp_syncookies", () => {
+    initWithLang(tmpDir);
+    setDeployReady(tmpDir);
+    const result = parse(handlePlanInfrastructure({ projectPath: tmpDir, provider: "hetzner", location: "nbg1" }));
+    expect(result.cloudInitScript).toContain("tcp_syncookies");
+    expect(result.cloudInitScript).toContain("99-hardening.conf");
+  });
+
+  it("cloud-init does NOT disable ip_forward (Docker needs it)", () => {
+    initWithLang(tmpDir);
+    setDeployReady(tmpDir);
+    const result = parse(handlePlanInfrastructure({ projectPath: tmpDir, provider: "hetzner", location: "nbg1" }));
+    expect(result.cloudInitScript).not.toContain("ip_forward = 0");
+  });
+
+  it("cloud-init contains swap with 2G default", () => {
+    initWithLang(tmpDir);
+    setDeployReady(tmpDir);
+    const result = parse(handlePlanInfrastructure({ projectPath: tmpDir, provider: "hetzner", location: "nbg1" }));
+    expect(result.cloudInitScript).toContain("swapfile");
+    expect(result.cloudInitScript).toContain("2G");
+  });
+
+  it("cloud-init contains logwatch in packages", () => {
+    initWithLang(tmpDir);
+    setDeployReady(tmpDir);
+    const result = parse(handlePlanInfrastructure({ projectPath: tmpDir, provider: "hetzner", location: "nbg1" }));
+    expect(result.cloudInitScript).toContain("logwatch");
+  });
+
+  it("cloud-init contains explicit auto-reboot disable", () => {
+    initWithLang(tmpDir);
+    setDeployReady(tmpDir);
+    const result = parse(handlePlanInfrastructure({ projectPath: tmpDir, provider: "hetzner", location: "nbg1" }));
+    expect(result.cloudInitScript).toContain('Automatic-Reboot "false"');
+  });
 });

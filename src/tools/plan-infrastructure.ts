@@ -163,6 +163,7 @@ packages:
   - ufw
   - fail2ban
   - unattended-upgrades
+  - logwatch
 
 write_files:
   - path: /etc/fail2ban/jail.local
@@ -180,6 +181,22 @@ write_files:
       PermitRootLogin no
       PubkeyAuthentication yes
       MaxAuthTries 3
+
+  - path: /etc/docker/daemon.json
+    content: |
+      {"log-driver":"json-file","log-opts":{"max-size":"10m","max-file":"5"}}
+
+  - path: /etc/sysctl.d/99-hardening.conf
+    content: |
+      net.ipv4.tcp_syncookies = 1
+      net.ipv4.icmp_echo_ignore_broadcasts = 1
+      net.ipv4.conf.all.accept_redirects = 0
+      net.ipv4.conf.default.accept_redirects = 0
+      net.ipv6.conf.all.accept_redirects = 0
+
+  - path: /etc/apt/apt.conf.d/51no-auto-reboot
+    content: |
+      Unattended-Upgrade::Automatic-Reboot "false";
 
 runcmd:
   # Install Docker CE
@@ -226,5 +243,18 @@ runcmd:
   # Backup directory
   - mkdir -p /backups
   - chown deploy:deploy /backups
+
+  # Swap (2G default — adjust size for workload, e.g. 4G for JVM or multi-service)
+  - fallocate -l 2G /swapfile
+  - chmod 600 /swapfile
+  - mkswap /swapfile
+  - swapon /swapfile
+  - echo '/swapfile none swap sw 0 0' >> /etc/fstab
+
+  # Apply kernel hardening sysctl
+  - sysctl --system
+
+  # Restart Docker to apply daemon.json log rotation
+  - systemctl restart docker
 `;
 }

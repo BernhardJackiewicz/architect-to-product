@@ -214,7 +214,29 @@ export function handleGetChecklist(input: GetChecklistInput): string {
     checklist.infrastructure.push(
       { item: "unattended-upgrades active for security patches", done: false },
       { item: "Swap configured (2x RAM, max 4GB)", done: false },
-      { item: "logrotate configured for application logs", done: false }
+      { item: "logrotate configured for application logs", done: false },
+      { item: "File integrity monitoring considered (rkhunter or AIDE)", done: false },
+    );
+  }
+
+  if (hosting.includes("hetzner")) {
+    checklist.infrastructure.push(
+      { item: "Hetzner automated server backups enabled (covers root disk only, not attached Volumes)", done: false },
+      { item: "UFW/Docker interaction reviewed (Docker bypasses UFW by default)", done: false },
+      { item: "Docker daemon.json log rotation configured", done: false },
+      { item: "Kernel hardening sysctl applied", done: false },
+      { item: "Swap configured and active", done: false },
+    );
+  }
+
+  if (hosting.includes("hetzner") && backupConfig.enabled && backupConfig.required) {
+    checklist.postDeployment.push(
+      { item: "backup.sh writes to /backups/ on server disk", done: false },
+      { item: "Offsite copy/replication to Storage Box or S3 configured (rclone copy, restic, or borg)", done: false },
+      { item: "Restore from /backups/ tested", done: false },
+      { item: "Restore from offsite (Storage Box / S3) tested", done: false },
+      { item: "Backup retention defined and enforced", done: false },
+      { item: "Backup credential handling reviewed (no plaintext secrets in scripts)", done: false },
     );
   }
 
@@ -315,6 +337,22 @@ export function handleGetChecklist(input: GetChecklistInput): string {
       { item: "Railway services configured (web + DB)", done: false },
       { item: "Railway environment variables set", done: false },
       { item: "Railway custom domain configured", done: false }
+    );
+  }
+
+  // Framework-specific: body size limit for Express/Fastify/Koa
+  const framework = tech?.framework?.toLowerCase() ?? "";
+  if (framework.includes("express") || framework.includes("fastify") || framework.includes("koa")) {
+    checklist.postDeployment.push(
+      { item: "JSON body parser has size limit configured (DoS prevention)", done: false },
+    );
+  }
+
+  // Permissions-Policy for server deployments (not mobile-only)
+  const hasServerContext = platform !== "mobile" || !!tech?.hosting || !!tech?.database;
+  if (hasServerContext) {
+    checklist.postDeployment.push(
+      { item: "Permissions-Policy header reviewed (restrict camera, microphone, geolocation as appropriate)", done: false },
     );
   }
 

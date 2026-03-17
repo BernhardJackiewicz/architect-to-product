@@ -454,6 +454,54 @@ describe("handleGetChecklist", () => {
     expect(allItems).not.toContain("Code signing");
   });
 
+  // ─── Hetzner checklist items ──────────────────────────────────────────
+
+  it("Hetzner hosting -> checklist contains root disk only item", () => {
+    initWithArchOverrides(tmpDir, { hosting: "Hetzner" });
+    const result = parse(handleGetChecklist({ projectPath: tmpDir }));
+    const infraItems = result.checklist.infrastructure.map((i: any) => i.item).join(" ");
+    expect(infraItems).toContain("root disk only");
+  });
+
+  it("Hetzner hosting -> checklist contains UFW/Docker interaction reviewed", () => {
+    initWithArchOverrides(tmpDir, { hosting: "Hetzner" });
+    const result = parse(handleGetChecklist({ projectPath: tmpDir }));
+    const infraItems = result.checklist.infrastructure.map((i: any) => i.item).join(" ");
+    expect(infraItems).toContain("UFW/Docker interaction reviewed");
+  });
+
+  it("Hetzner + stateful -> checklist contains offsite and restore items", () => {
+    initWithArchOverrides(tmpDir, { hosting: "Hetzner", database: "PostgreSQL" });
+    const result = parse(handleGetChecklist({ projectPath: tmpDir }));
+    const postItems = result.checklist.postDeployment.map((i: any) => i.item).join(" ");
+    expect(postItems).toContain("Offsite copy/replication");
+    expect(postItems).toContain("Restore from /backups/ tested");
+    expect(postItems).toContain("Restore from offsite");
+  });
+
+  // ─── Framework-specific checklist items ───────────────────────────────
+
+  it("Express framework -> body size limit item", () => {
+    initWithArchOverrides(tmpDir, { framework: "Express" });
+    const result = parse(handleGetChecklist({ projectPath: tmpDir }));
+    const postItems = result.checklist.postDeployment.map((i: any) => i.item).join(" ");
+    expect(postItems).toContain("body parser has size limit");
+  });
+
+  it("Non-Express framework -> no body size limit item", () => {
+    initWithArchOverrides(tmpDir, { framework: "FastAPI" });
+    const result = parse(handleGetChecklist({ projectPath: tmpDir }));
+    const postItems = result.checklist.postDeployment.map((i: any) => i.item).join(" ");
+    expect(postItems).not.toContain("body parser has size limit");
+  });
+
+  it("checklist contains Permissions-Policy item for server deployments", () => {
+    initWithArchOverrides(tmpDir);
+    const result = parse(handleGetChecklist({ projectPath: tmpDir }));
+    const postItems = result.checklist.postDeployment.map((i: any) => i.item).join(" ");
+    expect(postItems).toContain("Permissions-Policy");
+  });
+
   // ─── Compliance checklist items ───────────────────────────────────────
 
   it("GoBD in features -> compliance items", () => {
@@ -589,5 +637,51 @@ describe("handleGetChecklist", () => {
     expect(files).toContain("Dockerfile");
     // No mobile note
     expect(result.deploymentGuide.mobileDeploymentNote).toBeUndefined();
+  });
+
+  // ─── Hetzner 3-Layer Backup + Storage Guide ────────────────────────────
+
+  it("Hetzner hosting -> hetznerBackupRecommendation with root disk hint", () => {
+    initWithArchOverrides(tmpDir, { hosting: "Hetzner" });
+    setDeployReady(tmpDir);
+    const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
+    const rec = result.deploymentGuide.hetznerBackupRecommendation;
+    expect(rec).toBeDefined();
+    expect(rec.serverBackups.coversWhat).toContain("root disk");
+  });
+
+  it("Hetzner hosting -> backup recommendation warns about attached Volumes", () => {
+    initWithArchOverrides(tmpDir, { hosting: "Hetzner" });
+    setDeployReady(tmpDir);
+    const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
+    const rec = result.deploymentGuide.hetznerBackupRecommendation;
+    expect(rec.serverBackups.coversWhat).toContain("Does NOT include attached Hetzner Volumes");
+  });
+
+  it("Hetzner hosting -> backup recommendation contains offsiteCopy", () => {
+    initWithArchOverrides(tmpDir, { hosting: "Hetzner" });
+    setDeployReady(tmpDir);
+    const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
+    const rec = result.deploymentGuide.hetznerBackupRecommendation;
+    expect(rec.offsiteCopy).toBeDefined();
+    expect(rec.offsiteCopy.requiredStep).toContain("rclone copy");
+    expect(rec.offsiteCopy.requiredStep).toContain("NOT rclone sync");
+  });
+
+  it("Hetzner hosting -> hetznerStorageGuide with defaultForBackup", () => {
+    initWithArchOverrides(tmpDir, { hosting: "Hetzner" });
+    setDeployReady(tmpDir);
+    const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
+    const guide = result.deploymentGuide.hetznerStorageGuide;
+    expect(guide).toBeDefined();
+    expect(guide.defaultForBackup).toContain("Storage Box");
+  });
+
+  it("Non-Hetzner hosting -> no Hetzner-specific fields", () => {
+    initWithArchOverrides(tmpDir, { hosting: "DigitalOcean" });
+    setDeployReady(tmpDir);
+    const result = parse(handleGenerateDeployment({ projectPath: tmpDir }));
+    expect(result.deploymentGuide.hetznerBackupRecommendation).toBeUndefined();
+    expect(result.deploymentGuide.hetznerStorageGuide).toBeUndefined();
   });
 });
