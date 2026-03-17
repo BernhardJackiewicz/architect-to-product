@@ -162,7 +162,7 @@ describe("Deploy paths", () => {
     });
 
     it("includes Private Services", () => {
-      expect(DEPLOY_PROMPT).toContain("Private Services");
+      expect(DEPLOY_PROMPT).toContain("Private services");
     });
 
     it("includes auto-deploy from GitHub", () => {
@@ -178,7 +178,7 @@ describe("Deploy paths", () => {
 
   describe("Universal checks", () => {
     it("includes universal checks section", () => {
-      expect(DEPLOY_PROMPT).toContain("Universelle Checks");
+      expect(DEPLOY_PROMPT).toContain("Universal Checks");
     });
 
     it("checks /health returns 200", () => {
@@ -264,7 +264,7 @@ describe("Deploy paths", () => {
     it("Render has env var handling", () => {
       const section = DEPLOY_PROMPT.substring(
         DEPLOY_PROMPT.indexOf("Deploy to Render"),
-        DEPLOY_PROMPT.indexOf("Universelle Checks")
+        DEPLOY_PROMPT.indexOf("Universal Checks")
       );
       expect(section).toMatch(/[Ee]nv var/);
     });
@@ -314,7 +314,7 @@ describe("Deploy paths", () => {
     it("Render has smoke checks", () => {
       const section = DEPLOY_PROMPT.substring(
         DEPLOY_PROMPT.indexOf("Deploy to Render"),
-        DEPLOY_PROMPT.indexOf("Universelle Checks")
+        DEPLOY_PROMPT.indexOf("Universal Checks")
       );
       expect(section).toMatch(/[Ss]moke/);
     });
@@ -364,7 +364,7 @@ describe("Deploy paths", () => {
     it("Render has domain checklist", () => {
       const section = DEPLOY_PROMPT.substring(
         DEPLOY_PROMPT.indexOf("Deploy to Render"),
-        DEPLOY_PROMPT.indexOf("Universelle Checks")
+        DEPLOY_PROMPT.indexOf("Universal Checks")
       );
       expect(section).toMatch(/[Dd]omain/);
     });
@@ -414,7 +414,7 @@ describe("Deploy paths", () => {
     it("Render has hardening", () => {
       const section = DEPLOY_PROMPT.substring(
         DEPLOY_PROMPT.indexOf("Deploy to Render"),
-        DEPLOY_PROMPT.indexOf("Universelle Checks")
+        DEPLOY_PROMPT.indexOf("Universal Checks")
       );
       expect(section).toMatch(/[Hh]ardening/);
     });

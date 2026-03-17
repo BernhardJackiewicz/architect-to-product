@@ -472,7 +472,7 @@ describe("build prompt logging guidance", () => {
   });
 
   it("recommends logging as optional, not mandatory", () => {
-    expect(BUILD_SLICE_PROMPT).toContain("Empfehlung");
-    expect(BUILD_SLICE_PROMPT).toContain("spätestens vor Deploy");
+    expect(BUILD_SLICE_PROMPT).toContain("Recommendation");
+    expect(BUILD_SLICE_PROMPT).toContain("at the latest before deploy");
   });
 });

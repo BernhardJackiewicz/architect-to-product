@@ -20,24 +20,24 @@ describe("Documentation-first principle", () => {
     expect(ENGINEERING_LOOP).toContain("Documentation first");
     expect(ENGINEERING_LOOP).toContain("WebSearch");
     expect(ENGINEERING_LOOP).toContain("WebFetch");
-    expect(ENGINEERING_LOOP).toContain("NIEMALS");
-    expect(ENGINEERING_LOOP).toContain("halluzinieren");
+    expect(ENGINEERING_LOOP).toContain("NEVER");
+    expect(ENGINEERING_LOOP).toContain("hallucinate");
   });
 
   it("build-slice prompt has mandatory doc-reading section", () => {
-    expect(BUILD_SLICE_PROMPT).toContain("Dokumentation LESEN, nicht raten");
-    expect(BUILD_SLICE_PROMPT).toContain("PFLICHT");
+    expect(BUILD_SLICE_PROMPT).toContain("READ Documentation, do not guess");
+    expect(BUILD_SLICE_PROMPT).toContain("RECOMMENDED");
     expect(BUILD_SLICE_PROMPT).toContain("WebSearch");
     expect(BUILD_SLICE_PROMPT).toContain("WebFetch");
     // Must mention concrete examples of when to read docs
-    expect(BUILD_SLICE_PROMPT).toContain("Auth-Lösung");
-    expect(BUILD_SLICE_PROMPT).toContain("Unbekannte DB/ORM");
-    expect(BUILD_SLICE_PROMPT).toContain("Unbekannte API");
+    expect(BUILD_SLICE_PROMPT).toContain("auth solution");
+    expect(BUILD_SLICE_PROMPT).toContain("Unfamiliar DB/ORM");
+    expect(BUILD_SLICE_PROMPT).toContain("Unfamiliar API");
   });
 
   it("build-slice prompt requires doc reading before code", () => {
     // Doc section must come before TDD cycle
-    const docPos = BUILD_SLICE_PROMPT.indexOf("Dokumentation LESEN");
+    const docPos = BUILD_SLICE_PROMPT.indexOf("READ Documentation");
     const tddPos = BUILD_SLICE_PROMPT.indexOf("Evidence-Driven Development Cycle");
     expect(docPos).toBeGreaterThan(-1);
     expect(tddPos).toBeGreaterThan(-1);
@@ -45,11 +45,11 @@ describe("Documentation-first principle", () => {
   });
 
   it("build-slice prompt says to document URL in code", () => {
-    expect(BUILD_SLICE_PROMPT).toContain("Doku-URL als Kommentar");
+    expect(BUILD_SLICE_PROMPT).toContain("docs URL as a comment");
   });
 
   it("security-gate prompt requires doc reading for unfamiliar security patterns", () => {
-    expect(SECURITY_GATE_PROMPT).toContain("Dokumentation LESEN");
+    expect(SECURITY_GATE_PROMPT).toContain("READ Documentation");
     expect(SECURITY_GATE_PROMPT).toContain("WebSearch");
     expect(SECURITY_GATE_PROMPT).toContain("WebFetch");
     // Must mention auth-specific examples
