@@ -796,7 +796,7 @@ describe("Anthropic engineering patterns in build-slice", () => {
 describe("Enforcement rules in build-slice", () => {
   it("SAST phase enforces a2p_run_sast as mandatory", () => {
     const sastSection = BUILD_SLICE_PROMPT.indexOf("Phase SAST");
-    const nextSection = BUILD_SLICE_PROMPT.indexOf("## Nach jedem", sastSection);
+    const nextSection = BUILD_SLICE_PROMPT.indexOf("## After Every", sastSection);
     const section = BUILD_SLICE_PROMPT.slice(sastSection, nextSection);
     expect(section).toContain("MUST");
     expect(section).toContain("a2p_run_sast");
