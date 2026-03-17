@@ -1,10 +1,11 @@
 {
   "name": "architect-to-product",
-  "version": "0.1.22",
+  "version": "0.1.23",
   "type": "module",
   "main": "dist/index.js",
   "bin": {
-    "architect-to-product": "dist/index.js"
+    "architect-to-product": "dist/index.js",
+    "a2p": "dist/cli.js"
   },
   "files": [
     "dist/",
