@@ -1,13 +1,84 @@
 # A2P — Architect-to-Product
 
-MCP server that turns AI-generated code into production-ready software with TDD, security scanning, and deployment automation. Up to 100 times fewer exploration tokens for claude code.
+AI engineering framework delivered as an MCP server.
+Turns AI-generated code into production-ready software with evidence-gated TDD, security review, backup strategy, and deployment automation.
 
-**28 MCP tools** · **1073 tests** · **Architecture → Plan → Build (evidence-gated) → Quality Audit (cadence) → Code Review → Signoff → E2E Testing → Security → Whitebox → Verify → [Shake & Break] → Release Audit → Deploy → Backup**
+**28 MCP tools** · **1073 tests** · **Architecture → Plan → Build → Audit → Security → Deploy**
 
 [![npm version](https://img.shields.io/npm/v/architect-to-product)](https://www.npmjs.com/package/architect-to-product)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Tests: 1073 passing](https://img.shields.io/badge/tests-1073%20passing-brightgreen)]()
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue)]()
+
+---
+
+## What A2P is
+
+A2P is an AI engineering framework exposed through MCP tools and prompts.
+It gives Claude Code, Cursor, and other MCP-compatible clients a disciplined software delivery workflow instead of free-form vibe coding.
+
+A2P does not just help an AI assistant write code. It defines how AI-assisted software should move from architecture to production:
+
+- Architecture capture
+- Vertical slice planning
+- Evidence-gated TDD
+- Security scanning and exploitability review
+- Release audits
+- Backup and restore strategy
+- Deployment readiness and verification
+
+The MCP server is the interface layer.
+The framework is the actual product.
+
+That distinction matters.
+
+A2P is not valuable because it has 28 tools.
+It is valuable because those tools enforce an engineering system:
+
+- Phases
+- Gates
+- Required evidence
+- Human approvals
+- Security re-entry rules
+- Deployment and backup requirements
+
+Without that system, an AI coding assistant optimizes for speed and local success:
+it writes code quickly, skips tests, weakens validation, suppresses errors, and declares things done too early.
+
+A2P counteracts that behavior by making the workflow explicit and enforceable in code.
+
+### What A2P is not
+
+A2P is not just:
+
+- A code generator
+- A prompt pack
+- A security scanner
+- A deployment template library
+- An autonomous agent that replaces engineers
+
+It is a framework for running AI-assisted software delivery with engineering discipline.
+
+Humans still decide the product, architecture, UX, and business logic.
+A2P ensures the missing layers actually happen:
+
+- Tests before trust
+- Audits before release
+- Backup before deployment
+- Verification before signoff
+
+### Why MCP
+
+A2P is delivered as an MCP server so it can plug into tools like Claude Code, Cursor, and other MCP-compatible clients.
+
+That means the AI assistant uses structured tools and enforced workflows instead of relying on long, fragile prompts.
+
+MCP is how A2P integrates into the coding environment.
+It is not the core idea.
+
+The core idea is an AI engineering framework that turns AI-generated code into production-ready software.
+
+> **In one sentence:** A2P is an AI engineering framework, packaged as an MCP server, for turning AI-generated code into production-ready software.
 
 ### Quickstart
 
@@ -18,13 +89,6 @@ npx a2p init        # creates .mcp.json in your project
 Restart Claude Code, then type `/a2p` to start.
 
 ---
-
-Vibe coding with Claude Code, Cursor, or any AI coding assistant generates code fast — but ships it without tests, with security holes, and with no deployment story. You spend more time fixing what the AI wrote than you saved.
-
-- AI-generated code frequently introduces security vulnerabilities — and coding agents will delete validation, disable auth, or relax database policies just to make errors go away
-- "It works on my machine" turns into a 3am production incident
-
-**Architect-to-Product** is an MCP server that turns AI-generated code into production-ready software. It adds TDD, static code analysis, and deployment automation to AI coding workflows.
 
 ### How it works: Red, Green, Refactor
 
@@ -69,37 +133,25 @@ Built-in SAST tools run static code analysis and OWASP Top 10 reviews before dep
 ## Quick Start
 
 ```bash
-npm install -g architect-to-product
-claude mcp add architect-to-product -- npx architect-to-product
+npx a2p init        # creates .mcp.json in your project
 ```
 
-Then restart Claude Code and type: **`/a2p`**
+Restart Claude Code, then type `/a2p` to start. The onboarding will co-develop your architecture, auto-configure companion MCP servers, and install SAST tools.
 
-The onboarding will co-develop your architecture, auto-configure companion MCP servers, and install SAST tools. One restart, then you're building.
+## What A2P does
 
-## What A2P Actually Does
-
-A2P is an MCP server that orchestrates an AI engineering workflow. Instead of vibe coding features, A2P builds software in vertical slices with TDD and security gates.
-
-It coordinates:
 - **Up to 100x fewer exploration tokens** — codebase-memory-mcp builds a code graph instead of scanning files raw
 - **Evidence-gated development** — every feature requires passing tests before advancing (code-enforced)
 - **Static code analysis** — Semgrep + Bandit scan for vulnerabilities automatically
 - **Whitebox security audit** — verifies whether SAST findings are actually exploitable (reachable paths, guards, trust boundaries)
 - **Active verification** — runtime gate tests that prove workflow invariants hold (state transitions, deployment gates, recovery)
-- **Shake & Break** (optional) — active runtime adversarial testing in an isolated sandbox. Starts the app, sends real HTTP requests to test for IDOR, race conditions, auth bypasses, business logic abuse. Findings are evidence-backed with actual request/response proof, not speculative
-- **Code audits** — Quality audits during development, release audits before publish (TODOs, debug artifacts, secrets, .gitignore, test coverage, README)
+- **Shake & Break** (optional) — runtime adversarial testing in an isolated sandbox with real HTTP requests. Evidence-backed findings, not speculative
+- **Code audits** — quality audits during development, release audits before publish
 - **Security reviews** — OWASP Top 10 review before deploy
-- **Structured build log** — every tool run tracked with log levels, duration, status, run correlation, and automatic secret redaction. Composable filters by phase, slice, level, time range, or errors
-- **Configurable human oversight** — mandatory build signoff and deploy approval, optional plan approval, slice review, UI screenshot verification, and security signoff
-- **Backup strategy** — Automatic inference of backup targets (database, uploads, artifacts) from tech stack. Stack-aware backup/restore commands, retention policies, verification scripts, offsite sync. Stateful apps are blocked from deployment if backup is missing
-- **Deployment generation** — stack-specific Dockerfile, docker-compose, Caddyfile, backup/restore/verify scripts, hardening guides
-
-A2P is not a replacement for engineers — it is the engineering reality layer that most architectures forget.
-
-Humans design features, flows, data models, and business logic. What they skip: logging, backup strategy, restore verification, deploy checks, test evidence, release hygiene, and proof that the code is actually secure — not just scanner-clean. A2P forces these layers in automatically. Every slice needs test evidence before it can advance. Every deployment needs a backup plan, a full security scan, and human sign-off. Every finding gets triaged for real exploitability, not just pattern-matched.
-
-Most AI-generated — and human-built — architectures don't fail because the main idea was wrong. They fail because of missing defaults, missing safeguards, and missing operational discipline. A2P closes that gap systematically.
+- **Structured build log** — every tool run tracked with log levels, duration, status, run correlation, and automatic secret redaction
+- **Configurable human oversight** — mandatory build signoff and deploy approval, optional plan approval, slice review, UI verification, and security signoff
+- **Backup strategy** — automatic inference of backup targets from tech stack. Stack-aware backup/restore/verify scripts. Stateful apps blocked from deployment without backup
+- **Deployment generation** — stack-specific Dockerfile, docker-compose, Caddyfile, hardening guides
 
 ## Without vs. With architect-to-product
 
