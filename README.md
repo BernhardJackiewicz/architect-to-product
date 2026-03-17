@@ -12,74 +12,6 @@ Turns AI-generated code into production-ready software with evidence-gated TDD, 
 
 ---
 
-## What A2P is
-
-A2P is an AI engineering framework exposed through MCP tools and prompts.
-It gives Claude Code, Cursor, and other MCP-compatible clients a disciplined software delivery workflow instead of free-form vibe coding.
-
-A2P does not just help an AI assistant write code. It defines how AI-assisted software should move from architecture to production:
-
-- Architecture capture
-- Vertical slice planning
-- Evidence-gated TDD
-- Security scanning and exploitability review
-- Release audits
-- Backup and restore strategy
-- Deployment readiness and verification
-
-The MCP server is the interface layer.
-The framework is the actual product.
-
-That distinction matters.
-
-A2P is not valuable because it has 28 tools.
-It is valuable because those tools enforce an engineering system:
-
-- Phases
-- Gates
-- Required evidence
-- Human approvals
-- Security re-entry rules
-- Deployment and backup requirements
-
-Without that system, an AI coding assistant optimizes for speed and local success:
-it writes code quickly, skips tests, weakens validation, suppresses errors, and declares things done too early.
-
-A2P counteracts that behavior by making the workflow explicit and enforceable in code.
-
-### What A2P is not
-
-A2P is not just:
-
-- A code generator
-- A prompt pack
-- A security scanner
-- A deployment template library
-- An autonomous agent that replaces engineers
-
-It is a framework for running AI-assisted software delivery with engineering discipline.
-
-Humans still decide the product, architecture, UX, and business logic.
-A2P ensures the missing layers actually happen:
-
-- Tests before trust
-- Audits before release
-- Backup before deployment
-- Verification before signoff
-
-### Why MCP
-
-A2P is delivered as an MCP server so it can plug into tools like Claude Code, Cursor, and other MCP-compatible clients.
-
-That means the AI assistant uses structured tools and enforced workflows instead of relying on long, fragile prompts.
-
-MCP is how A2P integrates into the coding environment.
-It is not the core idea.
-
-The core idea is an AI engineering framework that turns AI-generated code into production-ready software.
-
-> **In one sentence:** A2P is an AI engineering framework, packaged as an MCP server, for turning AI-generated code into production-ready software.
-
 ### Quickstart
 
 ```bash
@@ -87,6 +19,14 @@ npx a2p init        # creates .mcp.json in your project
 ```
 
 Restart Claude Code, then type `/a2p` to start.
+
+## What A2P is
+
+A2P is an AI engineering framework — not just an MCP tool bundle. It defines how AI-assisted software moves from architecture to production: vertical slice planning, evidence-gated TDD, security scanning, exploitability review, release audits, backup strategy, and deployment verification.
+
+The MCP server is the interface. The engineering system is the product.
+
+> **In one sentence:** A2P is an AI engineering framework, packaged as an MCP server, for turning AI-generated code into production-ready software.
 
 ---
 
