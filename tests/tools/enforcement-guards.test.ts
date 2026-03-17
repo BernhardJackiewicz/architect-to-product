@@ -188,6 +188,7 @@ describe("Enforcement Guards", () => {
       const sm = initWithStateManager(dir);
       forcePhase(dir, "deployment");
       sm.markFullSastRun(0);
+      addPassingVerification(sm);
       const state = sm.setDeployApproval("staging tested");
       expect(state.deployApprovalAt).toBeTruthy();
       expect(state.deployApprovalStateHash).toBeTruthy();
@@ -210,6 +211,7 @@ describe("Enforcement Guards", () => {
       const sm = initWithStateManager(dir);
       forcePhase(dir, "deployment");
       sm.markFullSastRun(0);
+      addPassingVerification(sm);
       sm.setDeployApproval();
       expect(sm.read().deployApprovalAt).toBeTruthy();
       sm.addSASTFinding("s1", {
@@ -223,6 +225,7 @@ describe("Enforcement Guards", () => {
       const sm = initWithStateManager(dir);
       forcePhase(dir, "deployment");
       sm.markFullSastRun(0);
+      addPassingVerification(sm);
       sm.setDeployApproval();
       expect(sm.read().deployApprovalAt).toBeTruthy();
       sm.addWhiteboxResult({
@@ -370,6 +373,7 @@ describe("Enforcement Guards", () => {
       const sm = initWithStateManager(dir);
       forcePhase(dir, "deployment");
       sm.markFullSastRun(0);
+      addPassingVerification(sm);
       sm.setDeployApproval();
       expect(sm.read().deployApprovalAt).toBeTruthy();
       sm.addAuditResult({
@@ -385,6 +389,7 @@ describe("Enforcement Guards", () => {
       const sm = initWithStateManager(dir);
       forcePhase(dir, "deployment");
       sm.markFullSastRun(0);
+      addPassingVerification(sm);
       sm.setDeployApproval();
       expect(sm.read().deployApprovalAt).toBeTruthy();
       sm.markFullSastRun(1);
@@ -454,6 +459,63 @@ describe("Enforcement Guards", () => {
         title: "post-sast", file: "t.ts", line: 1, description: "d", fix: "f",
       });
       expect(() => sm.setDeployApproval()).toThrow("stale");
+    });
+
+    it("setDeployApproval without active verification → throw", () => {
+      const sm = initWithStateManager(dir);
+      forcePhase(dir, "deployment");
+      sm.markFullSastRun(0);
+      expect(() => sm.setDeployApproval()).toThrow("active verification");
+    });
+
+    it("setDeployApproval with blocking verification → throw", () => {
+      const sm = initWithStateManager(dir);
+      forcePhase(dir, "deployment");
+      sm.markFullSastRun(0);
+      sm.addActiveVerificationResult({
+        id: "AVR-BLOCK", timestamp: new Date().toISOString(), round: 1,
+        tests_run: 1, tests_passed: 0, tests_failed: 1,
+        findings: [],
+        summary: { critical: 1, high: 0, medium: 0, low: 0 },
+        blocking_count: 1, requires_human_review: false,
+      });
+      expect(() => sm.setDeployApproval()).toThrow("blocking finding");
+    });
+
+    it("setDeployApproval with stale verification → throw", () => {
+      const sm = initWithStateManager(dir);
+      forcePhase(dir, "deployment");
+      sm.markFullSastRun(0);
+      addPassingVerification(sm);
+      // Simulate code change AFTER verification
+      forceField(dir, "lastSecurityRelevantChangeAt", new Date(Date.now() + 10000).toISOString());
+      // Also set fresh SAST so stale-SAST gate doesn't fire first
+      forceField(dir, "lastFullSastAt", new Date(Date.now() + 10000).toISOString());
+      expect(() => sm.setDeployApproval()).toThrow("verification is stale");
+    });
+
+    it("setDeployApproval without backup on stateful app → throw", () => {
+      const sm = initWithStateManager(dir);
+      forcePhase(dir, "deployment");
+      sm.markFullSastRun(0);
+      addPassingVerification(sm);
+      // Make it a stateful app that requires backup
+      forceField(dir, "backupConfig", {
+        enabled: false, required: true, schedule: "daily", time: "02:00",
+        retentionDays: 7, targets: ["database"], offsiteProvider: "none",
+        verifyAfterBackup: false, preDeploySnapshot: false,
+      });
+      expect(() => sm.setDeployApproval()).toThrow("backup configuration");
+    });
+
+    it("setDeployApproval with all gates satisfied → success", () => {
+      const sm = initWithStateManager(dir);
+      forcePhase(dir, "deployment");
+      sm.markFullSastRun(0);
+      addPassingVerification(sm);
+      const state = sm.setDeployApproval("all good");
+      expect(state.deployApprovalAt).toBeTruthy();
+      expect(state.deployApprovalStateHash).toBeTruthy();
     });
   });
 

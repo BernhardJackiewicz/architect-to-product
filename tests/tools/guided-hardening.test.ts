@@ -363,10 +363,10 @@ describe("hint format", () => {
       projectPath: dir, findingsRecorded: 0, note: "r1",
     }));
 
-    expect(result.hint).toContain("Empfohlene Hardening-Bereiche");
-    expect(result.hint).toContain("Optionen");
-    expect(result.hint).toContain("fokussiertes Hardening");
-    expect(result.hint).toContain("volle Runde");
+    expect(result.hint).toContain("Recommended hardening areas");
+    expect(result.hint).toContain("Options");
+    expect(result.hint).toContain("focused hardening");
+    expect(result.hint).toContain("full round");
     expect(result.hint).toContain("shake-break");
   });
 

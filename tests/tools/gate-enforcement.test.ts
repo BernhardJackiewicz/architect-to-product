@@ -3,14 +3,15 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { StateManager } from "../../src/state/state-manager.js";
 import {
-  makeTmpDir, cleanTmpDir, initWithStateManager, walkSliceToStatus,
+  makeTmpDir, cleanTmpDir, initWithStateManager, walkSliceToStatus, addPassingTests,
   forcePhase, forceField, addQualityAudit, addReleaseAudit, addPassingVerification,
-  addPassingWhitebox, addWhiteboxOnly, completeAdversarialReview,
+  addPassingWhitebox, addWhiteboxOnly, completeAdversarialReview, addSastEvidence,
 } from "../helpers/setup.js";
 import { handleInitProject } from "../../src/tools/init-project.js";
 import { handleSetArchitecture } from "../../src/tools/set-architecture.js";
 import { handleCompleteAdversarialReview } from "../../src/tools/complete-adversarial-review.js";
 import { handleBuildSignoff } from "../../src/tools/build-signoff.js";
+import { handleRecordFinding } from "../../src/tools/record-finding.js";
 
 let dir: string;
 
@@ -303,8 +304,8 @@ describe("Adversarial Review: tool output", () => {
     expect(result.previousFindings).toHaveLength(1);
     expect(result.previousFindings[0].title).toBe("Rate Limit Memory Leak");
     expect(result.previousFindings[0].file).toBe("src/rate-limit.ts");
-    expect(result.hint).toContain("Runde 2");
-    expect(result.hint).toContain("Optionen");
+    expect(result.hint).toContain("Round 2");
+    expect(result.hint).toContain("Options");
   });
 
   it("round 3 output contains ALL previousFindings from rounds 1+2", () => {
@@ -987,5 +988,93 @@ describe("Build Signoff: UI/E2E warning", () => {
     const result = JSON.parse(handleBuildSignoff({ projectPath: dir }));
     expect(result.success).toBe(true);
     expect(result.e2eWarning).toBeUndefined();
+  });
+});
+
+// ============================================================================
+// Done Guard: tests must be run after SAST scan
+// ============================================================================
+
+describe("Done Guard: post-SAST test requirement", () => {
+  it("BLOCKED: done when last test is before SAST → throw", () => {
+    const sm = initWithStateManager(dir);
+    forcePhase(dir, "building");
+    const sliceId = sm.read().slices[0].id;
+    // Walk to refactor state normally
+    addPassingTests(sm, sliceId);
+    sm.setSliceStatus(sliceId, "red");
+    addPassingTests(sm, sliceId);
+    sm.setSliceStatus(sliceId, "green");
+    sm.setSliceStatus(sliceId, "refactor");
+    // Add test BEFORE SAST
+    addPassingTests(sm, sliceId);
+    // Small delay to ensure SAST timestamp is after test
+    const statePath = join(dir, ".a2p", "state.json");
+    const state = JSON.parse(readFileSync(statePath, "utf-8"));
+    const slice = state.slices.find((s: any) => s.id === sliceId);
+    // Force test timestamp to be old
+    slice.testResults[slice.testResults.length - 1].timestamp = "2020-01-01T00:00:00.000Z";
+    writeFileSync(statePath, JSON.stringify(state, null, 2), "utf-8");
+    // Now run SAST (timestamp will be now())
+    sm.markSastRun(sliceId);
+    sm.setSliceStatus(sliceId, "sast");
+    // Try done without re-running tests
+    expect(() => sm.setSliceStatus(sliceId, "done")).toThrow("tests must be re-run after SAST");
+  });
+
+  it("ALLOWED: done when last test is after SAST → success", () => {
+    const sm = initWithStateManager(dir);
+    forcePhase(dir, "building");
+    const sliceId = sm.read().slices[0].id;
+    // Normal walkSliceToStatus already adds tests after SAST
+    walkSliceToStatus(sm, sliceId, "done");
+    const slice = sm.read().slices.find(s => s.id === sliceId);
+    expect(slice!.status).toBe("done");
+  });
+});
+
+// ============================================================================
+// Record Finding: fingerprint-based dedup
+// ============================================================================
+
+describe("Record Finding: fingerprint dedup", () => {
+  it("duplicate fingerprint with different ID → error", () => {
+    const sm = initWithStateManager(dir);
+    forcePhase(dir, "security");
+    // First finding
+    sm.addSASTFinding("s1", {
+      id: "F-001", tool: "semgrep", severity: "high", status: "open",
+      title: "SQL Injection", file: "src/db.ts", line: 10,
+      description: "desc", fix: "fix",
+    });
+    // Same fingerprint, different ID
+    // handleRecordFinding imported at top
+    const result = JSON.parse(handleRecordFinding({
+      projectPath: dir, sliceId: "s1",
+      id: "F-002", tool: "semgrep", severity: "high", status: "open",
+      title: "SQL Injection", file: "src/db.ts", line: 10,
+      description: "another desc", fix: "fix",
+    }));
+    expect(result.error).toContain("Duplicate finding");
+  });
+
+  it("same file+line but different title → allowed", () => {
+    const sm = initWithStateManager(dir);
+    forcePhase(dir, "security");
+    // First finding
+    sm.addSASTFinding("s1", {
+      id: "F-001", tool: "semgrep", severity: "high", status: "open",
+      title: "SQL Injection", file: "src/db.ts", line: 10,
+      description: "desc", fix: "fix",
+    });
+    // Same file+line, different title
+    // handleRecordFinding imported at top
+    const result = JSON.parse(handleRecordFinding({
+      projectPath: dir, sliceId: "s1",
+      id: "F-002", tool: "semgrep", severity: "high", status: "open",
+      title: "XSS Vulnerability", file: "src/db.ts", line: 10,
+      description: "another desc", fix: "fix",
+    }));
+    expect(result.success).toBe(true);
   });
 });

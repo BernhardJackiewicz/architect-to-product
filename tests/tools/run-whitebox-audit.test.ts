@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { makeTmpDir, cleanTmpDir, parse, initWithFindings, initWithStateManager, forcePhase } from "../helpers/setup.js";
 import { handleRunWhiteboxAudit, isBlockingWhiteboxFinding, checkFileForGuards, hasReachabilityEvidence, hasMutationPatterns, runIndependentProbes } from "../../src/tools/run-whitebox-audit.js";
 import { StateManager } from "../../src/state/state-manager.js";
-import { writeFileSync, mkdirSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import type { WhiteboxFinding } from "../../src/state/types.js";
 
@@ -998,5 +998,52 @@ describe("Block 2-5 probes", () => {
     );
     expect(finding).toBeDefined();
     expect(finding.severity).toBe("critical");
+  });
+});
+
+// ============================================================================
+// Whitebox suppression of resolved SAST findings
+// ============================================================================
+
+describe("whitebox suppression of resolved findings", () => {
+  function setFindingStatus(tmpDir: string, sliceId: string, findingId: string, status: string): void {
+    const statePath = join(tmpDir, ".a2p", "state.json");
+    const state = JSON.parse(readFileSync(statePath, "utf-8"));
+    const slice = state.slices.find((s: any) => s.id === sliceId);
+    const finding = slice.sastFindings.find((f: any) => f.id === findingId);
+    finding.status = status;
+    finding.justification = "Test justification";
+    writeFileSync(statePath, JSON.stringify(state, null, 2), "utf-8");
+  }
+
+  it("false_positive SAST finding → whitebox candidate suppressed", () => {
+    const sm = initWithFindings(dir);
+    forcePhase(dir, "security");
+    const state = sm.read();
+    const sliceId = state.slices[0].id;
+    const finding = state.slices[0].sastFindings[0];
+    setFindingStatus(dir, sliceId, finding.id, "false_positive");
+    const result = parse(handleRunWhiteboxAudit({ projectPath: dir, mode: "full" }));
+    const rootCauses = result.findings.map((f: any) => f.root_cause);
+    expect(rootCauses).not.toContain(finding.title);
+  });
+
+  it("open SAST finding → still evaluated", () => {
+    initWithFindings(dir);
+    forcePhase(dir, "security");
+    const result = parse(handleRunWhiteboxAudit({ projectPath: dir, mode: "full" }));
+    expect(result.totalFindings).toBeGreaterThan(0);
+  });
+
+  it("fixed SAST finding → suppressed", () => {
+    const sm = initWithFindings(dir);
+    forcePhase(dir, "security");
+    const state = sm.read();
+    const sliceId = state.slices[0].id;
+    const finding = state.slices[0].sastFindings[0];
+    setFindingStatus(dir, sliceId, finding.id, "fixed");
+    const result = parse(handleRunWhiteboxAudit({ projectPath: dir, mode: "full" }));
+    const rootCauses = result.findings.map((f: any) => f.root_cause);
+    expect(rootCauses).not.toContain(finding.title);
   });
 });
