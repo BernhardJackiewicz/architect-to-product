@@ -185,6 +185,16 @@ A2P auto-configures companion MCP servers based on your tech stack. Each compani
 
 > **Security note:** Companion MCPs are third-party software with access to your project files and databases. Before enabling a companion: check the source repo (author, stars, open issues), review the `.mcp.json` that gets generated, and confirm you trust the server. Official packages (`@modelcontextprotocol/*`, `@playwright/mcp`, `mcp.supabase.com`) are maintained by their respective organizations. Community packages are not audited by us — use at your own discretion.
 
+### Claude Code Skills
+
+Claude Code skills are built-in capabilities that complement the MCP workflow:
+
+| Skill | Provider | When | What it does |
+|-------|----------|------|-------------|
+| `/frontend-design` | Anthropic | UI slices (`hasUI: true`) | Produces distinctive, production-grade frontend code. Avoids generic AI aesthetics (purple gradients, Inter/Roboto, cookie-cutter layouts). Uses bold typography, cohesive color themes, motion, spatial composition, and contextual visual details. A2P recommends it during GREEN phase of frontend slices — it handles the visual implementation while A2P handles TDD and quality gates. |
+
+Skills are invoked via `/` in Claude Code and do not require installation.
+
 ---
 
 ## Model Preference
