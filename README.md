@@ -6,8 +6,16 @@ MCP server that turns AI-generated code into production-ready software with TDD,
 
 [![npm version](https://img.shields.io/npm/v/architect-to-product)](https://www.npmjs.com/package/architect-to-product)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Tests: 1061 passing](https://img.shields.io/badge/tests-1073%20passing-brightgreen)]()
+[![Tests: 1073 passing](https://img.shields.io/badge/tests-1073%20passing-brightgreen)]()
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue)]()
+
+### Quickstart
+
+```bash
+npx a2p init        # creates .mcp.json in your project
+```
+
+Restart Claude Code, then type `/a2p` to start.
 
 ---
 
