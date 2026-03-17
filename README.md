@@ -78,6 +78,17 @@ npx a2p-mcp init   # creates .mcp.json in your project
 
 Restart Claude Code, then type `/a2p` to start. The onboarding will co-develop your architecture, auto-configure companion MCP servers, and install SAST tools.
 
+### Troubleshooting: wrong version
+
+If you previously installed `architect-to-product` globally, `npx` will use the outdated global copy instead of fetching the latest version. Fix:
+
+```bash
+npm uninstall -g architect-to-product   # remove stale global install
+rm -rf ~/.npm/_npx                       # clear npx cache
+```
+
+Then restart Claude Code. Verify with `npm view architect-to-product version`.
+
 ## What A2P does
 
 - **Up to 100x fewer exploration tokens** — codebase-memory-mcp builds a code graph instead of scanning files raw
