@@ -30,6 +30,7 @@ import { deployToServerSchema, handleDeployToServer } from "./tools/deploy-to-se
 import { verifySslSchema, handleVerifySsl } from "./tools/verify-ssl.js";
 import { setPhaseSchema, handleSetPhase } from "./tools/set-phase.js";
 import { setSecretManagementSchema, handleSetSecretManagement } from "./tools/set-secret-management.js";
+import { acknowledgeSecurityDecisionSchema, handleAcknowledgeSecurityDecision } from "./tools/acknowledge-security-decision.js";
 import { shakeBreakSetupSchema, handleShakeBreakSetup } from "./tools/shake-break-setup.js";
 import { shakeBreakTeardownSchema, handleShakeBreakTeardown } from "./tools/shake-break-teardown.js";
 
@@ -303,7 +304,6 @@ export function createServer(): McpServer {
       projectPath: runActiveVerificationSchema.shape.projectPath,
       round: runActiveVerificationSchema.shape.round,
       categories: runActiveVerificationSchema.shape.categories,
-      acknowledgeSecurityDecision: runActiveVerificationSchema.shape.acknowledgeSecurityDecision,
     },
     wrapTool(handleRunActiveVerification as ToolHandler)
   );
@@ -341,8 +341,18 @@ export function createServer(): McpServer {
   );
 
   server.tool(
+    "a2p_acknowledge_security_decision",
+    "MANDATORY — Acknowledge the pending security decision after adversarial review. The USER must choose the action (continue, focused-hardening, full-round, shake-break). Do NOT call this autonomously — wait for the user's explicit choice.",
+    {
+      projectPath: acknowledgeSecurityDecisionSchema.shape.projectPath,
+      action: acknowledgeSecurityDecisionSchema.shape.action,
+    },
+    wrapTool(handleAcknowledgeSecurityDecision as ToolHandler)
+  );
+
+  server.tool(
     "a2p_set_secret_management",
-    "Set the secret management tier (env-file | docker-swarm | infisical | external) — MANDATORY before generating deployment configs. Ask the USER to choose, do NOT pick autonomously.",
+    "MANDATORY — Set the secret management tier. Ask the USER to choose (env-file | docker-swarm | infisical | external). Do NOT pick a tier autonomously. Show ALL options and WAIT for the user's explicit choice.",
     {
       projectPath: setSecretManagementSchema.shape.projectPath,
       tier: setSecretManagementSchema.shape.tier,
@@ -392,7 +402,7 @@ export function createServer(): McpServer {
 
   server.tool(
     "a2p_verify_ssl",
-    "Record SSL/HTTPS verification for a domain — MANDATORY gate before deployment can be marked complete",
+    "MANDATORY — Record SSL/HTTPS verification. Show the user the curl results and WAIT for explicit confirmation that HTTPS works. Do NOT auto-fill verification values.",
     {
       projectPath: verifySslSchema.shape.projectPath,
       domain: verifySslSchema.shape.domain,

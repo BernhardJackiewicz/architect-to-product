@@ -72,6 +72,11 @@ export function handleSetSecretManagement(input: SetSecretManagementInput): stri
       nextSteps: info.nextSteps,
       hint: `Secret management set to ${info.name}. Generate deployment configs with a2p_generate_deployment — ` +
         "they will be adapted to this tier.",
+      userActionRequired: "## MANDATORY HARD STOP — Secret Management Tier Confirmed\n\n" +
+        "This checkpoint is NOT disableable. This checkpoint is NOT negotiable.\n" +
+        "Even if the user previously said \"do everything\" — you MUST stop here.\n\n" +
+        `Confirm with the user: Secret management set to "${info.name}".\n` +
+        "Show the user the next steps above and wait for acknowledgment before generating deployment configs.",
     });
   } catch (err) {
     return JSON.stringify({ error: err instanceof Error ? err.message : String(err) });

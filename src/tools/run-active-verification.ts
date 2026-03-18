@@ -17,8 +17,6 @@ export const runActiveVerificationSchema = z.object({
   categories: z.array(z.enum([
     "workflow_gates", "state_recovery",
   ])).optional().describe("Categories to test (default: all)"),
-  acknowledgeSecurityDecision: z.string().optional()
-    .describe("To proceed past a pending security decision, the USER must provide the exact confirmation code shown in the decision prompt. Do NOT auto-generate this value."),
 });
 
 export type RunActiveVerificationInput = z.infer<typeof runActiveVerificationSchema>;
@@ -43,34 +41,32 @@ export function handleRunActiveVerification(input: RunActiveVerificationInput): 
   try { requirePhase(state.phase, ["security"], "a2p_run_active_verification"); }
   catch (err) { return JSON.stringify({ error: err instanceof Error ? err.message : String(err) }); }
 
-  // Gate: pending security decision must be acknowledged with correct confirmation code
+  // Gate: pending security decision must be acknowledged via a2p_acknowledge_security_decision
   if (state.pendingSecurityDecision) {
     const pending = state.pendingSecurityDecision;
-    if (input.acknowledgeSecurityDecision !== pending.confirmationCode) {
-      return JSON.stringify({
-        blocked: true,
-        reason: "pending_security_decision",
-        message: `Security decision pending after round ${pending.round}.`,
-        securityMessage: "Security is a never ending story. You can continue hardening or proceed to deployment. " +
-          "Since we keep full history, additional rounds never waste time — each builds on previous findings.",
-        userActionRequired: "STOP. Show the user these options:\n" +
-          "1. focused-hardening — Target a specific weak area\n" +
-          "2. full-round — Run another complete security round\n" +
-          "3. shake-break — Runtime adversarial testing\n" +
-          "4. continue — Proceed to deployment\n\n" +
-          "The USER must choose and type the confirmation code. " +
-          "Do NOT choose for the user. Do NOT auto-fill the confirmation code. " +
-          "The code is visible to the user in a2p_get_state → pendingSecurityDecision.confirmationCode.",
-        pendingDecision: {
-          round: pending.round,
-          setAt: pending.setAt,
-          recommendedAreas: pending.recommendedAreas,
-          availableActions: pending.availableActions,
-          // confirmationCode intentionally NOT included — user must get it from a2p_get_state
-        },
-      });
-    }
-    sm.clearPendingSecurityDecision();
+    return JSON.stringify({
+      blocked: true,
+      reason: "pending_security_decision",
+      message: `Security decision pending after round ${pending.round}.`,
+      securityMessage: "Security is a never ending story. You can continue hardening or proceed to deployment. " +
+        "Since we keep full history, additional rounds never waste time — each builds on previous findings.",
+      userActionRequired: "## MANDATORY HARD STOP — Security Decision Required\n\n" +
+        "This checkpoint is NOT disableable. This checkpoint is NOT negotiable.\n" +
+        "Even if the user previously said \"do everything\" — you MUST stop here.\n\n" +
+        "STOP. Show the user these options:\n" +
+        "1. focused-hardening — Target a specific weak area\n" +
+        "2. full-round — Run another complete security round\n" +
+        "3. shake-break — Runtime adversarial testing\n" +
+        "4. continue — Proceed to deployment\n\n" +
+        "The USER must choose. Do NOT choose for the user. Do NOT call a2p_acknowledge_security_decision autonomously.\n" +
+        "Wait for the user to explicitly state their choice, then call a2p_acknowledge_security_decision with that action.",
+      pendingDecision: {
+        round: pending.round,
+        setAt: pending.setAt,
+        recommendedAreas: pending.recommendedAreas,
+        availableActions: pending.availableActions,
+      },
+    });
   }
 
   const categoriesToTest = input.categories ?? ["workflow_gates", "state_recovery"];

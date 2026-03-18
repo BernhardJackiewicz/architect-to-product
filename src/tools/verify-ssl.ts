@@ -63,5 +63,11 @@ export function handleVerifySsl(input: VerifySslInput): string {
     renewalNote,
     warnings: warnings.length > 0 ? warnings : undefined,
     hint: "SSL verification recorded. Deployment can now be marked complete via a2p_complete_phase or a2p_set_phase.",
+    userActionRequired: "## MANDATORY HARD STOP — SSL Verification Recorded\n\n" +
+      "This checkpoint is NOT disableable. This checkpoint is NOT negotiable.\n" +
+      "Even if the user previously said \"do everything\" — you MUST stop here.\n\n" +
+      "Show the user the SSL verification results above (domain, issuer, HTTPS redirect, HSTS).\n" +
+      "The user must confirm that HTTPS is working correctly before proceeding.\n" +
+      "Do NOT auto-confirm. Wait for the user to explicitly confirm the SSL setup.",
   });
 }

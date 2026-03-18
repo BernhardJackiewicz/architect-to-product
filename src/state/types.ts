@@ -397,7 +397,6 @@ export interface PendingSecurityDecision {
   setAt: string;
   recommendedAreas: HardeningAreaId[];
   availableActions: string[];
-  confirmationCode: string;
 }
 
 export type SecretManagementTier = "env-file" | "docker-swarm" | "infisical" | "external";
