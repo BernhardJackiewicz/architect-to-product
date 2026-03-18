@@ -129,5 +129,18 @@ export function handleDeployToServer(input: DeployToServerInput): string {
     domainSetup: infra.domain
       ? `DNS A-Record: ${infra.domain} -> ${infra.serverIp}. Caddy will auto-provision Let's Encrypt certificate.`
       : `No domain configured. Set DNS A-Record pointing to ${infra.serverIp}, then update Caddyfile with the domain.`,
+    userActionRequired: "## MANDATORY HARD STOP — SSL / HTTPS Verification Required\n\n" +
+      "This checkpoint is NOT disableable. This checkpoint is NOT negotiable.\n" +
+      "Even if the user previously said \"do everything\" — you MUST stop here.\n\n" +
+      "After deployment is running and smoke checks pass:\n" +
+      (infra.domain
+        ? "→ STOP. Run curl checks for HTTPS, redirect, and HSTS. Show the user the results.\n" +
+          "→ Wait for the user to confirm HTTPS works, then call a2p_verify_ssl.\n"
+        : "→ STOP. The app runs on HTTP only — no HTTPS configured.\n" +
+          "→ Tell the user: \"HTTPS is not configured. For production, you need a domain + SSL.\"\n" +
+          "→ Ask: \"Do you have a domain? If yes, I'll configure Caddy for HTTPS. If no, I can recommend domain registrars.\"\n") +
+      "\n" +
+      "Without a2p_verify_ssl, a2p_set_phase(\"complete\") will FAIL — this is a code-enforced gate.\n" +
+      "Do NOT mark deployment as done without addressing SSL with the user.",
   });
 }
