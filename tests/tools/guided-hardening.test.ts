@@ -548,3 +548,125 @@ describe("backward compatibility", () => {
     expect(authCoverage!.coverageEstimate).toBe(0);
   });
 });
+
+// --- Shake-break results contribute to coverage (Bug 1 fix) ---
+
+describe("shake-break results contribute to coverage", () => {
+  it("shake-break auth_idor category increases auth-session and data-access coverage", () => {
+    const sm = setupSecurityPhase(dir);
+    sm.completeAdversarialReview(0, "r1");
+
+    // Baseline: no shake-break, coverage is from adversarial review only
+    const before = sm.read();
+    const authBefore = before.securityOverview!.coverageByArea.find(c => c.id === "auth-session")!;
+    const dataBefore = before.securityOverview!.coverageByArea.find(c => c.id === "data-access")!;
+
+    // Add shake-break result with auth_idor category
+    sm.addShakeBreakResult({
+      id: "SB-001",
+      timestamp: new Date().toISOString(),
+      durationMinutes: 10,
+      categoriesTested: ["auth_idor"],
+      findingsRecorded: 2,
+      note: "IDOR test",
+    });
+
+    const after = sm.read();
+    const authAfter = after.securityOverview!.coverageByArea.find(c => c.id === "auth-session")!;
+    const dataAfter = after.securityOverview!.coverageByArea.find(c => c.id === "data-access")!;
+
+    // Coverage should have increased by 15 per shake-break domain hit
+    expect(authAfter.coverageEstimate).toBeGreaterThan(authBefore.coverageEstimate);
+    expect(dataAfter.coverageEstimate).toBeGreaterThan(dataBefore.coverageEstimate);
+  });
+
+  it("shake-break business_logic maps to business-logic and vuln-chaining", () => {
+    const sm = setupSecurityPhase(dir);
+    sm.completeAdversarialReview(0, "r1");
+
+    sm.addShakeBreakResult({
+      id: "SB-002",
+      timestamp: new Date().toISOString(),
+      durationMinutes: 5,
+      categoriesTested: ["business_logic"],
+      findingsRecorded: 0,
+      note: "biz logic test",
+    });
+
+    const state = sm.read();
+    const bizCoverage = state.securityOverview!.coverageByArea.find(c => c.id === "business-logic")!;
+    const vulnCoverage = state.securityOverview!.coverageByArea.find(c => c.id === "vuln-chaining")!;
+
+    // Both should have > 0 coverage from the shake-break
+    expect(bizCoverage.coverageEstimate).toBeGreaterThan(0);
+    expect(vulnCoverage.coverageEstimate).toBeGreaterThan(0);
+  });
+
+  it("shake-break injection_runtime maps to input-output and api-surface", () => {
+    const sm = setupSecurityPhase(dir);
+    sm.completeAdversarialReview(0, "r1");
+
+    sm.addShakeBreakResult({
+      id: "SB-003",
+      timestamp: new Date().toISOString(),
+      durationMinutes: 8,
+      categoriesTested: ["injection_runtime"],
+      findingsRecorded: 1,
+      note: "injection test",
+    });
+
+    const state = sm.read();
+    const ioCoverage = state.securityOverview!.coverageByArea.find(c => c.id === "input-output")!;
+    const apiCoverage = state.securityOverview!.coverageByArea.find(c => c.id === "api-surface")!;
+
+    expect(ioCoverage.coverageEstimate).toBeGreaterThan(0);
+    expect(apiCoverage.coverageEstimate).toBeGreaterThan(0);
+  });
+
+  it("multiple shake-break categories accumulate coverage", () => {
+    const sm = setupSecurityPhase(dir);
+    sm.completeAdversarialReview(0, "r1");
+
+    // Test 3 categories in one session
+    sm.addShakeBreakResult({
+      id: "SB-004",
+      timestamp: new Date().toISOString(),
+      durationMinutes: 20,
+      categoriesTested: ["auth_idor", "business_logic", "token_session"],
+      findingsRecorded: 3,
+      note: "multi-category test",
+    });
+
+    const state = sm.read();
+    const authCoverage = state.securityOverview!.coverageByArea.find(c => c.id === "auth-session")!;
+    const bizCoverage = state.securityOverview!.coverageByArea.find(c => c.id === "business-logic")!;
+    const infraCoverage = state.securityOverview!.coverageByArea.find(c => c.id === "infra-secrets")!;
+
+    // auth_idor → auth-session (+15), token_session → auth-session (+15) = 30 from shake-break
+    expect(authCoverage.coverageEstimate).toBeGreaterThanOrEqual(30);
+    // business_logic → business-logic (+15)
+    expect(bizCoverage.coverageEstimate).toBeGreaterThanOrEqual(15);
+    // token_session → infra-secrets (+15)
+    expect(infraCoverage.coverageEstimate).toBeGreaterThanOrEqual(15);
+  });
+
+  it("shake-break lastShakeBreakAt is updated in security overview", () => {
+    const sm = setupSecurityPhase(dir);
+    sm.completeAdversarialReview(0, "r1");
+
+    const before = sm.read();
+    expect(before.securityOverview!.lastShakeBreakAt).toBeNull();
+
+    sm.addShakeBreakResult({
+      id: "SB-005",
+      timestamp: new Date().toISOString(),
+      durationMinutes: 5,
+      categoriesTested: ["race_conditions"],
+      findingsRecorded: 0,
+      note: "race test",
+    });
+
+    const after = sm.read();
+    expect(after.securityOverview!.lastShakeBreakAt).not.toBeNull();
+  });
+});
