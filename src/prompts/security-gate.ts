@@ -154,6 +154,20 @@ Normalize findings to: **Surface** → **Exploit Path** → **Impact** → **Evi
 - LOW: Document
 - After every fix: run tests
 
+## After Adversarial Review — MANDATORY HARD STOP
+**This checkpoint is NOT disableable.**
+Even if the user previously said "do everything" — this checkpoint is NOT negotiable.
+
+After \`a2p_complete_adversarial_review\` returns, a pending security decision is set.
+→ STOP. Show the user the recommended hardening areas and ALL available actions:
+1. **focused-hardening** — Target a specific weak area
+2. **full-round** — Run another complete security round
+3. **shake-break** — Runtime adversarial testing
+4. **continue** — Proceed to Active Verification and then deployment
+
+→ Do NOT choose for the user. Do NOT proceed automatically.
+→ Wait for the user's explicit choice, then call \`a2p_acknowledge_security_decision\` with their chosen action.
+
 ## Security Signoff Checkpoint
 Check \`a2p_get_state\` → \`architecture.oversight.securitySignoff\` (default: false).
 

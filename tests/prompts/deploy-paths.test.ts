@@ -264,6 +264,45 @@ describe("Deploy paths", () => {
     });
   });
 
+  // ─── MANDATORY HARD STOP gates ────────────────────────────────────────────
+
+  describe("Secret Management MANDATORY HARD STOP", () => {
+    it("contains MANDATORY HARD STOP for secret management", () => {
+      expect(DEPLOY_PROMPT).toContain("Secret Management — MANDATORY HARD STOP");
+    });
+
+    it("contains NOT disableable for secret management", () => {
+      expect(DEPLOY_PROMPT).toContain("This checkpoint is NOT disableable.");
+    });
+
+    it("contains NOT negotiable for secret management", () => {
+      expect(DEPLOY_PROMPT).toContain("this checkpoint is NOT negotiable");
+    });
+
+    it("forbids autonomous tier selection", () => {
+      expect(DEPLOY_PROMPT).toContain("Do NOT choose a tier autonomously");
+    });
+
+    it("forbids defaulting to env-file", () => {
+      expect(DEPLOY_PROMPT).toContain("Do NOT default to");
+    });
+  });
+
+  describe("SSL Verification MANDATORY HARD STOP", () => {
+    it("contains MANDATORY HARD STOP for SSL", () => {
+      expect(DEPLOY_PROMPT).toContain("SSL Verification — MANDATORY HARD STOP");
+    });
+
+    it("contains STOP instruction for SSL curl results", () => {
+      expect(DEPLOY_PROMPT).toContain("Show the user the curl results");
+      expect(DEPLOY_PROMPT).toContain("Wait for explicit confirmation that HTTPS works");
+    });
+
+    it("forbids auto-filling SSL verification", () => {
+      expect(DEPLOY_PROMPT).toContain("Do NOT auto-fill the verification");
+    });
+  });
+
   // ─── SSL verification gate ────────────────────────────────────────────────
 
   describe("SSL verification gate", () => {
@@ -272,7 +311,7 @@ describe("Deploy paths", () => {
     });
 
     it("includes SSL verification as mandatory gate", () => {
-      expect(DEPLOY_PROMPT).toContain("SSL Verification — MANDATORY GATE");
+      expect(DEPLOY_PROMPT).toContain("SSL Verification — MANDATORY HARD STOP");
     });
 
     it("includes auto-renewal note for Caddy", () => {

@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { makeTmpDir, cleanTmpDir, parse, forcePhase } from "../helpers/setup.js";
 import { handleRunActiveVerification } from "../../src/tools/run-active-verification.js";
+import { handleAcknowledgeSecurityDecision } from "../../src/tools/acknowledge-security-decision.js";
 import { StateManager } from "../../src/state/state-manager.js";
 
 let dir: string;
@@ -38,7 +39,7 @@ function setupWithPendingDecision(): StateManager {
 }
 
 describe("active verification security decision gate", () => {
-  it("blocks when pendingSecurityDecision is set and no code provided", () => {
+  it("blocks when pendingSecurityDecision is set (no bypass possible)", () => {
     setupWithPendingDecision();
 
     const result = parse(handleRunActiveVerification({
@@ -51,56 +52,9 @@ describe("active verification security decision gate", () => {
     expect(result.pendingDecision).toBeDefined();
     expect(result.pendingDecision.round).toBe(1);
     expect(result.securityMessage).toContain("never ending story");
-    expect(result.userActionRequired).toContain("STOP");
-    // confirmationCode must NOT be in pendingDecision (prevents agent auto-bypass)
-    expect(result.pendingDecision.confirmationCode).toBeUndefined();
-  });
-
-  it("blocks when wrong confirmation code provided", () => {
-    setupWithPendingDecision();
-
-    const result = parse(handleRunActiveVerification({
-      projectPath: dir,
-      round: 1,
-      acknowledgeSecurityDecision: "wrong-code",
-    }));
-
-    expect(result.blocked).toBe(true);
-    expect(result.reason).toBe("pending_security_decision");
-  });
-
-  it("blocks when string 'true' is provided instead of confirmation code", () => {
-    setupWithPendingDecision();
-
-    const result = parse(handleRunActiveVerification({
-      projectPath: dir,
-      round: 1,
-      acknowledgeSecurityDecision: "true",
-    }));
-
-    expect(result.blocked).toBe(true);
-    expect(result.reason).toBe("pending_security_decision");
-  });
-
-  it("proceeds when correct confirmation code is provided and clears pending decision", () => {
-    const sm = setupWithPendingDecision();
-    const state = sm.read();
-    const code = state.pendingSecurityDecision!.confirmationCode;
-
-    const result = parse(handleRunActiveVerification({
-      projectPath: dir,
-      round: 1,
-      acknowledgeSecurityDecision: code,
-    }));
-
-    // Should not be blocked
-    expect(result.blocked).toBeUndefined();
-    expect(result.success).toBe(true);
-
-    // Pending decision should be cleared
-    const freshSm = new StateManager(dir);
-    const freshState = freshSm.read();
-    expect(freshState.pendingSecurityDecision).toBeNull();
+    expect(result.userActionRequired).toContain("MANDATORY HARD STOP");
+    expect(result.userActionRequired).toContain("NOT disableable");
+    expect(result.userActionRequired).toContain("NOT negotiable");
   });
 
   it("runs normally when no pending security decision exists", () => {
@@ -129,6 +83,27 @@ describe("active verification security decision gate", () => {
     }));
 
     // No blocking
+    expect(result.blocked).toBeUndefined();
+    expect(result.success).toBe(true);
+  });
+
+  it("runs after pendingSecurityDecision is cleared via acknowledge tool", () => {
+    setupWithPendingDecision();
+
+    // Clear via acknowledge tool
+    const ackResult = parse(handleAcknowledgeSecurityDecision({
+      projectPath: dir,
+      action: "continue",
+    }));
+    expect(ackResult.success).toBe(true);
+    expect(ackResult.action).toBe("continue");
+
+    // Now active verification should run
+    const result = parse(handleRunActiveVerification({
+      projectPath: dir,
+      round: 1,
+    }));
+
     expect(result.blocked).toBeUndefined();
     expect(result.success).toBe(true);
   });

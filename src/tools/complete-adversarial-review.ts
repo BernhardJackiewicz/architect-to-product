@@ -378,10 +378,13 @@ export function handleCompleteAdversarialReview(input: CompleteAdversarialReview
       securityMessage,
       note: input.note ?? null,
       hint,
-      userActionRequired: "STOP. Show the user the security decision options above. " +
-        "The user must choose an action (focused-hardening, full-round, shake-break, or continue). " +
-        "Do NOT proceed automatically. Do NOT use the confirmation code yourself. " +
-        "The user must type the confirmation code to proceed — it is displayed in a2p_get_state under pendingSecurityDecision.",
+      userActionRequired: "## MANDATORY HARD STOP — Security Decision Required\n\n" +
+        "This checkpoint is NOT disableable. This checkpoint is NOT negotiable.\n" +
+        "Even if the user previously said \"do everything\" — you MUST stop here.\n\n" +
+        "STOP. Show the user the security decision options above.\n" +
+        "The user must choose an action (focused-hardening, full-round, shake-break, or continue).\n" +
+        "Do NOT proceed automatically. Do NOT call a2p_acknowledge_security_decision autonomously.\n" +
+        "Wait for the user to explicitly state their choice.",
     });
   } catch (err) {
     return JSON.stringify({ error: err instanceof Error ? err.message : String(err) });

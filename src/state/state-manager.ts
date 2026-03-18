@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import { readFileSync, writeFileSync, mkdirSync, existsSync, copyFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { ProjectStateSchema } from "./validators.js";
@@ -913,13 +912,11 @@ export class StateManager {
     this.refreshSecurityOverview(state);
     // Set pending security decision — forces user to acknowledge before proceeding
     const recommendedAreas = state.securityOverview?.recommendedNextAreas ?? [];
-    const confirmationCode = randomUUID().slice(0, 6);
     state.pendingSecurityDecision = {
       round: newRound,
       setAt: now,
       recommendedAreas,
       availableActions: ["focused-hardening", "full-round", "shake-break", "continue"],
-      confirmationCode,
     };
     this.addEvent(state, state.phase, null, "adversarial_review_completed",
       `Adversarial review round ${newRound} completed: ${findingsRecorded} finding(s) recorded (total: ${totalFindings})${note ? ` — ${note}` : ""}`,
@@ -928,10 +925,14 @@ export class StateManager {
     return state;
   }
 
-  /** Clear the pending security decision (after user acknowledges or in tests). */
-  clearPendingSecurityDecision(): void {
+  /** Clear the pending security decision (after user acknowledges via a2p_acknowledge_security_decision). */
+  clearPendingSecurityDecision(action: string): void {
     const state = this.read();
+    const round = state.pendingSecurityDecision?.round ?? 0;
     state.pendingSecurityDecision = null;
+    this.addEvent(state, state.phase, null, "security_decision_acknowledged",
+      `Security decision acknowledged: "${action}" (after round ${round})`,
+      { level: "info", status: "success" });
     this.write(state);
   }
 

@@ -55,6 +55,11 @@ If hosting contains "hetzner", "digitalocean", "vps", "debian", "ubuntu", "linux
   - NEVER copy \`.env.production\` into the Docker image
 - Caddy blocks \`/.env\` via HTTP — but SSH/server access still exposes the file
 
+## Secret Management — MANDATORY HARD STOP
+**This checkpoint is NOT disableable.**
+Even if the user previously said "do everything" — this checkpoint is NOT negotiable.
+Do NOT choose a tier autonomously. Show the user ALL options and WAIT for their explicit choice.
+
 **Secret management tiers — present ALL options to the user and let them choose:**
 
 **Tier 1: .env file (MVP / sandbox)**
@@ -101,7 +106,9 @@ If hosting contains "hetzner", "digitalocean", "vps", "debian", "ubuntu", "linux
 3. Infisical (audit trail, rotation, web UI — free tier available)
 4. Enterprise (Vault/AWS SM — only if compliance requires it)"
 
-→ STOP. Wait for user choice before generating deployment configs.
+→ STOP. This is a MANDATORY HARD STOP. Wait for user choice before generating deployment configs.
+→ Do NOT pick a tier yourself. Do NOT default to "env-file" or any other tier.
+→ After the user chooses: Call \`a2p_set_secret_management\` with their chosen tier.
 → Then follow the matching implementation guide below.
 
 **After user chooses — Tier-specific implementation:**
@@ -270,12 +277,16 @@ If the user chose Hetzner or no specific host is set:
    - Provide DNS A record instructions
    - Caddy automatically obtains Let's Encrypt certificate
 
-10. **SSL Verification — MANDATORY GATE:**
+10. **SSL Verification — MANDATORY HARD STOP:**
+    **This checkpoint is NOT disableable. This checkpoint is NOT negotiable.**
+    Even if the user previously said "do everything" — you MUST stop here.
     After DNS configured and Caddy has provisioned the Let's Encrypt certificate:
     - Verify: \`curl -sI https://DOMAIN\` → 200 with valid cert
     - Check: \`curl -sI http://DOMAIN\` → redirects to HTTPS
     - Check: Response includes \`Strict-Transport-Security\` header
-    - Call \`a2p_verify_ssl\` with method="caddy-auto", issuer="Let's Encrypt", autoRenewal=true
+    → STOP. Show the user the curl results. Wait for explicit confirmation that HTTPS works.
+    → Do NOT auto-fill the verification. The user must confirm the curl outputs.
+    - After user confirms: Call \`a2p_verify_ssl\` with method="caddy-auto", issuer="Let's Encrypt", autoRenewal=true
     - **Without a2p_verify_ssl, deployment cannot be marked complete — code-enforced gate.**
 
     **Auto-Renewal:** Caddy renews Let's Encrypt certificates automatically ~30 days before expiry.

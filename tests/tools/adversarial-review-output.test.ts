@@ -179,7 +179,7 @@ describe("adversarial review structured output", () => {
     }
   });
 
-  it("pendingSecurityDecision is set in state after completeAdversarialReview", () => {
+  it("pendingSecurityDecision is set in state after completeAdversarialReview (no confirmationCode)", () => {
     setupSecurityPhase();
 
     handleCompleteAdversarialReview({
@@ -196,11 +196,11 @@ describe("adversarial review structured output", () => {
       "focused-hardening", "full-round", "shake-break", "continue",
     ]);
     expect(state.pendingSecurityDecision!.setAt).toBeTruthy();
-    expect(state.pendingSecurityDecision!.confirmationCode).toBeTruthy();
-    expect(state.pendingSecurityDecision!.confirmationCode.length).toBe(6);
+    // confirmationCode no longer exists
+    expect((state.pendingSecurityDecision as any).confirmationCode).toBeUndefined();
   });
 
-  it("confirmationCode is NOT included in completeAdversarialReview output (prevents agent auto-bypass)", () => {
+  it("userActionRequired contains MANDATORY HARD STOP language", () => {
     setupSecurityPhase();
 
     const result = parse(handleCompleteAdversarialReview({
@@ -209,9 +209,10 @@ describe("adversarial review structured output", () => {
       note: "round 1",
     }));
 
-    expect(result.confirmationCode).toBeUndefined();
     expect(result.userActionRequired).toBeDefined();
-    expect(result.userActionRequired).toContain("STOP");
+    expect(result.userActionRequired).toContain("MANDATORY HARD STOP");
+    expect(result.userActionRequired).toContain("NOT disableable");
+    expect(result.userActionRequired).toContain("NOT negotiable");
   });
 
   it("securityMessage is always present in output", () => {

@@ -432,7 +432,7 @@ export const ProjectStateSchema = z.preprocess(
     setAt: z.string(),
     recommendedAreas: z.array(HardeningAreaIdSchema),
     availableActions: z.array(z.string()),
-    confirmationCode: z.string(),
+    confirmationCode: z.string().optional(), // deprecated — kept for backward compat with existing state files
   }).nullable().default(null),
   secretManagementTier: z.enum(["env-file", "docker-swarm", "infisical", "external"]).nullable().default(null),
   sslVerifiedAt: z.string().nullable().default(null),
