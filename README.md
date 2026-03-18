@@ -25,7 +25,7 @@ This creates `.mcp.json` in your project. Then restart Claude Code and run:
 /a2p
 ```
 
-Paste your architecture — A2P will analyze it, configure companion MCP servers, and set up the engineering workflow. Architecture in, product out.
+A2P will onboard the project, co-develop the architecture, configure companion MCP servers, and set up the engineering workflow.
 
 ---
 
