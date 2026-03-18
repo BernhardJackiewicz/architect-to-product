@@ -160,7 +160,7 @@ describe("shake-break-setup", () => {
     expect(state.shakeBreakSession!.startingFindingIds).toContain("SB-PRE-001");
   });
 
-  it("returns dbFallback=true when SQLite fallback used", { timeout: 60_000 }, () => {
+  it("returns dbFallback=true when SQLite fallback used", { timeout: 15_000 }, () => {
     const sm = initWithStateManager(dir);
     // Set architecture with PostgreSQL
     sm.setArchitecture({
