@@ -7,146 +7,146 @@
 
 ## 1. Main Repo Security Strengths
 
-- **Phase transitions**: Vollstaendig code-enforced. Jede illegale Transition wirft klaren Error.
-- **Evidence gates**: Slice-Status-Uebergaenge erfordern beweisbare Evidenz (Tests, SAST). Kein Status ohne Nachweis.
-- **Build signoff**: Mandatory, code-enforced. Invalidiert bei Slice-/Test-Aenderungen. Re-signoff erzwungen.
-- **Deploy approval**: Mandatory, code-enforced. Invalidiert bei Finding-/Audit-/Whitebox-Aenderungen. `a2p_generate_deployment` blockt ohne Approval.
-- **Stale SAST detection**: Full SAST muss neuer sein als letzte sicherheitsrelevante Aenderung. Sonst Deployment blockiert.
-- **Security gates**: CRITICAL/HIGH Findings, blocking Whitebox, critical Audit Findings — alle blockieren Deployment.
-- **Zod validation**: Auf allen Tool-Inputs und State-Reads. Malformed state.json wird sauber abgefangen.
-- **State backup**: Automatisches `.bak` vor jedem Write.
-- **Log sanitization**: Passwords, Bearer tokens, GitHub tokens, OpenAI keys werden redacted.
-- **Test command restriction**: Override nur mit explizitem `allowTestCommandOverride=true`.
-- **759 Tests**: Alle Gates, Transitions, Invalidierungen, Edge Cases abgedeckt.
+- **Phase transitions**: Fully code-enforced. Every illegal transition throws a clear error.
+- **Evidence gates**: Slice status transitions require provable evidence (tests, SAST). No status without proof.
+- **Build signoff**: Mandatory, code-enforced. Invalidated on slice/test changes. Re-signoff enforced.
+- **Deploy approval**: Mandatory, code-enforced. Invalidated on finding/audit/whitebox changes. `a2p_generate_deployment` blocks without approval.
+- **Stale SAST detection**: Full SAST must be newer than last security-relevant change. Otherwise deployment blocked.
+- **Security gates**: CRITICAL/HIGH findings, blocking whitebox, critical audit findings — all block deployment.
+- **Zod validation**: On all tool inputs and state reads. Malformed state.json is caught cleanly.
+- **State backup**: Automatic `.bak` before every write.
+- **Log sanitization**: Passwords, Bearer tokens, GitHub tokens, OpenAI keys are redacted.
+- **Test command restriction**: Override only with explicit `allowTestCommandOverride=true`.
+- **759 tests**: All gates, transitions, invalidations, edge cases covered.
 
 ## 2. Main Repo Security Gaps
 
-### Behoben
+### Fixed
 
-| # | Gap | Datei | Severity | Fix |
-|---|-----|-------|----------|-----|
-| M1 | SAST rawOutput nicht sanitized | `run-sast.ts:182,231` | should-fix | `sanitizeOutput()` um `truncate()` gewickelt |
-| M2 | TestResult.output nicht sanitized im State | `run-tests.ts:57` | should-fix | `sanitizeOutput()` um `truncate()` gewickelt |
-| M6 | Backup war nur Warning, kein Hard-Block | `state-manager.ts` | should-fix | Backup-Gate erzwingt Hard-Block bei stateful apps (setPhase security→deployment) |
+| # | Gap | File | Severity | Fix |
+|---|-----|------|----------|-----|
+| M1 | SAST rawOutput not sanitized | `run-sast.ts:182,231` | should-fix | Wrapped `sanitizeOutput()` around `truncate()` |
+| M2 | TestResult.output not sanitized in state | `run-tests.ts:57` | should-fix | Wrapped `sanitizeOutput()` around `truncate()` |
+| M6 | Backup was only warning, not hard block | `state-manager.ts` | should-fix | Backup gate enforces hard block for stateful apps (setPhase security->deployment) |
 
-### Akzeptiert
+### Accepted
 
-| # | Gap | Severity | Begruendung |
-|---|-----|----------|-------------|
-| M3 | Secret-Redaction deckt keine Connection-Strings ab | acceptable | `postgresql://user:pass@host` nicht redacted. Selten in Tool-Output, waere Nice-to-have Pattern-Erweiterung |
-| M4 | State-File nicht verschluesselt | acceptable | Standard fuer lokales Dev-Tool |
-| M5 | `execSync` mit Shell-Execution | acceptable | Trust-Modell ist MCP→Claude, nicht untrusted users |
-| M7 | Signoff/Approval nicht kryptographisch signiert | nice-to-have | Deterministischer Hash reicht fuer lokales Tool |
+| # | Gap | Severity | Rationale |
+|---|-----|----------|-----------|
+| M3 | Secret redaction does not cover connection strings | acceptable | `postgresql://user:pass@host` not redacted. Rare in tool output, would be a nice-to-have pattern extension |
+| M4 | State file not encrypted | acceptable | Standard for local dev tool |
+| M5 | `execSync` with shell execution | acceptable | Trust model is MCP->Claude, not untrusted users |
+| M7 | Signoff/approval not cryptographically signed | nice-to-have | Deterministic hash is sufficient for local tool |
 
 ## 3. Release Blockers
 
-**Keine.** Die zwei should-fix Findings (M1, M2) sind behoben und verifiziert.
+**None.** The two should-fix findings (M1, M2) are fixed and verified.
 
 ## 4. Fixes Applied
 
-| Datei | Aenderung |
-|-------|-----------|
-| `src/tools/run-sast.ts:4` | `sanitizeOutput` Import hinzugefuegt |
+| File | Change |
+|------|--------|
+| `src/tools/run-sast.ts:4` | Added `sanitizeOutput` import |
 | `src/tools/run-sast.ts:182` | Semgrep rawOutput: `sanitizeOutput(truncate(...))` |
 | `src/tools/run-sast.ts:231` | Bandit rawOutput: `sanitizeOutput(truncate(...))` |
 | `src/tools/run-tests.ts:57` | TestResult.output: `sanitizeOutput(truncate(...))` |
 
-Total: 4 Zeilen geaendert, 0 Dateien hinzugefuegt, 0 Dateien geloescht.
+Total: 4 lines changed, 0 files added, 0 files deleted.
 
 ## 5. New Verification Results
 
 ```
-Main Repo Typecheck: Identisch zum Baseline (5 praeexistente TS-Warnungen, keine neuen)
-Main Repo Tests: 759/759 passed
-Audit Workspace Tests: 737/737 passed (10.24s)
-Chaos Workspace Shake-and-Break: 10/10 passed
+Main repo typecheck: Identical to baseline (5 pre-existing TS warnings, no new ones)
+Main repo tests: 759/759 passed
+Audit workspace tests: 737/737 passed (10.24s)
+Chaos workspace shake-and-break: 10/10 passed
 ```
 
-## 6. Shake-and-Break Findings (Chaos-Workspace)
+## 6. Shake-and-Break Findings (Chaos Workspace)
 
-Alle 10 Tests bestanden — das System reagiert korrekt auf kaputte Zustaende:
+All 10 tests passed — the system responds correctly to broken states:
 
-| # | Test | Ergebnis |
-|---|------|----------|
-| 1 | Corrupted state.json (Garbage-Daten) | Klarer Error, kein Crash |
-| 2 | Fehlende .bak Datei | Kein Crash, State lesbar |
-| 3 | Illegale Phase-Transition (onboarding→building) | Abgelehnt mit klarem Error |
-| 4 | Evidence-Gate umgehen (red→green ohne Tests) | Abgelehnt |
-| 5 | Stale Build Signoff (invalidiert durch addTestResult) | Abgelehnt bei building→security |
-| 6 | Stale SAST Detection | Abgelehnt bei security→deployment |
-| 7 | Doppelte Initialisierung | "State already exists" Error |
-| 8 | Leere Slices + Advance | "No more slices" Error |
-| 9 | Nicht-existierende Slice ID | Klarer "not found" Error |
-| 10 | Secret-Redaction (Passwords, Bearer, ghp_, sk-) | Alle redacted |
+| # | Test | Result |
+|---|------|--------|
+| 1 | Corrupted state.json (garbage data) | Clear error, no crash |
+| 2 | Missing .bak file | No crash, state readable |
+| 3 | Illegal phase transition (onboarding->building) | Rejected with clear error |
+| 4 | Evidence gate bypass (red->green without tests) | Rejected |
+| 5 | Stale build signoff (invalidated by addTestResult) | Rejected at building->security |
+| 6 | Stale SAST detection | Rejected at security->deployment |
+| 7 | Double initialization | "State already exists" error |
+| 8 | Empty slices + advance | "No more slices" error |
+| 9 | Non-existent slice ID | Clear "not found" error |
+| 10 | Secret redaction (passwords, Bearer, ghp_, sk-) | All redacted |
 
 ## 7. What Should Become Core A2P
 
-### Soll A2P ein offizielles Referenz/Audit/Chaos-Workspace-Modell bekommen?
+### Should A2P get an official reference/audit/chaos workspace model?
 
-**Ja.** Das Dreier-Modell hat in beiden Durchlaeufen (QuickBill + Hauptrepo) funktioniert:
+**Yes.** The three-workspace model worked in both runs (QuickBill + main repo):
 
-- **Reference** bleibt sauber als Vergleichsbasis
-- **Audit** isoliert Fixes, erlaubt saubere Verifikation
-- **Chaos** erlaubt destruktive Tests ohne Risiko
+- **Reference** stays clean as comparison baseline
+- **Audit** isolates fixes, allows clean verification
+- **Chaos** allows destructive tests without risk
 
-### Braucht A2P neue Tools oder reicht Prompt-Orchestrierung?
+### Does A2P need new tools or is prompt orchestration sufficient?
 
-**Hybrid-Ansatz empfohlen:**
+**Hybrid approach recommended:**
 
-| Aspekt | Tool oder Prompt | Begruendung |
-|--------|-----------------|-------------|
-| Workspace-Kopie erstellen | **Tool** | Deterministisch, reproduzierbar |
-| Audit-Findings klassifizieren | **Prompt** | Erfordert Kontext-Verstaendnis |
-| Standard Shake-and-Break Checks | **Tool** | Definiertes Test-Set, wiederholbar |
-| Ergebnis-Konsolidierung | **Prompt** | Bewertung erfordert Interpretation |
-| Fix-Promotion (Audit→Reference) | **Tool** | Diff + Copy, deterministisch |
+| Aspect | Tool or Prompt | Rationale |
+|--------|---------------|-----------|
+| Create workspace copy | **Tool** | Deterministic, reproducible |
+| Classify audit findings | **Prompt** | Requires context understanding |
+| Standard shake-and-break checks | **Tool** | Defined test set, repeatable |
+| Result consolidation | **Prompt** | Evaluation requires interpretation |
+| Fix promotion (audit->reference) | **Tool** | Diff + copy, deterministic |
 
-### Minimale Implementierungsschritte
+### Minimal Implementation Steps
 
-1. **`a2p_create_sandbox`** Tool:
-   - Parameter: `type` ("audit" | "chaos"), `projectPath`
-   - Kopiert Workspace, gibt Pfad zurueck
-   - Trackt Sandbox-Zustand in State
+1. **`a2p_create_sandbox`** tool:
+   - Parameters: `type` ("audit" | "chaos"), `projectPath`
+   - Copies workspace, returns path
+   - Tracks sandbox state in state
 
-2. **`a2p_run_shake_and_break`** Tool:
-   - Standard-Test-Set: illegale Transitions, Evidence-Bypass, Stale-Checks, Secret-Leak
-   - Laeuft in Sandbox, gibt strukturiertes Ergebnis zurueck
+2. **`a2p_run_shake_and_break`** tool:
+   - Standard test set: illegal transitions, evidence bypass, stale checks, secret leak
+   - Runs in sandbox, returns structured result
 
-3. **`a2p_promote_sandbox`** Tool:
-   - Diff-basiert: zeigt Aenderungen, uebernimmt nach Bestaetigung
-   - Nur fuer Audit-Sandboxes, nicht fuer Chaos
+3. **`a2p_promote_sandbox`** tool:
+   - Diff-based: shows changes, applies after confirmation
+   - Only for audit sandboxes, not chaos
 
-4. **Security-Audit-Prompt** erweitern:
-   - Referenziert das Dreier-Workspace-Modell
-   - Gibt klare Anweisungen fuer Klassifizierung (blocker/should-fix/acceptable/nice-to-have)
+4. **Security audit prompt** extension:
+   - References the three-workspace model
+   - Gives clear instructions for classification (blocker/should-fix/acceptable/nice-to-have)
 
 ## 8. Remaining Risks
 
 | Risk | Severity | Mitigation |
 |------|----------|------------|
-| ~~Connection-String-Redaction fehlt~~ | ~~Niedrig~~ | Gefixt: URL-Credential-Pattern in log-sanitizer.ts + sanitizeOutput() in run-audit.ts |
-| ~~5 praeexistente TS-Warnungen (setup-companions, update-slice)~~ | ~~Niedrig~~ | Behoben in 95f510a — `tsc --noEmit` gibt 0 errors |
-| Non-Docker Deploy-Targets liefern Docker-File-Descriptions | Mittel | README-Korrektur bereits in README_GAPS.md dokumentiert |
-| Prompt-only Enforcement fuer einige Workflows | Mittel | By design, aber in README klar als "prompt-guided" kennzeichnen |
+| ~~Connection string redaction missing~~ | ~~Low~~ | Fixed: URL credential pattern in log-sanitizer.ts + sanitizeOutput() in run-audit.ts |
+| ~~5 pre-existing TS warnings (setup-companions, update-slice)~~ | ~~Low~~ | Fixed in 95f510a — `tsc --noEmit` gives 0 errors |
+| Non-Docker deploy targets return Docker file descriptions | Medium | README correction already documented in README_GAPS.md |
+| Prompt-only enforcement for some workflows | Medium | By design, but label as "prompt-guided" in README |
 
 ## 9. Final Verdict
 
 ### release-candidate
 
-**Begruendung:**
-- Alle code-enforced Gates funktionieren korrekt (10/10 Chaos-Tests)
-- Secret-Redaction auf allen Output-Pfaden (nach Fix M1+M2)
-- 741 Tests gruen
-- Keine Blocker
-- Zwei should-fix behoben und verifiziert
-- README-Gaps sind dokumentiert und teilweise bereits korrigiert
+**Rationale:**
+- All code-enforced gates work correctly (10/10 chaos tests)
+- Secret redaction on all output paths (after fix M1+M2)
+- 741 tests green
+- No blockers
+- Two should-fix findings fixed and verified
+- README gaps are documented and partially corrected
 
-**Was noch fehlt fuer release-ready:**
-- README-Wording fuer Non-Docker-Targets korrigieren (bereits in README_GAPS.md als Aktion gelistet)
+**Still needed for release-ready:**
+- Correct README wording for non-Docker targets (already listed as action in README_GAPS.md)
 
-**Erledigt seit letztem Audit:**
-- ~~Praeexistente TS-Warnungen fixen (5 Stellen)~~ — behoben in 95f510a, `tsc --noEmit` gibt 0 errors
-- ~~Connection-String-Redaction (nice-to-have)~~ — behoben: URL-Credential-Pattern in log-sanitizer.ts + sanitizeOutput() in run-audit.ts
+**Completed since last audit:**
+- ~~Fix pre-existing TS warnings (5 locations)~~ — fixed in 95f510a, `tsc --noEmit` gives 0 errors
+- ~~Connection string redaction (nice-to-have)~~ — fixed: URL credential pattern in log-sanitizer.ts + sanitizeOutput() in run-audit.ts
 
-**Nicht "not-ready" weil:** Alle Sicherheitsgrenzen halten, alle Gates greifen, keine offenen Blocker.
-**Nicht "release-ready" weil:** README-Gaps (Deploy-Target-Wording) sind bekannt aber noch offen.
+**Not "not-ready" because:** All security boundaries hold, all gates work, no open blockers.
+**Not "release-ready" because:** README gaps (deploy target wording) are known but still open.
