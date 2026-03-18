@@ -26,6 +26,7 @@ import type {
   SecurityReentryReason,
   ShakeBreakSession,
   ShakeBreakResult,
+  ShakeBreakCategory,
   HardeningAreaId,
   SecurityOverview,
   SecurityOverviewCoverageEntry,
@@ -1284,6 +1285,18 @@ export class StateManager {
   }
 
   /** Recompute the securityOverview read-model from raw state data */
+  /** Map shake-break categories to hardening area IDs for coverage calculation */
+  private static readonly SHAKE_BREAK_TO_DOMAINS: Record<ShakeBreakCategory, HardeningAreaId[]> = {
+    auth_idor: ["auth-session", "data-access"],
+    race_conditions: ["business-logic", "data-access"],
+    state_manipulation: ["business-logic", "data-access"],
+    business_logic: ["business-logic", "vuln-chaining"],
+    injection_runtime: ["input-output", "api-surface"],
+    token_session: ["auth-session", "infra-secrets"],
+    file_upload: ["input-output", "external-integration"],
+    webhook_callback: ["api-surface", "external-integration"],
+  };
+
   private refreshSecurityOverview(state: ProjectState): void {
     const allFindings: SASTFinding[] = [
       ...state.slices.flatMap(s => s.sastFindings),
@@ -1315,12 +1328,24 @@ export class StateManager {
       }
     }
 
+    // Count shake-break tested categories per hardening area
+    const shakeBreakDomainCounts = new Map<HardeningAreaId, number>();
+    for (const sbResult of state.shakeBreakResults) {
+      for (const cat of sbResult.categoriesTested) {
+        const mappedDomains = StateManager.SHAKE_BREAK_TO_DOMAINS[cat as ShakeBreakCategory] ?? [];
+        for (const domain of mappedDomains) {
+          shakeBreakDomainCounts.set(domain, (shakeBreakDomainCounts.get(domain) ?? 0) + 1);
+        }
+      }
+    }
+
     const coverageByArea: SecurityOverviewCoverageEntry[] = ALL_AREAS.map(areaId => {
       const areaFindings = allFindings.filter(f => f.domains?.includes(areaId));
       const wbCount = whiteboxDomainCounts.get(areaId) ?? 0;
+      const sbCount = shakeBreakDomainCounts.get(areaId) ?? 0;
       const wasFocused = focusHistory.includes(areaId);
       const totalFindingCount = areaFindings.length + wbCount;
-      const coverageEstimate = Math.min(100, totalFindingCount * 20 + (wasFocused ? 40 : 0));
+      const coverageEstimate = Math.min(100, totalFindingCount * 20 + (wasFocused ? 40 : 0) + sbCount * 15);
 
       // Find last hardened timestamp from round history
       const lastRound = [...roundHistory].reverse().find(r => r.focusArea === areaId);
