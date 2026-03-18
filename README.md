@@ -351,53 +351,15 @@ A2P enforces [Anthropic's frontend aesthetics guidelines](https://docs.anthropic
 
 ---
 
-## Upgrading
+## Changelog
 
-### 1.0.3 → 1.0.4
-
-**New: SSL/HTTPS verification gate (code-enforced)**
-- New tool `a2p_verify_ssl` — records SSL/HTTPS verification with domain, method, issuer, auto-renewal status
-- `deployment → complete` is now blocked without SSL verification — code-enforced gate, not just a checklist item
-- `completeProductPhase` (final phase) is also blocked without SSL verification
-- SSL verification is automatically invalidated when the infrastructure domain changes
-- Caddy auto-renewal is documented — no certbot or cron jobs needed
-- All PaaS paths (Vercel, Cloudflare, Railway, Fly.io, Render) include SSL gate instructions
-
-**State changes:** New fields `sslVerifiedAt` (string | null) and `sslVerification` (object | null) in project state. Existing projects get `null` defaults automatically via Zod schema defaults — no migration needed.
-
-### 1.0.2 → 1.0.3
-
-**What changed (5 bugs from Mini Shop E2E):**
-- SAST now excludes framework build artifacts (`.next/`, `.nuxt/`, `.svelte-kit/`, `.turbopack/`, `.output/`, `build/`, `.vercel/`, `.angular/`)
-- SAST finding deduplication now includes `projectFindings` (was only checking slice findings)
-- `addSASTFinding` / `updateSASTFinding` no longer trigger false "stale SAST" — recording a finding is not a code change
-- Adversarial review security decision now requires a user-provided confirmation code (prevents agent auto-bypass)
-- Deploy flow adds `chmod 600` for `.env.production` + secret management guidance in prompt and checklist
-- New tool `a2p_set_secret_management` — 4-tier secret management choice (env-file / docker-swarm / infisical / external) is **code-enforced** before deployment configs can be generated
-
-### 1.0.1 → 1.0.2
-
-```bash
-rm -rf ~/.npm/_npx                       # clear npx cache
-npm view architect-to-product version    # verify 1.0.2 on registry
-```
-
-If you previously installed globally:
-```bash
-npm uninstall -g architect-to-product
-```
-
-**What changed:**
-- README restructured: concise overview + deep-dive docs (WORKFLOW.md, SECURITY.md, REFERENCE.md)
-- Tool count corrected: 27 (was 28 — duplicate `a2p_run_quality` row removed)
-- Test count updated: 1084
-- Added upgrade notes section
-
-### 1.0.0 → 1.0.1
-
-**What changed:**
-- Fixed duplicate events in audit, SAST, whitebox, and active verification (same event logged twice per run)
-- `pendingSecurityDecision` is now enforced as a hard deployment gate (was prompt-only before)
+| Version | Highlights |
+|---|---|
+| **1.0.10** | Companion `config` written as `env` block in `.mcp.json` (fixes Supabase MCP crash). Supabase Cloud vs Local onboarding. Companion health warnings in `a2p_get_state`. |
+| **1.0.4** | SSL/HTTPS verification gate (`a2p_verify_ssl`). Deployment and phase completion blocked without SSL proof. |
+| **1.0.3** | SAST excludes build artifacts. Finding dedup fix. Secret management tool (`a2p_set_secret_management`). Adversarial review requires confirmation code. |
+| **1.0.2** | README restructured. Tool count corrected to 27. Upgrade notes added. |
+| **1.0.1** | Fixed duplicate audit/SAST/whitebox events. `pendingSecurityDecision` enforced as deployment gate. |
 
 ---
 
