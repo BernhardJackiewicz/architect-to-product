@@ -16,53 +16,16 @@ Do NOT call any tool except \`a2p_get_state\`. Show the status and wait.
 ### If NO project exists (error):
 Show this welcome message:
 
-"Welcome! I'll help you turn an idea into a finished product.
+"Welcome! I'll help you turn your architecture into a finished product.
 
-Two options:
-1. **Discuss your idea** — We chat about your idea and I help you develop an architecture from it.
-2. **Paste your architecture** — You already have a finished architecture? Just paste it here.
-
-Which works better for you?"
+**Paste your architecture** — text, file path, or link. I'll analyze it and we go from there."
 
 Wait for the user's response. Do NOT call any tool before the user has responded.
 
 ## Workflow
 
-### Option 1: If NO architecture exists (discuss idea)
-Conduct a structured conversation. Ask questions ONE AT A TIME or in small groups — NOT all at once. ALWAYS wait for the response before continuing.
-
-**Round 1** — Ask:
-"What should your product do? Describe the problem, the target audience, and the core function."
-→ STOP. Wait for response.
-
-**Round 2** — Ask:
-"What features do you need for the MVP? What is nice-to-have for later?"
-→ STOP. Wait for response.
-
-**Round 3** — Ask:
-"Who uses it? (B2B/B2C, how many users, does it need login/auth?)"
-→ STOP. Wait for response.
-
-**Round 4** — Ask:
-"What data will be stored? Are there relationships between the data?"
-→ STOP. Wait for response.
-
-**Round 5** — Ask:
-"Budget? Should everything run on free tiers or is there budget for hosting/services?"
-→ STOP. Wait for response.
-
-Based on ALL responses, suggest a tech stack and explain WHY:
-- Language + Framework
-- Database (default recommendation: Supabase, unless there are good reasons against it)
-- Frontend (if needed)
-- Auth solution
-- Hosting recommendation
-
-Ask: "Does this stack work for you? Any changes?"
-→ STOP. Wait for confirmation or changes.
-
-### Option 2: If architecture EXISTS (user pasted text)
-Have the user provide the architecture (text, file, or link).
+### Analyze Architecture
+The user provides the architecture (text, file, or link).
 Analyze it and identify:
 - Tech Stack (language, framework, DB, frontend)
 - Features
