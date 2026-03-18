@@ -25,7 +25,10 @@ This creates `.mcp.json` in your project. Then restart Claude Code and run:
 /a2p
 ```
 
-A2P will onboard the project, co-develop the architecture, configure companion MCP servers, and set up the engineering workflow.
+A2P starts with two onboarding paths:
+
+1. **Discuss your idea** — For vibe coders. A2P asks structured questions and co-develops the architecture with you.
+2. **Paste your architecture** — For engineers who already have an architecture. Paste it, A2P analyzes it, and starts building. This path is optimized for speed.
 
 ---
 
