@@ -381,8 +381,11 @@ export function handleCompleteAdversarialReview(input: CompleteAdversarialReview
       userActionRequired: "## MANDATORY HARD STOP — Security Decision Required\n\n" +
         "This checkpoint is NOT disableable. This checkpoint is NOT negotiable.\n" +
         "Even if the user previously said \"do everything\" — you MUST stop here.\n\n" +
-        "STOP. Show the user the security decision options above.\n" +
-        "The user must choose an action (focused-hardening, full-round, shake-break, or continue).\n" +
+        "STOP. Show the user:\n" +
+        "1. The COVERAGE DASHBOARD: for each area in securityOverview.coverageByArea, show name, coverageEstimate%, and findingCount.\n" +
+        "2. The recommended hardening areas (lowest coverage first).\n" +
+        "3. ALL available actions: focused-hardening, full-round, shake-break, continue.\n\n" +
+        "The user must choose an action.\n" +
         "Do NOT proceed automatically. Do NOT call a2p_acknowledge_security_decision autonomously.\n" +
         "Wait for the user to explicitly state their choice.",
     });
