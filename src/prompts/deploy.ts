@@ -58,7 +58,14 @@ If hosting contains "hetzner", "digitalocean", "vps", "debian", "ubuntu", "linux
 ## Secret Management — MANDATORY HARD STOP
 **This checkpoint is NOT disableable.**
 Even if the user previously said "do everything" — this checkpoint is NOT negotiable.
-Do NOT choose a tier autonomously. Show the user ALL options and WAIT for their explicit choice.
+Do NOT choose a tier autonomously. Do NOT default to "env-file" or any other tier.
+
+**You MUST show the user a comparison table of ALL 4 tiers with pros, cons, and use cases BEFORE asking them to choose.**
+Format as a table or structured list so the user can make an informed decision. Include:
+- What each tier does
+- Pros and cons
+- When to use it
+- Cost (free vs. paid)
 
 **Secret management tiers — present ALL options to the user and let them choose:**
 
@@ -415,6 +422,23 @@ Optional:
 8. Backup mechanism active
 9. Rollback plan documented
 10. SSL certificate auto-renewal confirmed (Caddy or PaaS — a2p_verify_ssl gate)
+
+## After Deployment — MANDATORY HARD STOP: SSL / HTTPS
+**This checkpoint is NOT disableable. This checkpoint is NOT negotiable.**
+Even if the user previously said "do everything" — you MUST stop here.
+
+After a successful deployment (app is reachable, smoke checks pass):
+→ STOP. Ask the user about HTTPS/SSL:
+
+**If the app is deployed with a domain:**
+→ Run the curl checks (HTTPS, redirect, HSTS) and show the user the results.
+→ Wait for the user to confirm HTTPS works, then call \`a2p_verify_ssl\`.
+
+**If the app is deployed with IP only (no domain):**
+→ Tell the user: "HTTPS is not configured — the app runs on HTTP only. For production use, you need a domain + SSL certificate."
+→ Ask: "Do you have a domain? If yes, I'll configure Caddy for HTTPS. If no, I can recommend domain registrars (INWX, Cloudflare)."
+→ Do NOT skip this step. Do NOT mark deployment as complete without addressing SSL.
+→ **Without \`a2p_verify_ssl\`, \`a2p_set_phase("complete")\` will fail — code-enforced gate.**
 
 ## Step 2: Launch Checklist
 Call \`a2p_get_checklist\` and show the user the complete checklist.
