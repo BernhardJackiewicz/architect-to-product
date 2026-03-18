@@ -457,8 +457,13 @@ export class StateManager {
     if (state.phase === "deployment" && newPhase === "complete") {
       if (!state.sslVerifiedAt) {
         throw new Error(
-          "Cannot complete deployment without SSL/HTTPS verification. " +
-          "Call a2p_verify_ssl after confirming HTTPS works on your domain."
+          "MANDATORY HARD STOP — SSL/HTTPS verification required before completing deployment. " +
+          "This gate is code-enforced and cannot be bypassed. " +
+          "Steps: 1) Verify HTTPS works (curl -sI https://DOMAIN). " +
+          "2) Show the user the curl results. " +
+          "3) Wait for user confirmation. " +
+          "4) Call a2p_verify_ssl with the verification details. " +
+          "If no domain is configured, ask the user about their domain plans before proceeding."
         );
       }
     }
@@ -1045,8 +1050,9 @@ export class StateManager {
     if (isLast) {
       if (!state.sslVerifiedAt) {
         throw new Error(
-          "Cannot complete final phase without SSL/HTTPS verification. " +
-          "Call a2p_verify_ssl first."
+          "MANDATORY HARD STOP — Cannot complete final phase without SSL/HTTPS verification. " +
+          "This gate is code-enforced and cannot be bypassed. " +
+          "Call a2p_verify_ssl after confirming HTTPS works with the user."
         );
       }
       state.phase = "complete";
