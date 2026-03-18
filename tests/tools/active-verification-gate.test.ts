@@ -51,7 +51,9 @@ describe("active verification security decision gate", () => {
     expect(result.pendingDecision).toBeDefined();
     expect(result.pendingDecision.round).toBe(1);
     expect(result.securityMessage).toContain("never ending story");
-    expect(result.confirmationRequired).toContain("code");
+    expect(result.userActionRequired).toContain("STOP");
+    // confirmationCode must NOT be in pendingDecision (prevents agent auto-bypass)
+    expect(result.pendingDecision.confirmationCode).toBeUndefined();
   });
 
   it("blocks when wrong confirmation code provided", () => {
