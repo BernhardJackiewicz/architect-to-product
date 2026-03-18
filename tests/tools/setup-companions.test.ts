@@ -372,6 +372,97 @@ describe("handleSetupCompanions", () => {
     }
   });
 
+  // ─── env block from config ───────────────────────────────────────────
+
+  it("writes env block when companion has config", () => {
+    handleSetupCompanions({
+      projectPath: tmpDir,
+      companions: [
+        {
+          type: "database",
+          name: "supabase-local",
+          command: "npx supabase-mcp",
+          config: {
+            SUPABASE_URL: "http://localhost:54321",
+            SUPABASE_SERVICE_ROLE_KEY: "test-key-123",
+          },
+        },
+      ],
+    });
+
+    const mcpJson = JSON.parse(readFileSync(join(tmpDir, ".mcp.json"), "utf-8"));
+    expect(mcpJson.mcpServers["supabase-local"]).toEqual({
+      command: "npx",
+      args: ["supabase-mcp"],
+      env: {
+        SUPABASE_URL: "http://localhost:54321",
+        SUPABASE_SERVICE_ROLE_KEY: "test-key-123",
+      },
+    });
+  });
+
+  it("does not write env block when companion has no config", () => {
+    handleSetupCompanions({
+      projectPath: tmpDir,
+      companions: [
+        { type: "codebase_memory", name: "codebase-memory", command: "codebase-memory-mcp" },
+      ],
+    });
+
+    const mcpJson = JSON.parse(readFileSync(join(tmpDir, ".mcp.json"), "utf-8"));
+    expect(mcpJson.mcpServers["codebase-memory"].env).toBeUndefined();
+  });
+
+  it("does not write env block when config is empty object", () => {
+    handleSetupCompanions({
+      projectPath: tmpDir,
+      companions: [
+        {
+          type: "database",
+          name: "postgres-mcp",
+          command: "npx @modelcontextprotocol/server-postgres",
+          config: {},
+        },
+      ],
+    });
+
+    const mcpJson = JSON.parse(readFileSync(join(tmpDir, ".mcp.json"), "utf-8"));
+    expect(mcpJson.mcpServers["postgres-mcp"].env).toBeUndefined();
+  });
+
+  // ─── warning for unavailable companions ─────────────────────────────
+
+  it("includes warning when companion is not installed", () => {
+    const result = parse(
+      handleSetupCompanions({
+        projectPath: tmpDir,
+        companions: [
+          { type: "codebase_memory", name: "nonexistent-binary-xyz", command: "nonexistent-binary-xyz" },
+        ],
+      })
+    );
+
+    // Binary doesn't exist, so should not be installed
+    if (!result.companions[0].installed) {
+      expect(result.warning).toContain("WARNING");
+      expect(result.warning).toContain("nonexistent-binary-xyz");
+      expect(result.nextStep).toContain("WARNING");
+    }
+  });
+
+  it("has no warning when all companions are installed (HTTP)", () => {
+    const result = parse(
+      handleSetupCompanions({
+        projectPath: tmpDir,
+        companions: [
+          { type: "database", name: "supabase", command: "https://mcp.supabase.com/mcp" },
+        ],
+      })
+    );
+
+    expect(result.warning).toBeUndefined();
+  });
+
   it("handles corrupted existing .mcp.json gracefully", () => {
     writeFileSync(join(tmpDir, ".mcp.json"), "not json at all{{{", "utf-8");
 

@@ -83,14 +83,20 @@ export function handleSetupCompanions(input: SetupCompanionsInput): string {
   // Auto-generate .mcp.json
   const mcpJsonPath = writeMcpJson(input.projectPath, input.companions);
 
+  const failedCompanions = results.filter(r => !r.installed);
+  const warning = failedCompanions.length > 0
+    ? `\n⚠️  WARNING: ${failedCompanions.length} companion(s) not available: ${failedCompanions.map(c => c.name).join(", ")}. After restarting, check /mcp to verify all servers are connected. If a server keeps failing, check its configuration in .mcp.json.`
+    : "";
+
   return JSON.stringify({
     success: true,
     companions: results,
     mcpJsonWritten: true,
     mcpJsonPath,
     restartRequired: true,
+    warning: warning || undefined,
     nextStep:
-      ".mcp.json wurde geschrieben. Starte Claude Code neu — danach sind alle Companion-MCPs automatisch verfügbar. Dann weiter mit a2p_create_build_plan.",
+      ".mcp.json wurde geschrieben. Starte Claude Code neu — danach sind alle Companion-MCPs automatisch verfügbar. Dann weiter mit a2p_create_build_plan." + warning,
   });
 }
 
@@ -123,10 +129,14 @@ function writeMcpJson(
     } else {
       // stdio-based MCP — split command into binary + args
       const parts = comp.command.split(" ");
-      newServers[comp.name] = {
+      const entry: Record<string, unknown> = {
         command: parts[0],
         args: parts.slice(1),
       };
+      if (comp.config && Object.keys(comp.config).length > 0) {
+        entry.env = comp.config;
+      }
+      newServers[comp.name] = entry;
     }
   }
 
