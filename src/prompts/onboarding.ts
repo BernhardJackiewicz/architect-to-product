@@ -189,9 +189,14 @@ Choose companions automatically based on the tech stack from the \`a2p_set_archi
 **Conditional:**
 - **GitHub MCP**: If GitHub repo → command: \`github-mcp-server\` (Issues, PRs, Code Scanning)
 - **Database MCP**: Matching the chosen DB
-  - Supabase → command: \`https://mcp.supabase.com/mcp\` (remote, no install needed)
+  - Supabase Cloud → command: \`https://mcp.supabase.com/mcp\` (remote HTTP, auth via browser OAuth, no env needed)
+  - Supabase Local (CLI / self-hosted) → command: \`npx supabase-mcp\`, config: { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } — ASK the user for these values
   - PostgreSQL → command: \`npx @modelcontextprotocol/server-postgres\`
   - SQLite → command: \`npx @modelcontextprotocol/server-sqlite\`
+
+**Important:** If the user chose Supabase, ASK: "Are you using Supabase Cloud or local (CLI/self-hosted)?"
+- Cloud: use the remote HTTP URL, no config needed
+- Local: ask for SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY, pass them as \`config\` to \`a2p_setup_companions\`
 - **Playwright MCP**: ONLY if a frontend is planned → command: \`npx @playwright/mcp\`
 - **Cloudflare MCP**: If hosting=Cloudflare/Workers → command: \`npx @cloudflare/mcp-server-cloudflare\`
 - **Stripe MCP**: If payment/billing features → command: \`npx @stripe/mcp\`

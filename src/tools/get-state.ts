@@ -31,6 +31,15 @@ export function handleGetState(input: GetStateInput): string {
   // because there's no reliable way to detect whether the restart already happened.
   const restartRequired = false;
 
+  // Companion health note: warn if companions are configured but some may be unavailable
+  let companionHealthNote: string | undefined;
+  if (state.companions.length > 0) {
+    const notInstalled = state.companions.filter(c => !c.installed);
+    if (notInstalled.length > 0) {
+      companionHealthNote = `⚠️  COMPANION HEALTH: ${notInstalled.length} of ${state.companions.length} companion MCP server(s) were not available at setup time: ${notInstalled.map(c => c.name).join(", ")}. If tools from these servers are unavailable, the server may have crashed or is not installed. The user should check /mcp and restart failed servers. This does NOT block the build but reduces code quality and database tooling.`;
+    }
+  }
+
   return JSON.stringify({
     a2pVersion: SERVER_VERSION,
     projectName: state.projectName,
@@ -46,6 +55,7 @@ export function handleGetState(input: GetStateInput): string {
       installed: c.installed,
     })),
     companionReadiness,
+    companionHealthNote,
     restartRequired,
     config: state.config,
     ...(phases && phases.length > 0
