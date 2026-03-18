@@ -376,7 +376,7 @@ A2P enforces [Anthropic's frontend aesthetics guidelines](https://docs.anthropic
 
 ```bash
 rm -rf ~/.npm/_npx                       # clear npx cache
-npm view architect-to-product version    # verify 1.0.9 on registry
+npm view architect-to-product version    # verify 1.0.2 on registry
 ```
 
 If you previously installed globally:
