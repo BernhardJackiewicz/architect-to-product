@@ -1,6 +1,6 @@
 # Validation Summary
 
-> Last validated: 2026-03-17 | A2P v0.1.22 | 1073 tests passing
+> Last validated: 2026-03-18 | A2P v1.0.8 | 1226 tests passing
 
 ## Code-Enforced (verified by 1073 unit/integration tests)
 
@@ -307,3 +307,73 @@ No German remnants. No mixed language. Grep-verified (umlauts, German articles, 
 ### i18n Audit Verdict
 
 **PASS — translation-only, release-safe.**
+
+---
+
+## Hardening Iteration Tests (v1.0.8, 2026-03-18)
+
+5 iterative E2E test cycles covering the full A2P workflow from init to complete. 73 new tests added (68 E2E + 5 shake-break regression).
+
+### Bug Fixes Applied
+
+| Bug | Root Cause | Fix | File |
+|---|---|---|---|
+| **Coverage 0% after Shake & Break** | `refreshSecurityOverview()` ignored `shakeBreakResults` — only counted SAST findings, whitebox findings, and adversarial focus areas | Added `SHAKE_BREAK_TO_DOMAINS` mapping (8 categories → hardening areas), each tested category adds +15 coverage per mapped area | `state-manager.ts` |
+| **Secret Management no tier comparison** | Error messages in `generateDeployment` and `deployToServer` only listed tier names ("env-file, docker-swarm, infisical, external") without pros/cons | Error response now includes `tierComparison` array with 4 entries, each with `pros`, `cons`, `bestFor`, `name`, and `id` fields | `generate-deployment.ts`, `deploy-to-server.ts` |
+| **SSL gate error too generic** | `setPhase("complete")` error said "Cannot complete deployment without SSL verification" — not strong enough to prevent bypass | Error now says "MANDATORY HARD STOP" with step-by-step instructions for SSL verification flow | `state-manager.ts` |
+
+### Shake-Break → Hardening Area Mapping
+
+| ShakeBreakCategory | → HardeningAreaId(s) |
+|---|---|
+| auth_idor | auth-session, data-access |
+| race_conditions | business-logic, data-access |
+| state_manipulation | business-logic, data-access |
+| business_logic | business-logic, vuln-chaining |
+| injection_runtime | input-output, api-surface |
+| token_session | auth-session, infra-secrets |
+| file_upload | input-output, external-integration |
+| webhook_callback | api-surface, external-integration |
+
+### E2E Test Projects (5 iterations)
+
+| # | Project | Tech Stack | Slices | Focus |
+|---|---|---|---|---|
+| 1 | Counter | React/TypeScript, Hetzner | 1 | Full lifecycle baseline, all 3 bug fixes |
+| 2 | Calculator | Vanilla TypeScript, no hosting | 2 | Shake-break → coverage mapping (Bug 1) |
+| 3 | ColorPicker | React/TypeScript, Vercel | 2 | Multi-slice, deploy-to-server tier comparison (Bug 2), completePhase SSL gate |
+| 4 | TodoList API | Express/TypeScript, SQLite, Hetzner | 2 | Stateful app backup gate, Docker Swarm tier, infrastructure + deploy commands |
+| 5 | TicTacToe | React/TypeScript, no hosting | 2 | Final validation of all 3 fixes, both generateDeployment AND deployToServer |
+
+### Gate Verification Results (all 5 iterations)
+
+| Gate | Verified | How |
+|---|---|---|
+| Build Signoff | Yes | All 5 projects require signoff before security |
+| Security Decision | Yes | `completeAdversarialReview` sets pendingSecurityDecision, cleared before phase transition |
+| Security Coverage Dashboard | Yes | `securityOverview.coverageByArea` populated with percentages, shake-break adds +15/area |
+| Secret Management STOP | Yes | `generateDeployment` and `deployToServer` both return 4-tier comparison with pros/cons |
+| Deploy Approval | Yes | Required before `generateDeployment` succeeds |
+| SSL/HTTPS STOP | Yes | `setPhase("complete")` throws "MANDATORY HARD STOP" without SSL verification |
+| Backup Gate (stateful) | Yes | TodoList (SQLite) blocked from deployment without `backupStatus.configured=true` |
+
+### Regression Tests Added
+
+| File | Tests | What |
+|---|---|---|
+| `tests/e2e/full-cycle.test.ts` | 18 | Counter: full init→complete lifecycle |
+| `tests/e2e/calculator-cycle.test.ts` | 12 | Calculator: shake-break coverage mapping |
+| `tests/e2e/colorpicker-cycle.test.ts` | 10 | ColorPicker: multi-slice + deploy-to-server tier gate |
+| `tests/e2e/todolist-cycle.test.ts` | 18 | TodoList: stateful backup gate + infrastructure |
+| `tests/e2e/tictactoe-cycle.test.ts` | 10 | TicTacToe: all 3 bugs verified end-to-end |
+| `tests/tools/guided-hardening.test.ts` | +5 | Shake-break category → coverage regression tests |
+| **Total** | **73** | |
+
+### Build/Test
+
+- `npm run build`: clean
+- `npm test`: 1226/1226 passed (50 test files)
+
+### Verdict
+
+**All 3 bugs fixed and verified across 5 independent E2E project cycles. All MANDATORY HARD STOP gates fire correctly. Coverage dashboard accurately reflects shake-break testing. Secret management tier comparison table shown in both generateDeployment and deployToServer error responses.**
