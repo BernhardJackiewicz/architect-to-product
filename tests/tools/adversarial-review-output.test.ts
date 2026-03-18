@@ -200,7 +200,7 @@ describe("adversarial review structured output", () => {
     expect(state.pendingSecurityDecision!.confirmationCode.length).toBe(6);
   });
 
-  it("confirmationCode is included in completeAdversarialReview output", () => {
+  it("confirmationCode is NOT included in completeAdversarialReview output (prevents agent auto-bypass)", () => {
     setupSecurityPhase();
 
     const result = parse(handleCompleteAdversarialReview({
@@ -209,9 +209,9 @@ describe("adversarial review structured output", () => {
       note: "round 1",
     }));
 
-    expect(result.confirmationCode).toBeDefined();
-    expect(typeof result.confirmationCode).toBe("string");
-    expect(result.confirmationCode.length).toBe(6);
+    expect(result.confirmationCode).toBeUndefined();
+    expect(result.userActionRequired).toBeDefined();
+    expect(result.userActionRequired).toContain("STOP");
   });
 
   it("securityMessage is always present in output", () => {

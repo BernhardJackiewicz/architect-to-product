@@ -373,12 +373,15 @@ export function handleCompleteAdversarialReview(input: CompleteAdversarialReview
       securityOverview,
       recommendations: recommendations.slice(0, 5),
       requiresUserChoice,
-      confirmationCode: state.pendingSecurityDecision?.confirmationCode,
       nextActions,
       recommendedAreas,
       securityMessage,
       note: input.note ?? null,
       hint,
+      userActionRequired: "STOP. Show the user the security decision options above. " +
+        "The user must choose an action (focused-hardening, full-round, shake-break, or continue). " +
+        "Do NOT proceed automatically. Do NOT use the confirmation code yourself. " +
+        "The user must type the confirmation code to proceed — it is displayed in a2p_get_state under pendingSecurityDecision.",
     });
   } catch (err) {
     return JSON.stringify({ error: err instanceof Error ? err.message : String(err) });

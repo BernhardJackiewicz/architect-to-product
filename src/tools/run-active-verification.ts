@@ -53,9 +53,21 @@ export function handleRunActiveVerification(input: RunActiveVerificationInput): 
         message: `Security decision pending after round ${pending.round}.`,
         securityMessage: "Security is a never ending story. You can continue hardening or proceed to deployment. " +
           "Since we keep full history, additional rounds never waste time — each builds on previous findings.",
-        confirmationRequired: `To proceed, the USER must provide the code: ${pending.confirmationCode}`,
-        hint: "Show the user the options and the confirmation code. They must type it to proceed.",
-        pendingDecision: pending,
+        userActionRequired: "STOP. Show the user these options:\n" +
+          "1. focused-hardening — Target a specific weak area\n" +
+          "2. full-round — Run another complete security round\n" +
+          "3. shake-break — Runtime adversarial testing\n" +
+          "4. continue — Proceed to deployment\n\n" +
+          "The USER must choose and type the confirmation code. " +
+          "Do NOT choose for the user. Do NOT auto-fill the confirmation code. " +
+          "The code is visible to the user in a2p_get_state → pendingSecurityDecision.confirmationCode.",
+        pendingDecision: {
+          round: pending.round,
+          setAt: pending.setAt,
+          recommendedAreas: pending.recommendedAreas,
+          availableActions: pending.availableActions,
+          // confirmationCode intentionally NOT included — user must get it from a2p_get_state
+        },
       });
     }
     sm.clearPendingSecurityDecision();
