@@ -439,7 +439,7 @@ export const ProjectStateSchema = z.preprocess(
   sslVerification: z.object({
     domain: z.string().min(1),
     verifiedAt: z.string(),
-    method: z.enum(["caddy-auto", "paas-auto", "manual"]),
+    method: z.enum(["caddy-auto", "paas-auto", "manual", "ip-only-acknowledged"]),
     issuer: z.string().min(1),
     expiresAt: z.string().nullable(),
     autoRenewal: z.boolean(),
