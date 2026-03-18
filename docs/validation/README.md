@@ -20,7 +20,7 @@ A2P includes active claim verification across 5 phases:
 
 ## Current Test Count
 
-**1084 tests passing** (as of version 1.0.1)
+**1228 tests passing** (as of version 1.0.5)
 
 ---
 
@@ -53,7 +53,7 @@ See [README_GAPS.md](README_GAPS.md) for the full claim verification matrix with
 ## Running the Tests
 
 ```bash
-npm test            # Run all 1084 tests
+npm test            # Run all 1228 tests
 npm run typecheck   # Type checking
 npm run build       # Build
 ```
