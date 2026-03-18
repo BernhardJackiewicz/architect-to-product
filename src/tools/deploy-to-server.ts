@@ -164,10 +164,12 @@ export function handleDeployToServer(input: DeployToServerInput): string {
       "After deployment is running and smoke checks pass:\n" +
       (infra.domain
         ? "→ STOP. Run curl checks for HTTPS, redirect, and HSTS. Show the user the results.\n" +
-          "→ Wait for the user to confirm HTTPS works, then call a2p_verify_ssl.\n"
+          "→ Wait for the user to confirm HTTPS works, then call a2p_verify_ssl with method='caddy-auto'.\n"
         : "→ STOP. The app runs on HTTP only — no HTTPS configured.\n" +
           "→ Tell the user: \"HTTPS is not configured. For production, you need a domain + SSL.\"\n" +
-          "→ Ask: \"Do you have a domain? If yes, I'll configure Caddy for HTTPS. If no, I can recommend domain registrars.\"\n") +
+          "→ Ask: \"Do you have a domain? If yes, I'll configure Caddy for HTTPS. If no, I can recommend domain registrars.\"\n" +
+          "→ If the user confirms they want IP-only (no domain): call a2p_verify_ssl with method='ip-only-acknowledged', " +
+          "domain=SERVER_IP, issuer='none (IP-only)', autoRenewal=false, httpsRedirect=false, hstsPresent=false.\n") +
       "\n" +
       "Without a2p_verify_ssl, a2p_set_phase(\"complete\") will FAIL — this is a code-enforced gate.\n" +
       "Do NOT mark deployment as done without addressing SSL with the user.",

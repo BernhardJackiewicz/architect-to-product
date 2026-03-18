@@ -437,6 +437,9 @@ After a successful deployment (app is reachable, smoke checks pass):
 **If the app is deployed with IP only (no domain):**
 → Tell the user: "HTTPS is not configured — the app runs on HTTP only. For production use, you need a domain + SSL certificate."
 → Ask: "Do you have a domain? If yes, I'll configure Caddy for HTTPS. If no, I can recommend domain registrars (INWX, Cloudflare)."
+→ If the user wants to proceed with IP-only (no domain):
+  Call \`a2p_verify_ssl\` with \`method: "ip-only-acknowledged"\`, \`domain: "SERVER_IP"\`, \`issuer: "none (IP-only)"\`, \`autoRenewal: false\`, \`httpsRedirect: false\`, \`hstsPresent: false\`.
+  This records that the user explicitly accepted HTTP-only deployment.
 → Do NOT skip this step. Do NOT mark deployment as complete without addressing SSL.
 → **Without \`a2p_verify_ssl\`, \`a2p_set_phase("complete")\` will fail — code-enforced gate.**
 

@@ -401,17 +401,17 @@ export interface PendingSecurityDecision {
 
 export type SecretManagementTier = "env-file" | "docker-swarm" | "infisical" | "external";
 
-export type SslVerificationMethod = "caddy-auto" | "paas-auto" | "manual";
+export type SslVerificationMethod = "caddy-auto" | "paas-auto" | "manual" | "ip-only-acknowledged";
 
 export interface SslVerification {
-  domain: string;
+  domain: string;            // IP address or domain name
   verifiedAt: string;
   method: SslVerificationMethod;
-  issuer: string;           // "Let's Encrypt", "Cloudflare", "Vercel", etc.
-  expiresAt: string | null; // null for PaaS
-  autoRenewal: boolean;     // true for Caddy + all PaaS
-  httpsRedirect: boolean;   // HTTP → HTTPS verified
-  hstsPresent: boolean;     // Strict-Transport-Security header
+  issuer: string;           // "Let's Encrypt", "Cloudflare", "Vercel", "none (IP-only)", etc.
+  expiresAt: string | null; // null for PaaS or IP-only
+  autoRenewal: boolean;     // true for Caddy + all PaaS, false for IP-only
+  httpsRedirect: boolean;   // HTTP → HTTPS verified (false for IP-only)
+  hstsPresent: boolean;     // Strict-Transport-Security header (false for IP-only)
 }
 
 export type SecurityReentryReason = "security_only" | "post_deploy" | "post_complete";
