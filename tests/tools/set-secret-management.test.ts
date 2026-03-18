@@ -126,7 +126,9 @@ describe("secret management gate enforcement", () => {
 
     const result = parse(handleGenerateDeployment({ projectPath: dir }));
     expect(result.error).toContain("Secret management tier");
-    expect(result.error).toContain("a2p_set_secret_management");
+    expect(result.userActionRequired).toContain("a2p_set_secret_management");
+    expect(result.tierComparison).toBeDefined();
+    expect(result.tierComparison.length).toBe(4);
   });
 
   it("generate-deployment passes after setting tier", () => {

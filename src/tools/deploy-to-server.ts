@@ -25,8 +25,37 @@ export function handleDeployToServer(input: DeployToServerInput): string {
 
   if (!state.secretManagementTier) {
     return JSON.stringify({
-      error: "Secret management tier not chosen. Call a2p_set_secret_management first. " +
-        "Options: env-file, docker-swarm, infisical, external.",
+      error: "Secret management tier not chosen. This is a MANDATORY HARD STOP.",
+      userActionRequired: "## MANDATORY HARD STOP — Secret Management Tier Required\n\n" +
+        "You MUST show the user a comparison table of ALL 4 tiers BEFORE they choose.\n" +
+        "Do NOT pick a tier yourself. Do NOT default to any tier.\n\n" +
+        "After the user chooses, call a2p_set_secret_management with their choice.",
+      tierComparison: [
+        {
+          tier: 1, id: "env-file", name: ".env file",
+          bestFor: "MVP, sandbox, solo developer",
+          pros: ["Zero setup, works everywhere", "No external dependencies"],
+          cons: ["Plaintext on disk", "No audit trail", "No rotation", "Leaked SSH = leaked secrets"],
+        },
+        {
+          tier: 2, id: "docker-swarm", name: "Docker Swarm secrets",
+          bestFor: "Single VPS, 1-5 services, no compliance requirements",
+          pros: ["Encrypted at rest in Swarm Raft log", "Zero cost, no external dependency"],
+          cons: ["Requires Swarm mode (docker stack deploy)", "No web UI, no audit trail"],
+        },
+        {
+          tier: 3, id: "infisical", name: "Infisical",
+          bestFor: "Production with team, audit requirements, secret rotation",
+          pros: ["Web UI, audit trail, rotation", "Secrets never on disk", "Free tier: 3 projects"],
+          cons: ["External dependency (API at startup)", "Self-hosting adds complexity"],
+        },
+        {
+          tier: 4, id: "external", name: "Vault / AWS SM / Doppler",
+          bestFor: "Enterprise, compliance-mandated",
+          pros: ["Full dynamic secrets + rotation"],
+          cons: ["Significant setup and ops cost"],
+        },
+      ],
     });
   }
 

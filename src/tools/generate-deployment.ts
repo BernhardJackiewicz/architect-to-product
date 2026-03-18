@@ -25,9 +25,37 @@ export function handleGenerateDeployment(input: GenerateDeploymentInput): string
 
   if (!state.secretManagementTier) {
     return JSON.stringify({
-      error: "Secret management tier not chosen. Call a2p_set_secret_management first. " +
-        "Options: env-file, docker-swarm, infisical, external. " +
-        "This is a mandatory decision — ask the user which tier fits their project.",
+      error: "Secret management tier not chosen. This is a MANDATORY HARD STOP.",
+      userActionRequired: "## MANDATORY HARD STOP — Secret Management Tier Required\n\n" +
+        "You MUST show the user a comparison table of ALL 4 tiers BEFORE they choose.\n" +
+        "Do NOT pick a tier yourself. Do NOT default to any tier.\n\n" +
+        "After the user chooses, call a2p_set_secret_management with their choice.",
+      tierComparison: [
+        {
+          tier: 1, id: "env-file", name: ".env file",
+          bestFor: "MVP, sandbox, solo developer",
+          pros: ["Zero setup, works everywhere", "No external dependencies"],
+          cons: ["Plaintext on disk", "No audit trail", "No rotation", "Leaked SSH = leaked secrets"],
+        },
+        {
+          tier: 2, id: "docker-swarm", name: "Docker Swarm secrets",
+          bestFor: "Single VPS, 1-5 services, no compliance requirements",
+          pros: ["Encrypted at rest in Swarm Raft log", "Zero cost, no external dependency", "Not in docker inspect or image layers"],
+          cons: ["Requires Swarm mode (docker stack deploy replaces docker compose up)", "No web UI, no audit trail", "Manual CLI management"],
+        },
+        {
+          tier: 3, id: "infisical", name: "Infisical",
+          bestFor: "Production with team, audit requirements, secret rotation",
+          pros: ["Centralized management with web UI", "Audit trail + secret rotation", "Secrets never on disk — fetched at runtime", "Free tier: 3 projects, 5 identities"],
+          cons: ["External dependency (API call at startup)", "Machine Identity clientSecret still needs secure storage", "Self-hosting adds ops complexity"],
+        },
+        {
+          tier: 4, id: "external", name: "Vault / AWS Secrets Manager / Doppler",
+          bestFor: "Enterprise, compliance-mandated environments",
+          pros: ["Full dynamic secrets + rotation", "Compliance-grade audit trail"],
+          cons: ["Significant setup and ops cost", "Provider lock-in"],
+        },
+      ],
     });
   }
 
