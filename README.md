@@ -356,6 +356,7 @@ A2P enforces [Anthropic's frontend aesthetics guidelines](https://docs.anthropic
 | Version | Highlights |
 |---|---|
 | **1.0.10** | Companion `config` written as `env` block in `.mcp.json` (fixes Supabase MCP crash). Supabase Cloud vs Local onboarding. Companion health warnings in `a2p_get_state`. |
+| **1.0.5–1.0.9** | Gate hardening: mandatory hard stops for SSL, secret management, and security decisions. Anthropic frontend aesthetics enforcement for UI slices. IP-only SSL path. E2E full-cycle tests. Coverage dashboard at security gate. Docs unified to English. |
 | **1.0.4** | SSL/HTTPS verification gate (`a2p_verify_ssl`). Deployment and phase completion blocked without SSL proof. |
 | **1.0.3** | SAST excludes build artifacts. Finding dedup fix. Secret management tool (`a2p_set_secret_management`). Adversarial review requires confirmation code. |
 | **1.0.2** | README restructured. Tool count corrected to 27. Upgrade notes added. |
