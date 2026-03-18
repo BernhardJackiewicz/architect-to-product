@@ -44,6 +44,17 @@ Prioritize the review by: Attack Surface × Exploitability × Business Impact.
 
 ## Phase 1: Automated Scans
 
+### SAST Staleness Check — skip if unchanged
+Before running SAST, check \`a2p_get_state\`:
+- \`lastFullSastAt\` — timestamp of last full SAST scan
+- \`lastSecurityRelevantChangeAt\` — timestamp of last code change
+
+**If \`lastFullSastAt\` is AFTER \`lastSecurityRelevantChangeAt\` (or no changes at all): SKIP the SAST scan.**
+Re-running SAST on unchanged code is wasted time. Tell the user: "SAST already up-to-date, no code changes since last scan."
+Only re-run if code actually changed since the last full scan.
+
+**Note:** This only applies to SAST (static analysis). Whitebox audit and adversarial review ALWAYS make sense regardless of code changes — they build on cumulative history, explore new attack vectors, and cover areas not yet reviewed. Check \`securityOverview.coverageByArea\` to find under-reviewed areas.
+
 ### Prefer Semgrep MCP (if Semgrep Pro MCP available)
 If the Semgrep MCP is configured (requires Semgrep Pro Engine), prefer it:
 - \`semgrep_scan\` for the full codebase scan
@@ -159,9 +170,18 @@ Normalize findings to: **Surface** → **Exploit Path** → **Impact** → **Evi
 Even if the user previously said "do everything" — this checkpoint is NOT negotiable.
 
 After \`a2p_complete_adversarial_review\` returns, a pending security decision is set.
-→ STOP. Show the user the recommended hardening areas and ALL available actions:
-1. **focused-hardening** — Target a specific weak area
-2. **full-round** — Run another complete security round
+
+→ STOP. Show the user a **coverage dashboard** from \`a2p_get_state\` → \`securityOverview.coverageByArea\`:
+For each area, show: **area name** — **coverageEstimate%** — **findingCount findings**
+Only show areas that are relevant (coverageEstimate < 100 or findingCount > 0).
+Example format:
+- auth-session: 0% (0 findings) ← not yet reviewed
+- input-output: 40% (2 findings)
+- data-access: 20% (1 finding)
+
+Then show ALL available actions:
+1. **focused-hardening** — Target a specific weak area (show which areas have lowest coverage)
+2. **full-round** — Run another complete security round (all 25 domains)
 3. **shake-break** — Runtime adversarial testing
 4. **continue** — Proceed to Active Verification and then deployment
 

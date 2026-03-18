@@ -53,11 +53,13 @@ export function handleRunActiveVerification(input: RunActiveVerificationInput): 
       userActionRequired: "## MANDATORY HARD STOP — Security Decision Required\n\n" +
         "This checkpoint is NOT disableable. This checkpoint is NOT negotiable.\n" +
         "Even if the user previously said \"do everything\" — you MUST stop here.\n\n" +
-        "STOP. Show the user these options:\n" +
-        "1. focused-hardening — Target a specific weak area\n" +
-        "2. full-round — Run another complete security round\n" +
-        "3. shake-break — Runtime adversarial testing\n" +
-        "4. continue — Proceed to deployment\n\n" +
+        "STOP. Show the user:\n" +
+        "1. The COVERAGE DASHBOARD from a2p_get_state → securityOverview.coverageByArea (name, %, findings).\n" +
+        "2. These options:\n" +
+        "   - focused-hardening — Target a specific weak area (show lowest coverage areas)\n" +
+        "   - full-round — Run another complete security round\n" +
+        "   - shake-break — Runtime adversarial testing\n" +
+        "   - continue — Proceed to deployment\n\n" +
         "The USER must choose. Do NOT choose for the user. Do NOT call a2p_acknowledge_security_decision autonomously.\n" +
         "Wait for the user to explicitly state their choice, then call a2p_acknowledge_security_decision with that action.",
       pendingDecision: {
