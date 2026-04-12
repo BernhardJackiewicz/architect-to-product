@@ -30,9 +30,11 @@ Break the architecture into ordered vertical slices, each a deployable feature u
 
 ### 2. Build Loop
 
-Evidence-gated slices: RED (write tests) → GREEN (minimal implementation, requires passing tests) → REFACTOR (clean up) → SAST (security scan required) → DONE (requires passing tests).
+Native flow with code-enforced hardening: REQUIREMENT HARDENING (`a2p_harden_requirements`) → TEST HARDENING (`a2p_harden_tests`) → PLAN HARDENING (`a2p_harden_plan` for 1–3 adversarial rounds + finalize with a structured `finalPlan`) → READY_FOR_RED (`a2p_update_slice status=ready_for_red`, A2P captures a baseline commit or file-hash snapshot) → TEST-FIRST GUARD (`a2p_verify_test_first`: diff-classifies changed files, requires ≥1 test file touched, 0 production files touched, exit code ≠ 0) → RED → GREEN (requires passing tests) → REFACTOR → SAST (`a2p_run_sast`) → COMPLETION REVIEW LOOP (`a2p_completion_review`: A2P runs an automated stub scan of the diff since baseline and a plan-compliance report against `finalPlan.expectedFiles` + `interfacesToChange`; verdict consistency is code-enforced; NOT_COMPLETE loops the slice back through `completion_fix` with a refreshed baseline) → DONE (requires a COMPLETE review fresher than the latest test and SAST run, with clean automated stub signals and `planCompliance.verdict="ok"`).
 
 Frontend slices with `hasUI: true` get visual verification via Playwright between GREEN and REFACTOR — when `uiVerification` is on (default for frontend projects), the human reviews screenshots before proceeding. Configurable review checkpoints (`oversight.sliceReview`: `off`, `all`, `ui-only`) pause after slices for human approval. Domain logic triggers a WebSearch step before tests to verify facts (tax rates, regulations, standards). Quality audits run every ~5-10 commits to catch TODOs, debug artifacts, hardcoded secrets, and test coverage gaps. **Code review** checks cross-slice consistency before build signoff. **Mandatory build signoff** after all slices are done — you verify the product works before spending tokens on audit and security. **Structured build log** tracks every tool run with log levels, duration, status, run correlation, and secret redaction — queryable by phase, slice, level, time range, or errors.
+
+A **bootstrap slice** (exactly one per project, marked `bootstrap: true` via `a2p_create_build_plan` or `a2p_add_slice`) runs a legacy flow that skips the hardening triad and the test-first guard. This exists so A2P's own self-rebuild can introduce these tools. The bootstrap slot is locked permanently once the bootstrap slice reaches `done` or any non-bootstrap slice advances past `pending`.
 
 ### 3. Security Gate
 
@@ -60,21 +62,42 @@ Mandatory deploy approval before generating configs. Secret management tier must
 
 ---
 
-## Slice TDD Cycle
+## Slice Native Flow
 
-Each feature ("slice") follows an evidence-gated TDD cycle:
+Each slice follows a state machine with eleven steps, all enforced in code:
 
 ```
-RED → GREEN → REFACTOR → SAST → DONE
+pending
+  → (a2p_harden_requirements, a2p_harden_tests, a2p_harden_plan + finalize)
+  → ready_for_red   (baseline commit / file-hash snapshot captured)
+  → (a2p_verify_test_first: diff + classify + failing-run check)
+  → red
+  → green           (requires passing tests)
+  → refactor
+  → sast            (requires a2p_run_sast)
+  → (a2p_completion_review: stub scan + plan compliance + verdict consistency)
+  → done            (requires COMPLETE review fresher than latest test + sast)
 ```
 
-1. **Red** — Write failing tests that define what the feature should do. No production code yet.
-2. **Green** — Minimal implementation to make tests pass. Requires passing test evidence.
-3. **Refactor** — Clean up while keeping tests green.
-4. **SAST** — Static analysis scan for security vulnerabilities.
-5. **Done** — Tests pass again after refactoring. The slice is complete.
+If a completion review verdicts NOT_COMPLETE, the slice transitions to `completion_fix`, A2P refreshes the baseline and clears the guard, and the cycle resumes at `a2p_verify_test_first` against the fresh baseline.
 
-Each transition is evidence-gated — enforced in code, not just in prompts. You can't skip to "green" without test results. You can't skip to "done" without passing tests.
+1. **Requirement hardening** — `a2p_harden_requirements` records the slice's goal, non-goals, affected components, assumptions, risks, and the final acceptance criteria (which overwrite the slice's AC and cascade-invalidate any prior test/plan hardening).
+2. **Test hardening** — `a2p_harden_tests` maps every final AC to ≥1 test and lists positive/negative/edge/regression cases, additional concerns, and a done metric. Integration/UI slices must mention at least one real-service / integration / playwright / fixture / contract concern; the tool hard-rejects otherwise.
+3. **Plan hardening** — `a2p_harden_plan` runs 1–3 adversarial rounds (strict sequential). Round 1 requires an initial plan. Finalize with a structured `finalPlan` containing `touchedAreas`, `expectedFiles`, `interfacesToChange`, `invariantsToPreserve`, `risks`, and `narrative`. Plan hardening cannot be finalized on round 1 unless `improvementsFound=false`.
+4. **Ready for red** — `a2p_update_slice status=ready_for_red` captures a baseline (git HEAD or file-hash snapshot) and clears any stale guard from a previous cycle.
+5. **Test-first guard** — `a2p_verify_test_first` diffs the worktree against the baseline, classifies every changed file against `DEFAULT_TEST_PATTERNS` (or `architecture.testFilePatterns` override), runs the test command, and requires: ≥1 test file changed, 0 production files changed, and exit code ≠ 0. Timeouts record a `fail` verdict without advancing the slice.
+6. **Red** — `a2p_update_slice status=red` requires a passing guard artifact whose `baselineCommit` matches the current baseline.
+7. **Green** — minimal implementation until tests pass. Code-enforced: last test result must be exit 0.
+8. **Refactor** — cleanup with tests still green.
+9. **SAST** — `a2p_run_sast mode=slice` + re-run tests + `a2p_update_slice status=sast`.
+10. **Completion review** — `a2p_completion_review` with full `acCoverage`, `testCoverageQuality`, the six `missing*` lists, `shortcutsOrStubs`, and `stubJustifications` for any automated stub signal A2P detects. A2P also computes `planCompliance` by diffing changed files against `finalPlan.expectedFiles` and by regex-scanning TS/JS exports against `finalPlan.interfacesToChange`. Verdict consistency is code-enforced: any non-"met" AC, non-"deep" coverage, non-"ok" plan compliance, non-empty `missing*`, or unjustified stub signal forces `NOT_COMPLETE`.
+11. **Done** — `a2p_update_slice status=done` requires at least one COMPLETE review whose `createdAt` is strictly ≥ both the latest test-run timestamp and `sastRanAt`, with no NOT_COMPLETE review after it.
+
+Each transition is evidence-gated — enforced in code, not just in prompts. You can't skip to `ready_for_red` without the hardening triad, you can't skip to `red` without a passing test-first guard, you can't mark `done` without a fresh COMPLETE completion review.
+
+### Honest limits
+
+A2P can enforce shape, coverage, ordering, freshness, and diff classification. A2P cannot verify that a plan critique was genuinely adversarial, that your tests are objectively deep, or that a "met" AC verdict is honest. It also cannot stop a sufficiently determined user from mutating `.a2p/state.json` by hand to bypass gates. Treat these gates as strong forcing functions, not absolute proof.
 
 ---
 
@@ -85,6 +108,10 @@ Each transition is evidence-gated — enforced in code, not just in prompts. You
 | **Build gate** | All slices must be `done` | Code-enforced |
 | **Build signoff** | Human confirms product works (`a2p_build_signoff`). Invalidated by slice changes or new test runs | Code-enforced |
 | **E2E gate** | Projects with UI slices + Playwright cannot skip E2E testing | Code-enforced |
+| **Hardening triad gate** | Cannot transition `pending → ready_for_red` without requirements + tests + finalized plan hardening whose hashes match. Cascades invalidate downstream hardening on AC changes | Code-enforced |
+| **Test-first guard gate** | Cannot transition `ready_for_red → red` unless `a2p_verify_test_first` passed against the current baseline: ≥1 test file touched, 0 production files touched, failing test run recorded | Code-enforced |
+| **Completion review gate** | Cannot transition `sast → done` without a COMPLETE completion review fresher than the latest test run and SAST scan, with clean automated stub signals and `planCompliance.verdict="ok"` | Code-enforced |
+| **Bootstrap invariants** | At most one `bootstrap: true` slice per project; must be first in the plan; slot locks after bootstrap done or any non-bootstrap slice leaves pending | Code-enforced |
 | **Evidence gates** | Cannot mark slice `green` without passing tests, `sast` without SAST scan, `done` without passing tests | Code-enforced |
 | **Security gate** | Cannot deploy with open CRITICAL/HIGH SAST findings | Code-enforced |
 | **Full SAST gate** | At least one full SAST scan required before deployment | Code-enforced |

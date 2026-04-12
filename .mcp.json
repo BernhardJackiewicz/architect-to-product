@@ -4,6 +4,13 @@
       "command": "codebase-memory-mcp",
       "args": [],
       "env": {}
+    },
+    "architect-to-product": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "architect-to-product@1.0.9"
+      ]
     }
   }
 }
