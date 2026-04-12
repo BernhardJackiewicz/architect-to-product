@@ -52,10 +52,12 @@ export type Phase =
 
 export type SliceStatus =
   | "pending"
+  | "ready_for_red"
   | "red"
   | "green"
   | "refactor"
   | "sast"
+  | "completion_fix"
   | "done";
 
 export type ReviewMode = "off" | "all" | "ui-only";
@@ -111,6 +113,7 @@ export interface Architecture {
   reviewMode?: ReviewMode; // default: "off" — DEPRECATED: use oversight.sliceReview
   oversight?: OversightConfig; // Granular human oversight configuration
   uiDesign?: UIDesign; // UI description, wireframes, mockups
+  testFilePatterns?: string[]; // project override for test-file glob patterns used by verify-test-first + stub scan
 }
 
 export type Platform = "web" | "mobile" | "cross-platform" | "backend-only";
@@ -123,6 +126,138 @@ export interface TechStack {
   hosting: string | null;
   other: string[];
   platform?: Platform | null;
+}
+
+export interface SliceBaseline {
+  commit: string | null;                 // git HEAD at baseline capture, null if not a git repo
+  fileHashes?: Record<string, string>;   // fallback when commit is null; sha256 per tracked file
+  capturedAt: string;                    // ISO
+}
+
+export interface SliceHardeningRequirements {
+  goal: string;
+  nonGoals: string[];
+  affectedComponents: string[];
+  assumptions: string[];
+  risks: string[];
+  finalAcceptanceCriteria: string[];
+  acHash: string;
+  hardenedAt: string;
+}
+
+export interface SliceTestHardeningEntry {
+  ac: string;
+  tests: string[];
+  rationale: string;
+}
+
+export interface SliceHardeningTests {
+  acToTestMap: SliceTestHardeningEntry[];
+  positiveCases: string[];
+  negativeCases: string[];
+  edgeCases: string[];
+  regressions: string[];
+  additionalConcerns: string[];
+  doneMetric: string;
+  hardenedAt: string;
+  requirementsAcHash: string;
+}
+
+export interface SlicePlanHardeningRound {
+  round: 1 | 2 | 3;
+  initialPlan?: string;          // required round 1 only
+  critique: string;
+  revisedPlan: string;
+  improvementsFound: boolean;
+  createdAt: string;
+}
+
+export interface SliceFinalPlan {
+  touchedAreas: string[];
+  expectedFiles: string[];
+  interfacesToChange: string[];
+  invariantsToPreserve: string[];
+  risks: string[];
+  narrative: string;
+}
+
+export interface SliceHardeningPlan {
+  rounds: SlicePlanHardeningRound[];
+  finalPlan: SliceFinalPlan;
+  /** True when the plan has been explicitly finalized (via finalizeSlicePlan). */
+  finalized: boolean;
+  /** ISO timestamp of finalization; present iff finalized === true. */
+  finalizedAt?: string;
+  requirementsAcHash: string;
+  testsHardenedAt: string;
+}
+
+export type TestFirstGuardVerdict = "pass" | "fail" | "stale";
+
+export interface TestFirstGuardArtifact {
+  redTestsDeclaredAt: string;
+  redTestsRunAt: string | null;
+  redFailingEvidence:
+    | {
+        exitCode: number;
+        testCommand: string;
+        failedCount: number | null;
+      }
+    | null;
+  testFilesTouched: string[];
+  nonTestFilesTouchedBeforeRedEvidence: string[];
+  guardVerdict: TestFirstGuardVerdict;
+  baselineCommit: string | null;
+  baselineCapturedAt: string;
+  evidenceReason: string;
+}
+
+export interface SliceAcCoverageEntry {
+  ac: string;
+  status: "met" | "partial" | "missing";
+  evidence: string;
+}
+
+export interface AutomatedStubSignal {
+  file: string;
+  line: number;
+  pattern: string;
+  snippet: string;
+}
+
+export interface StubJustification {
+  signalIndex: number;
+  reason: string;
+  followupSliceId?: string;
+}
+
+export interface PlanComplianceReport {
+  unplannedFiles: string[];
+  unplannedInterfaceChanges: string[];
+  touchedAreasCovered: boolean;
+  verdict: "ok" | "drift" | "broken";
+  note?: string;
+}
+
+export interface SliceCompletionReview {
+  loop: number;
+  createdAt: string;
+  acCoverage: SliceAcCoverageEntry[];
+  testCoverageQuality: "deep" | "shallow" | "insufficient";
+  planCompliance: PlanComplianceReport;
+  missingFunctionality: string[];
+  missingTests: string[];
+  missingEdgeCases: string[];
+  missingIntegrationWork: string[];
+  missingCleanupRefactor: string[];
+  missingPlanFixes: string[];
+  shortcutsOrStubs: string[];
+  automatedStubSignals: AutomatedStubSignal[];
+  stubJustifications: StubJustification[];
+  verdict: "NOT_COMPLETE" | "COMPLETE";
+  nextActions: string[];
+  supersededByHardeningAt?: string;
+  bootstrapExempt?: boolean;
 }
 
 export interface Slice {
@@ -140,6 +275,21 @@ export interface Slice {
   productPhaseId?: string; // Which phase this slice belongs to
   type?: SliceType; // default "feature"
   hasUI?: boolean; // Does this slice have frontend changes?
+  bootstrap?: boolean;
+  baseline?: SliceBaseline;
+  requirementsHardening?: SliceHardeningRequirements;
+  testHardening?: SliceHardeningTests;
+  planHardening?: SliceHardeningPlan;
+  /**
+   * Newest-first archive of plan-hardening cycles that were superseded by a
+   * cascade re-harden (via a2p_harden_requirements / a2p_harden_tests) or by
+   * a sast→completion_fix transition. Preserves critique + revisedPlan payloads
+   * so the Observer methodology-fidelity audit can still rate the original
+   * rounds after drift recovery.
+   */
+  previousPlanHardenings?: SliceHardeningPlan[];
+  testFirstGuard?: TestFirstGuardArtifact;
+  completionReviews?: SliceCompletionReview[];
 }
 
 export interface TestResult {
@@ -484,6 +634,8 @@ export interface ProjectState {
   secretManagementTier: SecretManagementTier | null;
   sslVerifiedAt: string | null;
   sslVerification: SslVerification | null;
+  bootstrapSliceId: string | null;
+  bootstrapLockedAt: string | null;
   createdAt: string;
   updatedAt: string;
 }

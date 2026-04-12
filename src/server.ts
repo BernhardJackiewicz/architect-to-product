@@ -33,6 +33,12 @@ import { setSecretManagementSchema, handleSetSecretManagement } from "./tools/se
 import { acknowledgeSecurityDecisionSchema, handleAcknowledgeSecurityDecision } from "./tools/acknowledge-security-decision.js";
 import { shakeBreakSetupSchema, handleShakeBreakSetup } from "./tools/shake-break-setup.js";
 import { shakeBreakTeardownSchema, handleShakeBreakTeardown } from "./tools/shake-break-teardown.js";
+import { hardenRequirementsSchema, handleHardenRequirements } from "./tools/harden-requirements.js";
+import { hardenTestsSchema, handleHardenTests } from "./tools/harden-tests.js";
+import { hardenPlanSchema, handleHardenPlan } from "./tools/harden-plan.js";
+import { verifyTestFirstSchema, handleVerifyTestFirst } from "./tools/verify-test-first.js";
+import { completionReviewSchema, handleCompletionReview } from "./tools/completion-review.js";
+import { getSliceHardeningStatusSchema, handleGetSliceHardeningStatus } from "./tools/get-slice-hardening-status.js";
 
 // Prompts
 import { ONBOARDING_PROMPT } from "./prompts/onboarding.js";
@@ -169,7 +175,7 @@ export function createServer(): McpServer {
 
   server.tool(
     "a2p_update_slice",
-    "Update a slice's status (red/green/refactor/sast/done) with transition validation",
+    "Update a slice's status (pending/ready_for_red/red/green/refactor/sast/completion_fix/done) with transition validation and gate enforcement",
     {
       projectPath: updateSliceSchema.shape.projectPath,
       sliceId: updateSliceSchema.shape.sliceId,
@@ -177,6 +183,100 @@ export function createServer(): McpServer {
       files: updateSliceSchema.shape.files,
     },
     wrapTool(handleUpdateSlice as ToolHandler)
+  );
+
+  server.tool(
+    "a2p_harden_requirements",
+    "Record hardened requirements for a slice: goal, non-goals, affected components, assumptions, risks, and the final acceptance criteria (overwrites the slice's AC). Cascades invalidation of test/plan hardening.",
+    {
+      projectPath: hardenRequirementsSchema.shape.projectPath,
+      sliceId: hardenRequirementsSchema.shape.sliceId,
+      goal: hardenRequirementsSchema.shape.goal,
+      nonGoals: hardenRequirementsSchema.shape.nonGoals,
+      affectedComponents: hardenRequirementsSchema.shape.affectedComponents,
+      assumptions: hardenRequirementsSchema.shape.assumptions,
+      risks: hardenRequirementsSchema.shape.risks,
+      finalAcceptanceCriteria: hardenRequirementsSchema.shape.finalAcceptanceCriteria,
+    },
+    wrapTool(handleHardenRequirements as ToolHandler)
+  );
+
+  server.tool(
+    "a2p_harden_tests",
+    "Record hardened test matrix for a slice: every AC mapped to ≥1 test, positive/negative/edge/regression cases, additional concerns, and a done metric. Requires requirementsHardening. Cascades invalidation of plan hardening.",
+    {
+      projectPath: hardenTestsSchema.shape.projectPath,
+      sliceId: hardenTestsSchema.shape.sliceId,
+      acToTestMap: hardenTestsSchema.shape.acToTestMap,
+      positiveCases: hardenTestsSchema.shape.positiveCases,
+      negativeCases: hardenTestsSchema.shape.negativeCases,
+      edgeCases: hardenTestsSchema.shape.edgeCases,
+      regressions: hardenTestsSchema.shape.regressions,
+      additionalConcerns: hardenTestsSchema.shape.additionalConcerns,
+      doneMetric: hardenTestsSchema.shape.doneMetric,
+    },
+    wrapTool(handleHardenTests as ToolHandler)
+  );
+
+  server.tool(
+    "a2p_harden_plan",
+    "Record one adversarial plan-hardening round (1..3 strict sequential). Round 1 requires initialPlan. Finalize with finalize=true and a structured finalPlan on round 3 or on any round where improvementsFound=false.",
+    {
+      projectPath: hardenPlanSchema.shape.projectPath,
+      sliceId: hardenPlanSchema.shape.sliceId,
+      round: hardenPlanSchema.shape.round,
+      initialPlan: hardenPlanSchema.shape.initialPlan,
+      critique: hardenPlanSchema.shape.critique,
+      revisedPlan: hardenPlanSchema.shape.revisedPlan,
+      improvementsFound: hardenPlanSchema.shape.improvementsFound,
+      finalize: hardenPlanSchema.shape.finalize,
+      finalPlan: hardenPlanSchema.shape.finalPlan,
+    },
+    wrapTool(handleHardenPlan as ToolHandler)
+  );
+
+  server.tool(
+    "a2p_verify_test_first",
+    "Verify test-first discipline against the slice's baseline: diff-classifies changed files, requires at least one test file touched, zero production files touched, and a failing test run. Stores a testFirstGuard artifact.",
+    {
+      projectPath: verifyTestFirstSchema.shape.projectPath,
+      sliceId: verifyTestFirstSchema.shape.sliceId,
+      testCommand: verifyTestFirstSchema.shape.testCommand,
+      timeoutMs: verifyTestFirstSchema.shape.timeoutMs,
+    },
+    wrapTool(handleVerifyTestFirst as ToolHandler)
+  );
+
+  server.tool(
+    "a2p_completion_review",
+    "Submit a completion review for a slice in status=sast. A2P computes an automated stub scan and plan-compliance report from the diff since baseline and enforces verdict consistency. NOT_COMPLETE loops back via status=completion_fix with a refreshed baseline.",
+    {
+      projectPath: completionReviewSchema.shape.projectPath,
+      sliceId: completionReviewSchema.shape.sliceId,
+      acCoverage: completionReviewSchema.shape.acCoverage,
+      testCoverageQuality: completionReviewSchema.shape.testCoverageQuality,
+      missingFunctionality: completionReviewSchema.shape.missingFunctionality,
+      missingTests: completionReviewSchema.shape.missingTests,
+      missingEdgeCases: completionReviewSchema.shape.missingEdgeCases,
+      missingIntegrationWork: completionReviewSchema.shape.missingIntegrationWork,
+      missingCleanupRefactor: completionReviewSchema.shape.missingCleanupRefactor,
+      missingPlanFixes: completionReviewSchema.shape.missingPlanFixes,
+      shortcutsOrStubs: completionReviewSchema.shape.shortcutsOrStubs,
+      stubJustifications: completionReviewSchema.shape.stubJustifications,
+      verdict: completionReviewSchema.shape.verdict,
+      nextActions: completionReviewSchema.shape.nextActions,
+    },
+    wrapTool(handleCompletionReview as ToolHandler)
+  );
+
+  server.tool(
+    "a2p_get_slice_hardening_status",
+    "Read-only: structured progress of requirements/tests/plan hardening, test-first guard, baseline, and completion-review history for a slice.",
+    {
+      projectPath: getSliceHardeningStatusSchema.shape.projectPath,
+      sliceId: getSliceHardeningStatusSchema.shape.sliceId,
+    },
+    wrapTool(handleGetSliceHardeningStatus as ToolHandler)
   );
 
   server.tool(

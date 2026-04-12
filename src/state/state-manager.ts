@@ -1,4 +1,5 @@
 import { readFileSync, writeFileSync, mkdirSync, existsSync, copyFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { join, dirname } from "node:path";
 import { ProjectStateSchema } from "./validators.js";
 import { WHITEBOX_CATEGORY_TO_DOMAINS } from "../tools/run-whitebox-audit.js";
@@ -32,8 +33,17 @@ import type {
   SecurityOverviewCoverageEntry,
   SecretManagementTier,
   SslVerification,
+  SliceBaseline,
+  SliceHardeningRequirements,
+  SliceHardeningTests,
+  SlicePlanHardeningRound,
+  SliceFinalPlan,
+  SliceHardeningPlan,
+  TestFirstGuardArtifact,
+  SliceCompletionReview,
 } from "./types.js";
 import { pruneEvents, sanitizeOutput, truncatePreview } from "../utils/log-sanitizer.js";
+import { captureBaselineSnapshot } from "../utils/slice-diff.js";
 
 const STATE_VERSION = 1;
 const STATE_DIR = ".a2p";
@@ -51,18 +61,69 @@ const PHASE_TRANSITIONS: Record<Phase, Phase[]> = {
   complete: ["security"],
 };
 
-/** Valid slice status transitions */
+/**
+ * Valid slice status transitions for slices that go through the full native
+ * hardening + test-first + completion flow. Bootstrap slices use
+ * {@link LEGACY_SLICE_TRANSITIONS} instead.
+ */
 const SLICE_TRANSITIONS: Record<SliceStatus, SliceStatus[]> = {
-  pending: ["red"],
+  pending: ["ready_for_red"],
+  ready_for_red: ["red", "pending"],
   red: ["green"],
   green: ["refactor"],
   refactor: ["sast"],
-  sast: ["done", "red"], // back to red if critical findings
+  sast: ["done", "red", "completion_fix"],
+  completion_fix: ["red"],
   done: [],
 };
 
+/**
+ * Legacy transition table used exclusively by bootstrap slices (one-per-project,
+ * permanent, by design — see the `bootstrap` flag on Slice). Bootstrap slices
+ * skip the hardening triad, the test-first guard, and the completion-review
+ * gate on sast→done. Evidence gates (tests for green/done, SAST for sast)
+ * still fire in both flows.
+ */
+const LEGACY_SLICE_TRANSITIONS: Record<SliceStatus, SliceStatus[]> = {
+  pending: ["red"],
+  ready_for_red: [], // unreachable on legacy
+  red: ["green"],
+  green: ["refactor"],
+  refactor: ["sast"],
+  sast: ["done", "red"],
+  completion_fix: [], // unreachable on legacy
+  done: [],
+};
+
+/**
+ * Return an ISO timestamp strictly greater than `after` (if provided).
+ * Used to guarantee that a newly-recorded evidence artifact (test result or
+ * completion review) has a later timestamp than the opposing artifact it is
+ * ordered against, even when called within the same millisecond.
+ */
+function monotonicTimestamp(after?: string | null): string {
+  const nowIso = new Date().toISOString();
+  if (!after) return nowIso;
+  if (nowIso > after) return nowIso;
+  const bumped = new Date(new Date(after).getTime() + 1).toISOString();
+  return bumped;
+}
+
 export class StateManager {
-  private projectPath: string;
+  public readonly projectPath: string;
+
+  /**
+   * TEST-ONLY escape hatch. When set to true, ALL slices (including
+   * non-bootstrap ones) use the legacy transition table (`pending → red`,
+   * no hardening triad, no test-first guard, no completion-review gate).
+   *
+   * Production code MUST NEVER set this. It exists so the legacy test suite
+   * can exercise state-machine semantics that predate the native flow without
+   * individually rewriting every test to seed hardening + guard + review.
+   *
+   * Bootstrap slices already use the legacy flow regardless of this flag.
+   */
+  static forceLegacyFlowForTests = false;
 
   constructor(projectPath: string) {
     this.projectPath = projectPath;
@@ -140,6 +201,8 @@ export class StateManager {
       secretManagementTier: null,
       sslVerifiedAt: null,
       sslVerification: null,
+      bootstrapSliceId: null,
+      bootstrapLockedAt: null,
       createdAt: now,
       updatedAt: now,
     };
@@ -183,6 +246,16 @@ export class StateManager {
     state.updatedAt = new Date().toISOString();
     const json = JSON.stringify(state, null, 2);
     writeFileSync(this.statePath, json, "utf-8");
+  }
+
+  /**
+   * Stable sha256 of a trimmed acceptance-criteria list. Used by the new
+   * hardening gates to detect drift between requirements, tests, and plans.
+   */
+  computeAcHash(ac: string[]): string {
+    const normalized = ac.map((s) => s.trim()).filter((s) => s.length > 0);
+    const json = JSON.stringify(normalized);
+    return createHash("sha256").update(json).digest("hex");
   }
 
   /** Compute deterministic hash of slice statuses for signoff validation */
@@ -483,14 +556,41 @@ export class StateManager {
       throw new Error(`Slice "${sliceId}" not found`);
     }
 
-    const allowed = SLICE_TRANSITIONS[slice.status];
+    const isBootstrap = slice.bootstrap === true;
+    const legacyFlow = isBootstrap || StateManager.forceLegacyFlowForTests;
+    const table = legacyFlow ? LEGACY_SLICE_TRANSITIONS : SLICE_TRANSITIONS;
+    const allowed = table[slice.status];
     if (!allowed.includes(newStatus)) {
       throw new Error(
         `Slice "${sliceId}": cannot transition from "${slice.status}" to "${newStatus}". Allowed: ${allowed.join(", ") || "none"}`
       );
     }
 
-    // Evidence guard: green requires passing tests
+    // --- Native-flow preconditions (skipped in legacy mode) ---
+    if (!legacyFlow) {
+      if (newStatus === "ready_for_red") {
+        this.requireHardeningTriad(slice);
+      }
+
+      if (newStatus === "red") {
+        if (slice.status === "ready_for_red" || slice.status === "completion_fix") {
+          this.requireTestFirstGuardPassed(slice);
+        }
+      }
+
+      if (newStatus === "completion_fix") {
+        const reviews = slice.completionReviews ?? [];
+        const active = reviews.filter((r) => !r.supersededByHardeningAt);
+        const last = active[active.length - 1];
+        if (!last || last.verdict !== "NOT_COMPLETE") {
+          throw new Error(
+            `Slice "${sliceId}": cannot transition to "completion_fix" without a NOT_COMPLETE completion review. Call a2p_completion_review first.`
+          );
+        }
+      }
+    }
+
+    // --- Evidence guards (apply to both flows) ---
     if (newStatus === "green") {
       if (slice.testResults.length === 0) {
         throw new Error(
@@ -505,7 +605,6 @@ export class StateManager {
       }
     }
 
-    // Evidence guard: sast requires SAST scan
     if (newStatus === "sast") {
       if (!slice.sastRanAt) {
         throw new Error(
@@ -514,7 +613,6 @@ export class StateManager {
       }
     }
 
-    // Evidence guard: done requires passing tests
     if (newStatus === "done") {
       if (slice.testResults.length === 0) {
         throw new Error(
@@ -527,11 +625,56 @@ export class StateManager {
           `Slice "${sliceId}": cannot mark as "done" — last test run failed (exit code ${lastTest.exitCode}). Tests must pass first.`
         );
       }
-      // Tests must be run after SAST scan
       if (slice.sastRanAt) {
         if (lastTest.timestamp < slice.sastRanAt) {
           throw new Error(
             `Slice "${sliceId}": tests must be re-run after SAST scan. Last test: ${lastTest.timestamp}, SAST: ${slice.sastRanAt}.`
+          );
+        }
+      }
+
+      // Completion review gate. Skipped in legacy mode (bootstrap slices and
+      // transitional test-suite opt-in).
+      if (!legacyFlow) {
+        const reviews = (slice.completionReviews ?? []).filter(
+          (r) => !r.supersededByHardeningAt,
+        );
+        const latestComplete = [...reviews]
+          .reverse()
+          .find((r) => r.verdict === "COMPLETE");
+        if (!latestComplete) {
+          throw new Error(
+            `Slice "${sliceId}": cannot mark as "done" without a COMPLETE completion review. Call a2p_completion_review.`
+          );
+        }
+        if (latestComplete.createdAt < lastTest.timestamp) {
+          throw new Error(
+            `Slice "${sliceId}": completion review is stale (recorded ${latestComplete.createdAt} but tests last ran at ${lastTest.timestamp}). Re-run a2p_completion_review.`
+          );
+        }
+        if (slice.sastRanAt && latestComplete.createdAt < slice.sastRanAt) {
+          throw new Error(
+            `Slice "${sliceId}": completion review is stale (recorded ${latestComplete.createdAt} but SAST last ran at ${slice.sastRanAt}). Re-run a2p_completion_review.`
+          );
+        }
+        const indexOfComplete = reviews.lastIndexOf(latestComplete);
+        const tail = reviews.slice(indexOfComplete + 1);
+        if (tail.some((r) => r.verdict === "NOT_COMPLETE")) {
+          throw new Error(
+            `Slice "${sliceId}": a NOT_COMPLETE review was recorded after the latest COMPLETE. Fix, then a2p_completion_review again.`
+          );
+        }
+        if (latestComplete.planCompliance.verdict !== "ok") {
+          throw new Error(
+            `Slice "${sliceId}": latest completion review has planCompliance="${latestComplete.planCompliance.verdict}". Fix drift or re-harden the plan.`
+          );
+        }
+        const unjustified = latestComplete.automatedStubSignals.filter(
+          (_, i) => !latestComplete.stubJustifications.some((j) => j.signalIndex === i),
+        );
+        if (unjustified.length > 0) {
+          throw new Error(
+            `Slice "${sliceId}": ${unjustified.length} automated stub signal(s) are not justified. Re-run a2p_completion_review with stubJustifications.`
           );
         }
       }
@@ -542,11 +685,492 @@ export class StateManager {
       slice.sastRanAt = undefined;
     }
 
+    // Clear guard when dropping back to pending
+    if (newStatus === "pending" && slice.status === "ready_for_red") {
+      slice.testFirstGuard = undefined;
+      slice.baseline = undefined;
+    }
+
+    // --- Side effects: baseline capture ---
+    if (!legacyFlow && newStatus === "ready_for_red") {
+      slice.baseline = captureBaselineSnapshot(this.projectPath);
+      slice.testFirstGuard = undefined; // stale from any previous cycle
+    }
+    if (!legacyFlow && newStatus === "completion_fix") {
+      slice.baseline = captureBaselineSnapshot(this.projectPath);
+      slice.testFirstGuard = undefined;
+      // Drift-recovery unblock (Bug #1): the slice is about to re-walk
+      // red→green→refactor→sast with a fresh plan, so archive the stale
+      // plan-hardening cycle and clear the working slot. That makes a
+      // subsequent a2p_harden_plan round=1 valid and preserves the original
+      // rounds for the Observer methodology-fidelity audit (Bug #3).
+      this.archiveCurrentPlanHardening(slice);
+    }
+
     slice.status = newStatus;
+
+    // Bootstrap lock triggers
+    if (isBootstrap && newStatus === "done") {
+      if (state.bootstrapLockedAt === null) {
+        state.bootstrapLockedAt = new Date().toISOString();
+      }
+    }
+    if (!isBootstrap && slice.status !== "pending") {
+      // Any non-bootstrap slice that has moved out of pending locks the flag.
+      if (state.bootstrapLockedAt === null && state.bootstrapSliceId !== null) {
+        state.bootstrapLockedAt = new Date().toISOString();
+      }
+    }
+
     this.invalidateBuildSignoff(state);
     this.invalidateDeployApproval(state);
     this.setLastSecurityRelevantChange(state);
     this.addEvent(state, state.phase, sliceId, "slice_status", `${sliceId} → ${newStatus}`, { status: "success" });
+    this.write(state);
+    return state;
+  }
+
+  /** Enforce that requirements, tests, and plan hardening are all present and consistent. */
+  private requireHardeningTriad(slice: Slice): void {
+    if (!slice.requirementsHardening) {
+      throw new Error(
+        `Slice "${slice.id}": requirements not hardened. Call a2p_harden_requirements first.`
+      );
+    }
+    if (!slice.testHardening) {
+      throw new Error(
+        `Slice "${slice.id}": tests not hardened. Call a2p_harden_tests.`
+      );
+    }
+    if (slice.testHardening.requirementsAcHash !== slice.requirementsHardening.acHash) {
+      throw new Error(
+        `Slice "${slice.id}": test hardening is stale (acceptance criteria hash drift). Re-run a2p_harden_tests.`
+      );
+    }
+    if (!slice.planHardening) {
+      throw new Error(
+        `Slice "${slice.id}": plan not hardened. Call a2p_harden_plan rounds 1..3 and finalize.`
+      );
+    }
+    if (!slice.planHardening.finalized) {
+      throw new Error(
+        `Slice "${slice.id}": plan hardening not finalized. Call a2p_harden_plan with finalize=true.`
+      );
+    }
+    if (slice.planHardening.requirementsAcHash !== slice.requirementsHardening.acHash) {
+      throw new Error(
+        `Slice "${slice.id}": plan hardening is stale (requirements hash drift). Re-run a2p_harden_plan.`
+      );
+    }
+    if (slice.planHardening.testsHardenedAt !== slice.testHardening.hardenedAt) {
+      throw new Error(
+        `Slice "${slice.id}": plan hardening is stale (tests hash drift). Re-run a2p_harden_plan.`
+      );
+    }
+    const sliceAcHash = this.computeAcHash(slice.acceptanceCriteria);
+    if (sliceAcHash !== slice.requirementsHardening.acHash) {
+      throw new Error(
+        `Slice "${slice.id}": slice.acceptanceCriteria drifted from hardened AC. Re-run a2p_harden_requirements.`
+      );
+    }
+  }
+
+  /** Enforce that a non-bootstrap slice has a passing test-first guard matching its baseline. */
+  private requireTestFirstGuardPassed(slice: Slice): void {
+    if (!slice.testFirstGuard) {
+      throw new Error(
+        `Slice "${slice.id}": test-first guard not verified. Call a2p_verify_test_first before transitioning to red.`
+      );
+    }
+    const g = slice.testFirstGuard;
+    if (g.guardVerdict !== "pass") {
+      throw new Error(
+        `Slice "${slice.id}": test-first guard verdict is "${g.guardVerdict}". Fix the worktree and re-run a2p_verify_test_first.`
+      );
+    }
+    if (!slice.baseline) {
+      throw new Error(
+        `Slice "${slice.id}": missing baseline snapshot. Transition back to pending and re-enter ready_for_red.`
+      );
+    }
+    if ((slice.baseline.commit ?? null) !== g.baselineCommit) {
+      throw new Error(
+        `Slice "${slice.id}": test-first guard is stale (baseline changed). Re-run a2p_verify_test_first.`
+      );
+    }
+    if (g.nonTestFilesTouchedBeforeRedEvidence.length > 0) {
+      throw new Error(
+        `Slice "${slice.id}": production files were touched before RED: ${g.nonTestFilesTouchedBeforeRedEvidence.join(", ")}`
+      );
+    }
+    if (g.testFilesTouched.length === 0) {
+      throw new Error(
+        `Slice "${slice.id}": no test files were touched before RED.`
+      );
+    }
+    if (!g.redFailingEvidence || g.redFailingEvidence.exitCode === 0) {
+      throw new Error(
+        `Slice "${slice.id}": no failing test run recorded. A failing test is required as proof that the test existed before the implementation.`
+      );
+    }
+    // Plan §"ready_for_red → red" precondition (f): the failing test run
+    // referenced by redTestsRunAt must exist in slice.testResults AND be
+    // fresher than baseline.capturedAt. This is a defense-in-depth cross-check
+    // against fabricated / stale guard artifacts.
+    if (g.redTestsRunAt) {
+      const match = slice.testResults.find((tr) => tr.timestamp === g.redTestsRunAt);
+      if (!match) {
+        throw new Error(
+          `Slice "${slice.id}": test-first guard redTestsRunAt=${g.redTestsRunAt} has no matching entry in slice.testResults. Re-run a2p_verify_test_first.`
+        );
+      }
+      if (match.timestamp < slice.baseline.capturedAt) {
+        throw new Error(
+          `Slice "${slice.id}": test-first guard references a test run (${match.timestamp}) older than the baseline (${slice.baseline.capturedAt}). Re-run a2p_verify_test_first.`
+        );
+      }
+    }
+  }
+
+  /**
+   * Archive the current plan-hardening cycle into `previousPlanHardenings[]`
+   * (newest-first) and clear the working slot. No-op if there is no current
+   * plan-hardening. Callers are responsible for appending a `buildHistory`
+   * breadcrumb if they want one — this helper only mutates the slice.
+   *
+   * Used by:
+   *   - `hardenSliceRequirements` cascade (Bug #3 preservation)
+   *   - `hardenSliceTests` cascade (Bug #3 preservation)
+   *   - `setSliceStatus(... → completion_fix)` (Bug #1 deadlock unblock +
+   *     Bug #3 preservation)
+   */
+  private archiveCurrentPlanHardening(slice: Slice): void {
+    if (!slice.planHardening) return;
+    slice.previousPlanHardenings = [
+      slice.planHardening,
+      ...(slice.previousPlanHardenings ?? []),
+    ];
+    slice.planHardening = undefined;
+  }
+
+  /** Record hardened requirements for a slice. Cascades invalidation of downstream hardening. */
+  hardenSliceRequirements(
+    sliceId: string,
+    data: Omit<SliceHardeningRequirements, "acHash" | "hardenedAt">,
+  ): ProjectState {
+    const state = this.read();
+    const slice = state.slices.find((s) => s.id === sliceId);
+    if (!slice) throw new Error(`Slice "${sliceId}" not found`);
+
+    const now = new Date().toISOString();
+    const acHash = this.computeAcHash(data.finalAcceptanceCriteria);
+
+    slice.requirementsHardening = {
+      ...data,
+      acHash,
+      hardenedAt: now,
+    };
+    slice.acceptanceCriteria = [...data.finalAcceptanceCriteria];
+    // Cascade: downstream hardening + guard + reviews are invalidated.
+    // Archive the current plan-hardening cycle (if any) into
+    // previousPlanHardenings[] before clearing so the audit trail survives
+    // (Bug #3 fix).
+    slice.testHardening = undefined;
+    this.archiveCurrentPlanHardening(slice);
+    slice.testFirstGuard = undefined;
+    if (slice.completionReviews && slice.completionReviews.length > 0) {
+      slice.completionReviews = slice.completionReviews.map((r) =>
+        r.supersededByHardeningAt ? r : { ...r, supersededByHardeningAt: now },
+      );
+    }
+
+    this.invalidateBuildSignoff(state);
+    this.setLastSecurityRelevantChange(state);
+    this.addEvent(
+      state,
+      state.phase,
+      sliceId,
+      "slice_status",
+      `${sliceId}: requirements hardened (${data.finalAcceptanceCriteria.length} AC)`,
+      { status: "success" },
+    );
+    this.write(state);
+    return state;
+  }
+
+  /** Record hardened test matrix for a slice. Requires requirementsHardening. Cascades invalidation of plan hardening. */
+  hardenSliceTests(
+    sliceId: string,
+    data: Omit<SliceHardeningTests, "hardenedAt" | "requirementsAcHash">,
+  ): ProjectState {
+    const state = this.read();
+    const slice = state.slices.find((s) => s.id === sliceId);
+    if (!slice) throw new Error(`Slice "${sliceId}" not found`);
+    if (!slice.requirementsHardening) {
+      throw new Error(
+        `Slice "${sliceId}": requirements not hardened. Call a2p_harden_requirements first.`
+      );
+    }
+
+    // Set-equality: every final AC must appear in acToTestMap exactly once.
+    const finalAc = slice.requirementsHardening.finalAcceptanceCriteria;
+    const mapped = new Set(data.acToTestMap.map((e) => e.ac));
+    for (const ac of finalAc) {
+      if (!mapped.has(ac)) {
+        throw new Error(
+          `Slice "${sliceId}": acToTestMap does not cover acceptance criterion "${ac}".`
+        );
+      }
+    }
+    for (const ac of mapped) {
+      if (!finalAc.includes(ac)) {
+        throw new Error(
+          `Slice "${sliceId}": acToTestMap references unknown acceptance criterion "${ac}".`
+        );
+      }
+    }
+
+    const now = new Date().toISOString();
+    slice.testHardening = {
+      ...data,
+      hardenedAt: now,
+      requirementsAcHash: slice.requirementsHardening.acHash,
+    };
+    // Archive any existing plan-hardening before clearing (Bug #3 fix).
+    this.archiveCurrentPlanHardening(slice);
+    slice.testFirstGuard = undefined;
+
+    this.addEvent(
+      state,
+      state.phase,
+      sliceId,
+      "slice_status",
+      `${sliceId}: tests hardened (${data.acToTestMap.length} AC mappings)`,
+      { status: "success" },
+    );
+    this.write(state);
+    return state;
+  }
+
+  /** Append a plan-hardening round for a slice. Requires testHardening. Enforces 1..3 sequential ordering. */
+  appendSlicePlanRound(
+    sliceId: string,
+    round: 1 | 2 | 3,
+    data: Omit<SlicePlanHardeningRound, "round" | "createdAt">,
+  ): ProjectState {
+    const state = this.read();
+    const slice = state.slices.find((s) => s.id === sliceId);
+    if (!slice) throw new Error(`Slice "${sliceId}" not found`);
+    if (!slice.testHardening) {
+      throw new Error(
+        `Slice "${sliceId}": tests not hardened. Call a2p_harden_tests first.`
+      );
+    }
+
+    const existing = slice.planHardening?.rounds ?? [];
+    const expectedNext = (existing.length + 1) as 1 | 2 | 3;
+    if (round !== expectedNext) {
+      throw new Error(
+        `Slice "${sliceId}": plan-hardening round ${round} out of order. Expected round ${expectedNext}.`
+      );
+    }
+    if (round > 3) {
+      throw new Error(`Slice "${sliceId}": plan-hardening capped at round 3.`);
+    }
+    if (round === 1 && !data.initialPlan) {
+      throw new Error(`Slice "${sliceId}": round 1 requires initialPlan.`);
+    }
+    if (round !== 1 && data.initialPlan) {
+      throw new Error(
+        `Slice "${sliceId}": initialPlan only permitted on round 1.`
+      );
+    }
+
+    if (slice.planHardening?.finalized) {
+      throw new Error(
+        `Slice "${sliceId}": plan already finalized. Re-run a2p_harden_tests to start a new plan-hardening cycle.`
+      );
+    }
+
+    const now = new Date().toISOString();
+    const nextRound: SlicePlanHardeningRound = {
+      round,
+      ...(data.initialPlan ? { initialPlan: data.initialPlan } : {}),
+      critique: data.critique,
+      revisedPlan: data.revisedPlan,
+      improvementsFound: data.improvementsFound,
+      createdAt: now,
+    };
+
+    if (slice.planHardening) {
+      slice.planHardening = {
+        ...slice.planHardening,
+        rounds: [...existing, nextRound],
+      };
+    } else {
+      // Placeholder finalPlan until finalize. `finalized: false` is the
+      // explicit not-yet-finalized sentinel; `finalizedAt` is left undefined.
+      // The requireHardeningTriad gate in setSliceStatus checks `finalized`.
+      slice.planHardening = {
+        rounds: [nextRound],
+        finalPlan: {
+          touchedAreas: ["(not yet finalized)"],
+          expectedFiles: ["(not yet finalized)"],
+          interfacesToChange: [],
+          invariantsToPreserve: [],
+          risks: [],
+          narrative: "(not yet finalized)",
+        },
+        finalized: false,
+        requirementsAcHash: slice.requirementsHardening?.acHash ?? "",
+        testsHardenedAt: slice.testHardening.hardenedAt,
+      };
+    }
+
+    this.addEvent(
+      state,
+      state.phase,
+      sliceId,
+      "slice_status",
+      `${sliceId}: plan hardening round ${round} recorded`,
+      { status: "success" },
+    );
+    this.write(state);
+    return state;
+  }
+
+  /** Finalize plan hardening with a structured final plan. */
+  finalizeSlicePlan(sliceId: string, finalPlan: SliceFinalPlan): ProjectState {
+    const state = this.read();
+    const slice = state.slices.find((s) => s.id === sliceId);
+    if (!slice) throw new Error(`Slice "${sliceId}" not found`);
+    if (!slice.planHardening || slice.planHardening.rounds.length === 0) {
+      throw new Error(
+        `Slice "${sliceId}": no plan-hardening rounds to finalize.`
+      );
+    }
+    if (!slice.requirementsHardening || !slice.testHardening) {
+      throw new Error(
+        `Slice "${sliceId}": cannot finalize plan without requirements and test hardening.`
+      );
+    }
+    if (slice.planHardening.finalized) {
+      throw new Error(
+        `Slice "${sliceId}": plan already finalized. Re-run a2p_harden_tests to start a new cycle.`
+      );
+    }
+
+    const lastRound = slice.planHardening.rounds[slice.planHardening.rounds.length - 1];
+    const roundNum = lastRound.round;
+    const improvementsFound = lastRound.improvementsFound;
+
+    const finalizeAllowed =
+      roundNum === 3 ||
+      (roundNum >= 2 && improvementsFound === false) ||
+      (roundNum === 1 && improvementsFound === false);
+    if (!finalizeAllowed) {
+      throw new Error(
+        `Slice "${sliceId}": finalize not allowed on round ${roundNum} when improvementsFound=${improvementsFound}. Run another round or declare no improvements.`
+      );
+    }
+
+    slice.planHardening = {
+      ...slice.planHardening,
+      finalPlan,
+      finalized: true,
+      finalizedAt: new Date().toISOString(),
+      requirementsAcHash: slice.requirementsHardening.acHash,
+      testsHardenedAt: slice.testHardening.hardenedAt,
+    };
+
+    this.addEvent(
+      state,
+      state.phase,
+      sliceId,
+      "slice_status",
+      `${sliceId}: plan hardening finalized (round ${roundNum})`,
+      { status: "success" },
+    );
+    this.write(state);
+    return state;
+  }
+
+  /**
+   * Capture a fresh baseline snapshot for a slice and clear any stale
+   * test-first guard. Exposed as a public method per the plan; also used as
+   * a side effect of the `ready_for_red` and `completion_fix` transitions in
+   * setSliceStatus.
+   */
+  captureSliceBaseline(sliceId: string): ProjectState {
+    const state = this.read();
+    const slice = state.slices.find((s) => s.id === sliceId);
+    if (!slice) throw new Error(`Slice "${sliceId}" not found`);
+    slice.baseline = captureBaselineSnapshot(this.projectPath);
+    slice.testFirstGuard = undefined;
+    this.addEvent(
+      state,
+      state.phase,
+      sliceId,
+      "slice_status",
+      `${sliceId}: baseline captured (${slice.baseline.commit ? "git" : "file-hash"})`,
+      { status: "success" },
+    );
+    this.write(state);
+    return state;
+  }
+
+  /** Store the test-first guard artifact. */
+  storeTestFirstGuard(sliceId: string, artifact: TestFirstGuardArtifact): ProjectState {
+    const state = this.read();
+    const slice = state.slices.find((s) => s.id === sliceId);
+    if (!slice) throw new Error(`Slice "${sliceId}" not found`);
+    slice.testFirstGuard = artifact;
+    this.addEvent(
+      state,
+      state.phase,
+      sliceId,
+      "slice_status",
+      `${sliceId}: test-first guard ${artifact.guardVerdict}`,
+      { status: artifact.guardVerdict === "pass" ? "success" : "failure" },
+    );
+    this.write(state);
+    return state;
+  }
+
+  /** Append a completion review to the slice audit log. */
+  recordSliceCompletionReview(
+    sliceId: string,
+    review: Omit<SliceCompletionReview, "loop" | "createdAt">,
+  ): ProjectState {
+    const state = this.read();
+    const slice = state.slices.find((s) => s.id === sliceId);
+    if (!slice) throw new Error(`Slice "${sliceId}" not found`);
+
+    const active = (slice.completionReviews ?? []).filter((r) => !r.supersededByHardeningAt);
+    const nextLoop = active.length + 1;
+    // Ensure monotonic ordering vs latest test and SAST run so the freshness
+    // gate in setSliceStatus("done") can compare timestamps reliably.
+    const latestTest = slice.testResults[slice.testResults.length - 1];
+    const latestEvidenceAt = [latestTest?.timestamp, slice.sastRanAt]
+      .filter((x): x is string => !!x)
+      .sort()
+      .pop();
+    const createdAt = monotonicTimestamp(latestEvidenceAt);
+    const entry: SliceCompletionReview = {
+      ...review,
+      loop: nextLoop,
+      createdAt,
+    };
+    slice.completionReviews = [...(slice.completionReviews ?? []), entry];
+
+    this.addEvent(
+      state,
+      state.phase,
+      sliceId,
+      "slice_status",
+      `${sliceId}: completion review loop ${nextLoop} = ${review.verdict}`,
+      { status: review.verdict === "COMPLETE" ? "success" : "warning" },
+    );
     this.write(state);
     return state;
   }
@@ -575,13 +1199,69 @@ export class StateManager {
   /** Add slices to the build plan */
   setSlices(slices: Slice[]): ProjectState {
     const state = this.read();
+    this.enforceBootstrapInvariants(state, slices);
     state.slices = slices;
     state.currentSliceIndex = slices.length > 0 ? 0 : -1;
+
+    const bootstrapSlice = slices.find((s) => s.bootstrap === true);
+    if (bootstrapSlice && state.bootstrapSliceId === null) {
+      state.bootstrapSliceId = bootstrapSlice.id;
+    }
+
     this.invalidateBuildSignoff(state);
     this.setLastSecurityRelevantChange(state);
     this.addEvent(state, state.phase, null, "slices_set", `${slices.length} slices created`, { status: "success" });
     this.write(state);
     return state;
+  }
+
+  /**
+   * Enforce the at-most-one-bootstrap-slice invariant:
+   *   - Lock must be null if any incoming slice carries bootstrap=true.
+   *   - At most one slice across the plan may be bootstrap.
+   *   - The bootstrap slice must be the first slice in the list.
+   *   - If a bootstrap slice already exists in state and the incoming list tries
+   *     to add a different bootstrap slice, reject.
+   */
+  private enforceBootstrapInvariants(state: ProjectState, incoming: Slice[]): void {
+    const bootstrapIncoming = incoming.filter((s) => s.bootstrap === true);
+    if (bootstrapIncoming.length === 0) return;
+
+    // Lock is always checked first, even when multiple bootstrap slices are
+    // submitted — the lock is the higher-level invariant.
+    if (state.bootstrapLockedAt !== null) {
+      throw new Error(
+        `Bootstrap phase locked (lockedAt=${state.bootstrapLockedAt}): cannot register a bootstrap slice.`
+      );
+    }
+    if (bootstrapIncoming.length > 1) {
+      throw new Error(
+        `Cannot register more than one bootstrap slice. Found: ${bootstrapIncoming.map((s) => s.id).join(", ")}`
+      );
+    }
+    const bs = bootstrapIncoming[0];
+    if (
+      state.bootstrapSliceId !== null &&
+      state.bootstrapSliceId !== bs.id
+    ) {
+      throw new Error(
+        `Bootstrap slice already claimed by "${state.bootstrapSliceId}". Cannot register a second bootstrap slice.`
+      );
+    }
+    if (incoming[0]?.id !== bs.id) {
+      throw new Error(
+        `Bootstrap slice "${bs.id}" must be the first slice in the plan.`
+      );
+    }
+    // The plan must be untouched: no existing slice may be past pending.
+    const alreadyProgressed = state.slices.find(
+      (s) => s.status !== "pending" && s.id !== bs.id,
+    );
+    if (alreadyProgressed) {
+      throw new Error(
+        `Cannot register a bootstrap slice: slice "${alreadyProgressed.id}" has already progressed (status=${alreadyProgressed.status}).`
+      );
+    }
   }
 
   /** Move to the next slice */
@@ -619,6 +1299,20 @@ export class StateManager {
     const state = this.read();
     const slice = state.slices.find((s) => s.id === sliceId);
     if (!slice) throw new Error(`Slice "${sliceId}" not found`);
+
+    // Ensure the new test timestamp is strictly later than any prior completion
+    // review, so the freshness gate in sast→done reliably catches tests added
+    // after a review was recorded.
+    const activeReviews = (slice.completionReviews ?? []).filter(
+      (r) => !r.supersededByHardeningAt,
+    );
+    const latestReviewAt = activeReviews[activeReviews.length - 1]?.createdAt;
+    if (latestReviewAt && result.timestamp <= latestReviewAt) {
+      result = {
+        ...result,
+        timestamp: monotonicTimestamp(latestReviewAt),
+      };
+    }
 
     slice.testResults.push(result);
     this.invalidateBuildSignoff(state);
@@ -1012,9 +1706,21 @@ export class StateManager {
   /** Append slices to the existing build plan (for multi-phase) */
   addSlices(slices: Slice[]): ProjectState {
     const state = this.read();
+
+    // Only check the invariants against the NEW slices. enforceBootstrapInvariants
+    // early-returns when there is no bootstrap flag in the incoming batch, so
+    // appending non-bootstrap slices after lock is allowed.
+    this.enforceBootstrapInvariants(state, slices);
+
     const firstNewIndex = state.slices.length;
     state.slices.push(...slices);
     state.currentSliceIndex = firstNewIndex;
+
+    const bootstrapSlice = slices.find((s) => s.bootstrap === true);
+    if (bootstrapSlice && state.bootstrapSliceId === null) {
+      state.bootstrapSliceId = bootstrapSlice.id;
+    }
+
     this.invalidateBuildSignoff(state);
     this.setLastSecurityRelevantChange(state);
     this.addEvent(state, state.phase, null, "slices_added", `${slices.length} slices appended (total: ${state.slices.length})`, { status: "success" });
