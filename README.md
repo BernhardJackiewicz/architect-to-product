@@ -1,9 +1,9 @@
 # A2P — Architect-to-Product
 AI engineering framework delivered as an MCP server. Turns AI-generated code into production-ready software with evidence-gated TDD, security review, backup strategy, and deployment automation.
 
-**30 MCP tools · 1138 tests · Architecture → Plan → Build → Audit → Security → Deploy**
+**37 MCP tools · 1351 tests · Dogfood-validated (153/158 rubric, 50/50 adversarial) · Architecture → Plan → Build → Audit → Security → Deploy**
 
-[![npm version](https://img.shields.io/npm/v/architect-to-product)](https://www.npmjs.com/package/architect-to-product) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) [![Tests: 1097 passing](https://img.shields.io/badge/tests-1097%20passing-brightgreen)](docs/validation/) [![TypeScript](https://img.shields.io/badge/TypeScript-blue)](tsconfig.json)
+[![npm version](https://img.shields.io/npm/v/architect-to-product)](https://www.npmjs.com/package/architect-to-product) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) [![Tests: 1351 passing](https://img.shields.io/badge/tests-1351%20passing-brightgreen)](docs/validation/) [![Dogfood: 97%](https://img.shields.io/badge/dogfood-153%2F158%20(97%25)-blue)](#dogfood-validation) [![TypeScript](https://img.shields.io/badge/TypeScript-blue)](tsconfig.json)
 
 ---
 
@@ -50,18 +50,17 @@ A2P drives software through a gated lifecycle:
 
 **Architecture → Plan → Build → Audit → Security → Deploy**
 
-During build, each feature (called a "slice") follows an evidence-gated TDD cycle:
+During build, each feature (called a "slice") runs through the **native flow** — every step enforced in code, with a concrete tool call behind each gate:
 
-**RED → GREEN → REFACTOR → SAST → DONE**
+**requirement hardening → test hardening → plan hardening (1–3 adversarial rounds + finalize) → ready_for_red → test-first guard → RED → GREEN → REFACTOR → SAST → completion review loop → DONE**
 
 That means:
-- tests define the requirement first
-- implementation must prove it passes
-- refactoring must preserve green tests
-- security scanning is part of the slice workflow
-- **state transitions are enforced in code, not just described in prompts**
+- Acceptance criteria, test matrix, and implementation plan are captured as structured artifacts with cascading hash invalidation before any code is written.
+- A test-first guard (`a2p_verify_test_first`) diff-classifies the worktree against a baseline commit or file-hash snapshot and requires ≥1 test file touched, 0 production files touched, and a failing test run — it won't let the slice reach RED otherwise.
+- A completion review loop (`a2p_completion_review`) runs after SAST. A2P auto-scans the diff for stub signals, diff-checks the implementation against `finalPlan.expectedFiles` and `interfacesToChange`, and enforces verdict consistency: any non-"met" AC, non-"deep" coverage, non-"ok" plan compliance, or unjustified stub signal forces NOT_COMPLETE and loops the slice back through `completion_fix` with a refreshed baseline.
+- **State transitions are enforced in code, not just described in prompts.**
 
-The AI agent cannot skip a gate. If it tries to advance without meeting the conditions, the tool throws an error. There is no way around it.
+The AI agent cannot skip a gate. If it tries to advance without meeting the conditions, the state machine throws an error pointing at the missing tool call. The exception is a one-per-project **bootstrap slice** (marked `bootstrap: true`) that runs a legacy flow and is used only for A2P's own self-rebuild.
 
 ### Lifecycle overview
 
@@ -158,6 +157,61 @@ A2P includes active claim verification across the full pipeline.
 
 → Full validation results: [docs/validation/](docs/validation/)
 
+### Dogfood validation
+
+A2P's native flow has been validated end-to-end by running A2P against itself in a controlled sandbox with hidden adversarial test suites and independent observer scoring.
+
+| Metric | Run 1 | Run 2 (after bug fixes) |
+|---|---|---|
+| Hidden adversarial tests | 50/50 (100%) | 43/44 (98%) |
+| Rubric total (strict) | 146/158 (92.4%) | 153/158 (97%) |
+| Gate compliance (10 checks/slice) | 10/10 every slice | 10/10 every slice |
+| Schublade-2 trap classes caught | 6/6 | 5/6 clean + 1 partial |
+| Agent beat reference implementation | 3/6 scenarios | — |
+
+**6 scenarios tested**: pure function (divide), HTTP integration (webhook), date parser (10 edge-case pitfalls), retry with abort (plan critique depth), median (semantic correctness trap), trivial constant (over-engineering trap).
+
+**Key finding**: The hardening triad (requirements → tests → plan) is load-bearing, not ceremonial. Agents consistently anticipated edge cases that were absent from the reference implementations — including signed-zero IEEE-754 semantics, abort-mid-delay race conditions, year-0 Date.UTC quirks, and the even-length median trap. The 40–60% Schublade-2 improvement estimate from [docs/QUALITY-IMPACT.md](docs/QUALITY-IMPACT.md) is supported by the evidence; observed capture rate is closer to 60–70%.
+
+**Real-world trial**: One slice (German phone number normalizer) built through the full native flow on the Handwerk CRM codebase (121 existing slices). Plan-hardening rounds 1–2 found two real algorithm bugs before any code was written: a plus-sign stripping order-of-operations error and an Austrian 0043-prefix misclassification.
+
+→ Full dogfood artifacts: `a2p-dogfood/OBSERVATIONS-SUMMARY.md`, per-scenario scorecards in `a2p-dogfood/observations/`
+
+---
+
+## Known Limitations
+
+A2P's gates are strong forcing functions, not absolute proof. This section is the honest list of things A2P **cannot** do, things it does **imperfectly**, and things that are **intentionally conservative**. Read it before relying on A2P for high-stakes production work.
+
+> For a non-technical overview of *what the native flow actually improves* (and what it doesn't), see [docs/QUALITY-IMPACT.md](docs/QUALITY-IMPACT.md).
+
+### Workflow & enforcement
+
+- **A2P cannot stop manual `.a2p/state.json` mutation.** Any client-side state store can be edited out-of-band. Every gate described in [`docs/WORKFLOW.md`](docs/WORKFLOW.md) is enforced when tools are called through A2P — not when state is written directly. Treat the state file as trusted input from your own workflow.
+- **A2P cannot verify that plan-hardening rounds are genuinely adversarial.** The 3-round cap with structural requirements is the limit of enforceable rigor. A rubber-stamped critique that fills the fields passes the gate. The model doing the work is responsible for actual adversariality; A2P only forces the artifact to exist.
+- **A2P cannot verify that a `"met"` AC coverage claim is honest.** The completion review forces the model to make the claim explicitly, cross-referenced with fresh test and SAST runs — but "I ran the tests, they pass, AC met" is self-report at the end of the day.
+
+### Diff-based guards (test-first, plan compliance, stub scan)
+
+- **`.gitignore` parser is a simple subset.** Supports literal files, directory patterns (`build/`), and simple wildcards (`*.log`). Does **not** support negation (`!pattern`), nested `.gitignore` files, or full glob semantics. If you rely on complex ignore rules, use A2P inside a git repo — the git-backed diff path uses `git diff` directly and honors the full ignore spec.
+- **File-hash baseline is capped at 50 000 files.** Projects larger than that will have partial baselines in the non-git fallback. Diffs may miss files beyond the cap. Recommendation: use A2P inside git for projects of any non-trivial size.
+- **Symlinks are ignored in the file-hash fallback.** The baseline snapshot never follows symlinks — neither hashing them nor traversing through them. This is deliberate: symlinks create loop risks, can leak contents from outside the project tree, and have unstable targets. If you need symlink-aware diffing, use the git-backed path (git handles symlinks as target-text references). In non-git projects, symlinks are effectively invisible to A2P's baseline/diff logic.
+- **Python `pass`-only stub detector matches single-line `def` signatures only.** A function with a multi-line signature (e.g. `def foo(\n    a,\n    b\n):\n    pass`) will not be flagged. Plain `def foo(): pass` — caught. `async def`, class methods, etc. — caught.
+- **Plan-compliance interface-change scan is regex-based, TypeScript/JavaScript only.** It extracts exported symbols via a regex over `export function|const|class|interface|type|enum` declarations in changed `.ts`/`.tsx`/`.js`/`.jsx`/`.mjs`/`.cjs` files. Non-TS/JS files are checked at file granularity (`unplannedFiles`) but not at symbol level. Sufficiently creative refactors across non-TS files can drift without being flagged in `unplannedInterfaceChanges`.
+- **Stub scan is pattern-based — cleverly disguised stubs escape.** A function that returns a hardcoded canned value matching the happy-path test will not be flagged by any of the patterns (TODO/FIXME/NotImplementedError/pass-only/etc.). Self-report via `shortcutsOrStubs` in the completion review is the complementary channel; it is enforced structurally (any non-empty → NOT_COMPLETE) but not semantically.
+
+### Test infrastructure escape hatch
+
+- **`StateManager.forceLegacyFlowForTests` is a static class field in production code** that, when set to `true`, disables the hardening triad and test-first guard for all non-bootstrap slices. It exists so legacy test suites can walk slices through the old `pending → red` path without seeding full hardening artifacts. It defaults to `false`, is never set from production code paths, and is visible only to test helpers (`useLegacySliceFlow()` in `tests/helpers/setup.ts`). A malicious or accidental write to this field from outside the test suite would silently disable the gates — treat it as a known test-only escape that should not exist in a future audit-hardened version.
+
+### Self-rebuild verification
+
+- **A2P has been dogfood-validated end-to-end** across 2 full runs (6 scenarios each) and 1 real-world trial on a 121-slice production codebase. The end-to-end loop — agent follows prompt → prompt routes through tools → tools update state → next step read from state — has been exercised with independent observer scoring against hidden adversarial test suites. Results: 50/50 hidden tests (run 1), 153/158 rubric (run 2, 97%), 10/10 gate compliance per slice. 6 gate-machinery bugs were found and fixed across 2 dogfood cycles; the methodology itself (hardening triad + test-first guard + completion review) was validated as load-bearing. See [Dogfood validation](#dogfood-validation) for full results.
+
+### Platform notes
+
+- **Windows is not in the CI matrix.** The codebase targets macOS and Linux; `fs.symlinkSync`-based tests may behave differently on Windows (where symlinks require admin or Developer Mode).
+
 ---
 
 ## Client setup
@@ -215,7 +269,7 @@ MCP prompts are invoked with `/` in Claude Code:
 |---|---|
 | `/a2p` | Start onboarding — define architecture, UI design, tech stack, oversight config, companions |
 | `/a2p_planning` | Break architecture into ordered vertical slices |
-| `/a2p_build_slice` | Build the current slice with TDD (RED → GREEN → REFACTOR → SAST) + mandatory build signoff |
+| `/a2p_build_slice` | Build the current slice through the native flow (hardening → test-first guard → RED → GREEN → REFACTOR → SAST → completion review → DONE) + mandatory build signoff |
 | `/a2p_refactor` | Code quality tool — analyze codebase for dead code, redundancy, coupling |
 | `/a2p_e2e_testing` | AI testing tool — run visual E2E tests with Playwright |
 | `/a2p_security_gate` | Full SAST scan + OWASP Top 10 review |
@@ -228,13 +282,14 @@ MCP prompts are invoked with `/` in Claude Code:
 ## Documentation
 
 - [Workflow and lifecycle](docs/WORKFLOW.md) — state machine, gates, oversight, re-entry, multi-phase
+- [Quality impact](docs/QUALITY-IMPACT.md) — honest assessment of what the native flow buys you (non-technical)
 - [Security model](docs/SECURITY.md) — SAST, whitebox, Shake & Break, security coverage, findings
 - [Reference](docs/REFERENCE.md) — tools, prompts, stacks, companions, model preference
 - [Deployment (Hetzner / VPS)](docs/HETZNER-DEPLOYMENT.md) — Docker VPS, Hetzner Cloud, 3-layer backup
 - [Validation](docs/validation/) — claim verification, test evidence, reality checks
 
 <details>
-<summary>MCP Tools reference (30 tools)</summary>
+<summary>MCP Tools reference (37 tools)</summary>
 
 | Tool | Phase | Description |
 |---|---|---|
@@ -246,7 +301,13 @@ MCP prompts are invoked with `/` in Claude Code:
 | `a2p_set_phase` | * | Transition to a new workflow phase (enforces all gates) |
 | `a2p_complete_phase` | 7 | Complete current product phase, advance to next |
 | `a2p_get_state` | * | Read current project state |
-| `a2p_update_slice` | 2 | Update slice status with review checkpoints and summaries |
+| `a2p_update_slice` | 2 | Update slice status through the native flow (pending / ready_for_red / red / green / refactor / sast / completion_fix / done) with hardening + test-first + completion-review gates |
+| `a2p_harden_requirements` | 2 | Record hardened requirements and overwrite slice AC; cascades invalidation of downstream hardening |
+| `a2p_harden_tests` | 2 | Record hardened test matrix; rejects integration/UI slices without a real-service concern |
+| `a2p_harden_plan` | 2 | Record adversarial plan-hardening rounds (1..3) and finalize with a structured `finalPlan` |
+| `a2p_verify_test_first` | 2 | Diff-classify the worktree against the slice baseline, run the test command, enforce test-first discipline |
+| `a2p_completion_review` | 2 | Record a completion review with stub scan + plan compliance + verdict consistency |
+| `a2p_get_slice_hardening_status` | * | Read-only hardening + guard + review status for a slice |
 | `a2p_run_tests` | 2 | Execute test command, parse results (pytest/vitest/jest/go/flutter/dart/xctest/gradle) |
 | `a2p_run_quality` | 2.5 | Code quality analysis — dead code, redundancy, coupling |
 | `a2p_run_e2e` | 2.6 | Record Playwright E2E test results |
@@ -355,6 +416,7 @@ A2P enforces [Anthropic's frontend aesthetics guidelines](https://docs.anthropic
 
 | Version | Highlights |
 |---|---|
+| **1.1.0** | **Native slice hardening.** 6 new MCP tools (`a2p_harden_requirements`, `a2p_harden_tests`, `a2p_harden_plan`, `a2p_verify_test_first`, `a2p_completion_review`, `a2p_get_slice_hardening_status`). New statuses `ready_for_red` and `completion_fix`. Diff-based test-first guard with git + file-hash fallback. Completion review loop with plan-compliance scanner, automated stub scan, and verdict-consistency enforcement. Bootstrap flag for one-per-project legacy-flow exemption. Plan-hardening archive (`previousPlanHardenings`) preserves audit trail across cascade re-hardens. A2P metadata files (`.claude/`, `CLAUDE.md`, `.mcp.json`, `.gitignore`) excluded from test-first production-file classification. `completion_fix` auto-passes `verify_test_first` when tests are already green (prevents infinite loop on external-drift recovery). Prose `interfacesToChange` entries matched via bare-identifier extraction; type-only exports from planned files tolerated. Dogfood-validated: 50/50 adversarial tests, 153/158 rubric (97%), 6/6 Schublade-2 trap classes caught. 1351 tests (up from 1097). |
 | **1.0.10** | Companion `config` written as `env` block in `.mcp.json` (fixes Supabase MCP crash). Supabase Cloud vs Local onboarding. Companion health warnings in `a2p_get_state`. |
 | **1.0.5–1.0.9** | Gate hardening: mandatory hard stops for SSL, secret management, and security decisions. Anthropic frontend aesthetics enforcement for UI slices. IP-only SSL path. E2E full-cycle tests. Coverage dashboard at security gate. Docs unified to English. |
 | **1.0.4** | SSL/HTTPS verification gate (`a2p_verify_ssl`). Deployment and phase completion blocked without SSL proof. |
@@ -371,7 +433,7 @@ git clone https://github.com/BernhardJackiewicz/architect-to-product.git
 cd architect-to-product
 npm install
 npm run typecheck   # Type checking
-npm test            # 1138 tests
+npm test            # 1351 tests
 npm run build       # Build
 npm run dev         # Dev mode
 ```

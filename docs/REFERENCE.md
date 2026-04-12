@@ -4,19 +4,25 @@ Full reference for MCP tools, prompts, supported stacks, deploy targets, and com
 
 ---
 
-## MCP Tools (30)
+## MCP Tools (37)
 
 | Tool | Phase | Description |
 |------|-------|-------------|
 | `a2p_init_project` | 0 | Scaffold project with CLAUDE.md, hooks, agents, state |
-| `a2p_set_architecture` | 0 | Parse architecture, detect DB/frontend, extract phases, configure oversight, capture UI design |
+| `a2p_set_architecture` | 0 | Parse architecture, detect DB/frontend, extract phases, configure oversight, capture UI design, configurable `testFilePatterns` |
 | `a2p_setup_companions` | 0 | Register companion MCP servers |
-| `a2p_create_build_plan` | 1 | Architecture → ordered vertical slices (supports `append` for multi-phase) |
+| `a2p_create_build_plan` | 1 | Architecture → ordered vertical slices (supports `append` for multi-phase, `bootstrap: true` on exactly one slice) |
 | `a2p_add_slice` | 1,2 | Insert a single slice mid-project (e.g. integration discovered during build) |
 | `a2p_set_phase` | * | Transition to a new workflow phase (enforces all gates: E2E, build signoff, quality audit, etc.) |
 | `a2p_complete_phase` | 7 | Complete current product phase, advance to next (multi-phase projects) |
 | `a2p_get_state` | * | Read current project state (includes phase info) |
-| `a2p_update_slice` | 2 | Update slice status with review checkpoints and slice summaries |
+| `a2p_update_slice` | 2 | Update slice status through the native flow (pending / ready_for_red / red / green / refactor / sast / completion_fix / done) with hardening + test-first + completion-review gates |
+| `a2p_harden_requirements` | 2 | Record hardened requirements: goal, non-goals, affected components, assumptions, risks, final AC. Cascades invalidation of downstream hardening |
+| `a2p_harden_tests` | 2 | Record hardened test matrix: every AC mapped to tests, positive/negative/edge/regression cases, additional concerns, done metric. Hard-rejects integration/UI slices without a real-service concern |
+| `a2p_harden_plan` | 2 | Record one adversarial plan-hardening round (1..3 strict sequential). Finalize with a structured `finalPlan` (touchedAreas, expectedFiles, interfacesToChange, invariantsToPreserve, risks, narrative) |
+| `a2p_verify_test_first` | 2 | Diff-classify the worktree against the slice baseline, run the test command, require ≥1 test file touched, 0 production files, and a failing test. Stores a testFirstGuard artifact |
+| `a2p_completion_review` | 2 | Submit a completion review for a slice in `sast`. A2P computes automated stub signals and a plan-compliance report (unplanned files + unplanned TS/JS exports) and enforces verdict consistency |
+| `a2p_get_slice_hardening_status` | * | Read-only structured view of requirements/tests/plan hardening, test-first guard, baseline, and completion-review history for a slice |
 | `a2p_run_tests` | 2 | Execute test command, parse results (pytest/vitest/jest/go/flutter/dart/xctest/gradle) |
 | `a2p_run_quality` | 2.5 | Code quality analysis — dead code, redundancy, coupling metrics |
 | `a2p_run_e2e` | 2.6 | Record Playwright E2E test results |
@@ -25,6 +31,8 @@ Full reference for MCP tools, prompts, supported stacks, deploy targets, and com
 | `a2p_run_audit` | 2,6 | Quality audit (dev hygiene) or release audit (pre-publish). Critical release findings block deployment |
 | `a2p_run_whitebox_audit` | 4 | Whitebox security audit — exploitability analysis of SAST findings (reachable paths, guards, trust boundaries). Blocking findings prevent deployment |
 | `a2p_run_active_verification` | 5 | Active verification — runtime gate tests (workflow gates, state recovery, deployment gates) |
+| `a2p_complete_adversarial_review` | 4 | Confirm completion of an adversarial security review round; records the coverage and returns hardening recommendations |
+| `a2p_acknowledge_security_decision` | 4,5 | Acknowledge the pending security decision raised by adversarial review (focused-hardening / full-round / shake-break / continue) |
 | `a2p_build_signoff` | 2 | Confirm build works (mandatory before security phase, code-enforced) |
 | `a2p_deploy_approval` | 7 | Approve deployment (mandatory before generating configs, code-enforced) |
 | `a2p_plan_infrastructure` | 7 | Plan server infrastructure (sizing, security, cloud-init, provisioning commands) for Hetzner Cloud |
@@ -48,7 +56,7 @@ MCP prompts are invoked with `/` in Claude Code:
 |---------|-------------|
 | `/a2p` | Start onboarding — define architecture, UI design, tech stack, oversight config, companions |
 | `/a2p_planning` | Break architecture into ordered vertical slices |
-| `/a2p_build_slice` | Build the current slice with TDD (RED → GREEN → REFACTOR → SAST) + mandatory build signoff |
+| `/a2p_build_slice` | Build the current slice through the native flow: requirement + test + plan hardening → ready_for_red → test-first guard → RED → GREEN → REFACTOR → SAST → completion review loop → DONE, plus mandatory build signoff at the end |
 | `/a2p_refactor` | Code quality tool — analyze codebase for dead code, redundancy, coupling |
 | `/a2p_e2e_testing` | AI testing tool — run visual E2E tests with Playwright |
 | `/a2p_security_gate` | Full SAST scan + OWASP Top 10 review |
