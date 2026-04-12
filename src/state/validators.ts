@@ -56,6 +56,7 @@ export const ArchitectureSchema = z.object({
   reviewMode: z.enum(["off", "all", "ui-only"]).optional(),
   oversight: OversightConfigSchema.optional(),
   uiDesign: UIDesignSchema.optional(),
+  testFilePatterns: z.array(z.string()).optional(),
 });
 
 export const TestResultSchema = z.object({
@@ -84,6 +85,145 @@ export const SASTFindingSchema = z.object({
   domains: z.array(HardeningAreaIdSchema).optional(),
 });
 
+export const SliceBaselineSchema = z.object({
+  commit: z.string().nullable(),
+  fileHashes: z.record(z.string(), z.string()).optional(),
+  capturedAt: z.string(),
+});
+
+export const SliceHardeningRequirementsSchema = z.object({
+  goal: z.string().min(1),
+  nonGoals: z.array(z.string()),
+  affectedComponents: z.array(z.string()).min(1),
+  assumptions: z.array(z.string()),
+  risks: z.array(z.string()),
+  finalAcceptanceCriteria: z.array(z.string()).min(1),
+  acHash: z.string().min(1),
+  hardenedAt: z.string().min(1),
+});
+
+export const SliceTestHardeningEntrySchema = z.object({
+  ac: z.string().min(1),
+  tests: z.array(z.string()).min(1),
+  rationale: z.string(),
+});
+
+export const SliceHardeningTestsSchema = z.object({
+  acToTestMap: z.array(SliceTestHardeningEntrySchema).min(1),
+  positiveCases: z.array(z.string()).min(1),
+  negativeCases: z.array(z.string()).min(1),
+  edgeCases: z.array(z.string()),
+  regressions: z.array(z.string()),
+  additionalConcerns: z.array(z.string()),
+  doneMetric: z.string().min(1),
+  hardenedAt: z.string().min(1),
+  requirementsAcHash: z.string().min(1),
+});
+
+export const SlicePlanHardeningRoundSchema = z.object({
+  round: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+  initialPlan: z.string().optional(),
+  critique: z.string().min(1),
+  revisedPlan: z.string().min(1),
+  improvementsFound: z.boolean(),
+  createdAt: z.string().min(1),
+});
+
+export const SliceFinalPlanSchema = z.object({
+  touchedAreas: z.array(z.string()).min(1),
+  expectedFiles: z.array(z.string()).min(1),
+  interfacesToChange: z.array(z.string()),
+  invariantsToPreserve: z.array(z.string()),
+  risks: z.array(z.string()),
+  narrative: z.string().min(1).max(800),
+});
+
+export const SliceHardeningPlanSchema = z.object({
+  rounds: z.array(SlicePlanHardeningRoundSchema).min(1).max(3),
+  finalPlan: SliceFinalPlanSchema,
+  finalized: z.boolean().default(false),
+  finalizedAt: z.string().min(1).optional(),
+  requirementsAcHash: z.string().min(1),
+  testsHardenedAt: z.string().min(1),
+});
+
+export const TestFirstGuardArtifactSchema = z.object({
+  redTestsDeclaredAt: z.string().min(1),
+  redTestsRunAt: z.string().nullable(),
+  redFailingEvidence: z
+    .object({
+      exitCode: z.number().int(),
+      testCommand: z.string(),
+      failedCount: z.number().int().nullable(),
+    })
+    .nullable(),
+  testFilesTouched: z.array(z.string()),
+  nonTestFilesTouchedBeforeRedEvidence: z.array(z.string()),
+  guardVerdict: z.enum(["pass", "fail", "stale"]),
+  baselineCommit: z.string().nullable(),
+  baselineCapturedAt: z.string(),
+  evidenceReason: z.string(),
+});
+
+export const SliceAcCoverageEntrySchema = z.object({
+  ac: z.string().min(1),
+  status: z.enum(["met", "partial", "missing"]),
+  evidence: z.string(),
+});
+
+export const AutomatedStubSignalSchema = z.object({
+  file: z.string(),
+  line: z.number().int().min(0),
+  pattern: z.string(),
+  snippet: z.string(),
+});
+
+export const StubJustificationSchema = z.object({
+  signalIndex: z.number().int().min(0),
+  reason: z.string().min(1),
+  followupSliceId: z.string().optional(),
+});
+
+export const PlanComplianceReportSchema = z.object({
+  unplannedFiles: z.array(z.string()),
+  unplannedInterfaceChanges: z.array(z.string()),
+  touchedAreasCovered: z.boolean(),
+  verdict: z.enum(["ok", "drift", "broken"]),
+  note: z.string().optional(),
+});
+
+export const SliceCompletionReviewSchema = z.object({
+  loop: z.number().int().min(1),
+  createdAt: z.string().min(1),
+  acCoverage: z.array(SliceAcCoverageEntrySchema),
+  testCoverageQuality: z.enum(["deep", "shallow", "insufficient"]),
+  planCompliance: PlanComplianceReportSchema,
+  missingFunctionality: z.array(z.string()),
+  missingTests: z.array(z.string()),
+  missingEdgeCases: z.array(z.string()),
+  missingIntegrationWork: z.array(z.string()),
+  missingCleanupRefactor: z.array(z.string()),
+  missingPlanFixes: z.array(z.string()),
+  shortcutsOrStubs: z.array(z.string()),
+  automatedStubSignals: z.array(AutomatedStubSignalSchema),
+  stubJustifications: z.array(StubJustificationSchema),
+  verdict: z.enum(["NOT_COMPLETE", "COMPLETE"]),
+  nextActions: z.array(z.string()),
+  supersededByHardeningAt: z.string().optional(),
+  bootstrapExempt: z.boolean().optional(),
+});
+
+export const SliceStatusSchema = z.enum([
+  "pending",
+  "ready_for_red",
+  "red",
+  "green",
+  "refactor",
+  "sast",
+  "completion_fix",
+  "done",
+]);
+
 export const SliceSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
@@ -91,7 +231,7 @@ export const SliceSchema = z.object({
   acceptanceCriteria: z.array(z.string()),
   testStrategy: z.string(),
   dependencies: z.array(z.string()),
-  status: z.enum(["pending", "red", "green", "refactor", "sast", "done"]),
+  status: SliceStatusSchema,
   files: z.array(z.string()),
   testResults: z.array(TestResultSchema),
   sastFindings: z.array(SASTFindingSchema),
@@ -99,6 +239,14 @@ export const SliceSchema = z.object({
   productPhaseId: z.string().optional(),
   type: z.enum(["feature", "integration", "infrastructure"]).optional(),
   hasUI: z.boolean().optional(),
+  bootstrap: z.boolean().optional(),
+  baseline: SliceBaselineSchema.optional(),
+  requirementsHardening: SliceHardeningRequirementsSchema.optional(),
+  testHardening: SliceHardeningTestsSchema.optional(),
+  planHardening: SliceHardeningPlanSchema.optional(),
+  previousPlanHardenings: z.array(SliceHardeningPlanSchema).optional(),
+  testFirstGuard: TestFirstGuardArtifactSchema.optional(),
+  completionReviews: z.array(SliceCompletionReviewSchema).optional(),
 });
 
 export const QualityIssueSchema = z.object({
@@ -367,10 +515,42 @@ function migrateAdversarialReview(data: Record<string, unknown>): Record<string,
   return data;
 }
 
+/**
+ * Migrate old slice.planHardening shape where `finalizedAt: ""` meant
+ * "rounds accumulating, not yet finalized" into the explicit
+ * `finalized: boolean` + optional `finalizedAt?: string` shape.
+ *
+ *  - finalizedAt === "" or missing → { finalized: false } (drop finalizedAt)
+ *  - finalizedAt === "<ISO string>" → { finalized: true, finalizedAt: "<ISO>" }
+ */
+function migratePlanHardeningInSlices(data: Record<string, unknown>): Record<string, unknown> {
+  const slices = data.slices;
+  if (!Array.isArray(slices)) return data;
+  for (const slice of slices) {
+    if (!slice || typeof slice !== "object") continue;
+    const ph = (slice as Record<string, unknown>).planHardening;
+    if (!ph || typeof ph !== "object") continue;
+    const obj = ph as Record<string, unknown>;
+    if ("finalized" in obj && typeof obj.finalized === "boolean") continue; // already migrated
+    const finalizedAt = obj.finalizedAt;
+    if (typeof finalizedAt === "string" && finalizedAt.length > 0) {
+      obj.finalized = true;
+      // keep finalizedAt as-is
+    } else {
+      obj.finalized = false;
+      delete obj.finalizedAt;
+    }
+  }
+  return data;
+}
+
 export const ProjectStateSchema = z.preprocess(
   (val) => {
     if (val && typeof val === "object" && !Array.isArray(val)) {
-      return migrateAdversarialReview(val as Record<string, unknown>);
+      const obj = val as Record<string, unknown>;
+      migrateAdversarialReview(obj);
+      migratePlanHardeningInSlices(obj);
+      return obj;
     }
     return val;
   },
@@ -446,6 +626,8 @@ export const ProjectStateSchema = z.preprocess(
     httpsRedirect: z.boolean(),
     hstsPresent: z.boolean(),
   }).nullable().default(null),
+  bootstrapSliceId: z.string().nullable().default(null),
+  bootstrapLockedAt: z.string().nullable().default(null),
   createdAt: z.string(),
   updatedAt: z.string(),
 }));

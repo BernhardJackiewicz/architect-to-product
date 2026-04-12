@@ -7,7 +7,16 @@ export const updateSliceSchema = z.object({
   projectPath: z.string().describe("Absolute path to the project directory"),
   sliceId: z.string().describe("ID of the slice to update"),
   status: z
-    .enum(["red", "green", "refactor", "sast", "done"])
+    .enum([
+      "pending",
+      "ready_for_red",
+      "red",
+      "green",
+      "refactor",
+      "sast",
+      "completion_fix",
+      "done",
+    ])
     .describe("New status for the slice (must be a valid transition)"),
   files: z
     .array(z.string())
@@ -74,6 +83,24 @@ function getNextStepHint(
   sliceId?: string
 ): { nextStep: string; awaitingHumanReview: boolean } {
   switch (status) {
+    case "pending":
+      return {
+        nextStep:
+          "Slice is back in pending. Start requirement hardening with a2p_harden_requirements.",
+        awaitingHumanReview: false,
+      };
+    case "ready_for_red":
+      return {
+        nextStep:
+          "Baseline captured. Write your failing tests (test files only) and then call a2p_verify_test_first to prove test-first discipline before moving to red.",
+        awaitingHumanReview: false,
+      };
+    case "completion_fix":
+      return {
+        nextStep:
+          "Completion review found gaps. A fresh baseline is captured; fix the gaps (add tests first, then production code) and call a2p_verify_test_first before returning to red.",
+        awaitingHumanReview: false,
+      };
     case "red":
       return {
         nextStep: "Tests are written and failing. Now write the minimal implementation to make them pass (GREEN phase).",
@@ -91,7 +118,8 @@ function getNextStepHint(
       };
     case "sast":
       return {
-        nextStep: "SAST complete. If no critical findings, mark as done. Otherwise, go back to RED to fix.",
+        nextStep:
+          "SAST complete. Run a2p_completion_review to verify every AC is met, tests are deep, plan compliance is clean, and no stubs remain. Only a COMPLETE verdict unlocks done.",
         awaitingHumanReview: false,
       };
     case "done": {

@@ -18,6 +18,7 @@ export const createBuildPlanSchema = z.object({
         productPhaseId: z.string().optional().describe("Product phase this slice belongs to"),
         type: z.enum(["feature", "integration", "infrastructure"]).optional().describe("Slice type (default: feature)"),
         hasUI: z.boolean().optional().describe("Whether this slice has frontend/UI changes"),
+        bootstrap: z.boolean().optional().describe("Reserved for the A2P self-rebuild: one slice per project may legacy-flow through the build. Rejected if already claimed or locked."),
       })
     )
     .min(1)
@@ -99,6 +100,7 @@ export function handleCreateBuildPlan(input: CreateBuildPlanInput): string {
     ...(s.productPhaseId ? { productPhaseId: s.productPhaseId } : {}),
     ...(s.type ? { type: s.type } : {}),
     ...(s.hasUI !== undefined ? { hasUI: s.hasUI } : {}),
+    ...(s.bootstrap === true ? { bootstrap: true } : {}),
   }));
 
   if (input.append) {

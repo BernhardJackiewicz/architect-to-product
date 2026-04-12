@@ -14,6 +14,7 @@ export const addSliceSchema = z.object({
     type: z.enum(["feature", "integration", "infrastructure"]).optional().describe("Slice type (default: feature)"),
     productPhaseId: z.string().optional().describe("Product phase this slice belongs to"),
     hasUI: z.boolean().optional().describe("Whether this slice has frontend/UI changes"),
+    bootstrap: z.boolean().optional().describe("Reserved for the A2P self-rebuild: one slice per project may legacy-flow through the build. Rejected if already claimed or locked."),
   }),
   insertAfterSliceId: z.string().optional().describe("Insert after this slice ID (appends to end if omitted)"),
 });
@@ -74,6 +75,7 @@ export function handleAddSlice(input: AddSliceInput): string {
     ...(input.slice.type ? { type: input.slice.type } : {}),
     ...(productPhaseId ? { productPhaseId } : {}),
     ...(input.slice.hasUI !== undefined ? { hasUI: input.slice.hasUI } : {}),
+    ...(input.slice.bootstrap === true ? { bootstrap: true } : {}),
   };
 
   // Save the current index before mutation
