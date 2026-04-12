@@ -6,9 +6,11 @@ import { handleCompletePhase } from "../../src/tools/complete-phase.js";
 import { handleUpdateSlice } from "../../src/tools/update-slice.js";
 import { handleRecordFinding } from "../../src/tools/record-finding.js";
 import { handleGetState } from "../../src/tools/get-state.js";
-import { makeTmpDir, initWithStateManager, addPassingTests, addSastEvidence, walkSliceToStatus, forcePhase, addQualityAudit, addReleaseAudit, addPassingVerification, addPassingWhitebox } from "../helpers/setup.js";
+import { useLegacySliceFlow, makeTmpDir, initWithStateManager, addPassingTests, addSastEvidence, walkSliceToStatus, forcePhase, addQualityAudit, addReleaseAudit, addPassingVerification, addPassingWhitebox } from "../helpers/setup.js";
 
 // ─── StateManager new methods ───────────────────────────────────────────────
+
+useLegacySliceFlow();
 
 describe("StateManager: addBuildEvents", () => {
   let dir: string;

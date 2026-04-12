@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { StateManager } from "../src/state/state-manager.js";
 import type { Slice, TestResult, SASTFinding, QualityIssue } from "../src/state/types.js";
+import { useLegacySliceFlow } from "./helpers/setup.js";
 
 function makeTmpDir(): string {
   return mkdtempSync(join(tmpdir(), "a2p-test-"));
@@ -24,6 +25,8 @@ function makeSlice(id: string, overrides?: Partial<Slice>): Slice {
     ...overrides,
   };
 }
+
+useLegacySliceFlow();
 
 describe("StateManager", () => {
   let tmpDir: string;
@@ -188,6 +191,79 @@ describe("StateManager", () => {
       sm.setSliceStatus("s1", "sast");
       const state = sm.setSliceStatus("s1", "red");
       expect(state.slices[0].status).toBe("red");
+    });
+  });
+
+  describe("setSliceStatus under native flow (gate rejects when hardening is missing)", () => {
+    // This block explicitly disables the file-level legacy opt-in so the
+    // native hardening triad gate fires. Satisfies plan §4.5: split
+    // tests/state-manager.test.ts TDD-cycle into legacy-works + gate-rejects.
+    beforeEach(() => {
+      sm.init("test", tmpDir);
+      sm.setSlices([makeSlice("s1"), makeSlice("s2")]);
+      StateManager.forceLegacyFlowForTests = false;
+    });
+
+    afterEach(() => {
+      // Restore file-level legacy opt-in set by useLegacySliceFlow() above.
+      StateManager.forceLegacyFlowForTests = true;
+    });
+
+    it("rejects pending → red when hardening is missing (must go through ready_for_red)", () => {
+      expect(() => sm.setSliceStatus("s1", "red")).toThrow(
+        /cannot transition from "pending" to "red"/,
+      );
+    });
+
+    it("rejects pending → ready_for_red when requirements hardening is missing", () => {
+      expect(() => sm.setSliceStatus("s1", "ready_for_red")).toThrow(
+        /requirements not hardened/,
+      );
+    });
+
+    it("allows pending → ready_for_red when the hardening triad is seeded", () => {
+      // Seed a complete hardening triad directly into state.json
+      const statePath = join(tmpDir, ".a2p", "state.json");
+      const state = JSON.parse(readFileSync(statePath, "utf-8"));
+      const now = new Date().toISOString();
+      const { createHash } = require("node:crypto") as typeof import("node:crypto");
+      const acHash = createHash("sha256")
+        .update(JSON.stringify(state.slices[0].acceptanceCriteria.map((s: string) => s.trim())))
+        .digest("hex");
+      state.slices[0].requirementsHardening = {
+        goal: "t",
+        nonGoals: [],
+        affectedComponents: ["x"],
+        assumptions: [],
+        risks: [],
+        finalAcceptanceCriteria: [...state.slices[0].acceptanceCriteria],
+        acHash,
+        hardenedAt: now,
+      };
+      state.slices[0].testHardening = {
+        acToTestMap: state.slices[0].acceptanceCriteria.map((ac: string) => ({ ac, tests: ["t"], rationale: "r" })),
+        positiveCases: ["p"],
+        negativeCases: ["n"],
+        edgeCases: [],
+        regressions: [],
+        additionalConcerns: [],
+        doneMetric: "dm",
+        hardenedAt: now,
+        requirementsAcHash: acHash,
+      };
+      state.slices[0].planHardening = {
+        rounds: [{ round: 1, initialPlan: "p", critique: "c", revisedPlan: "r", improvementsFound: false, createdAt: now }],
+        finalPlan: { touchedAreas: ["a"], expectedFiles: ["f.ts"], interfacesToChange: [], invariantsToPreserve: [], risks: [], narrative: "n" },
+        finalized: true,
+        finalizedAt: now,
+        requirementsAcHash: acHash,
+        testsHardenedAt: now,
+      };
+      writeFileSync(statePath, JSON.stringify(state, null, 2), "utf-8");
+
+      const updated = sm.setSliceStatus("s1", "ready_for_red");
+      expect(updated.slices[0].status).toBe("ready_for_red");
+      expect(updated.slices[0].baseline).toBeDefined();
     });
   });
 

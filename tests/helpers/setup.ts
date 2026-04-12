@@ -1,4 +1,5 @@
 import { mkdtempSync, rmSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { StateManager } from "../../src/state/state-manager.js";
@@ -7,6 +8,33 @@ import { handleSetArchitecture } from "../../src/tools/set-architecture.js";
 import { handleCreateBuildPlan } from "../../src/tools/create-build-plan.js";
 import type { TestResult, Phase, AuditResult, ActiveVerificationResult } from "../../src/state/types.js";
 import { readFileSync, writeFileSync } from "node:fs";
+
+/**
+ * Opt the current test file into legacy slice-flow mode by flipping the
+ * test-only StateManager.forceLegacyFlowForTests flag in beforeAll and
+ * restoring it in afterAll. Invoke this at the top of any test file that
+ * exercises legacy state-machine semantics directly (pending → red without
+ * hardening + guard).
+ *
+ * Requires that the test file imports from vitest at module level (beforeAll
+ * and afterAll are globals when `test.globals: true` is set in vitest.config).
+ */
+export function useLegacySliceFlow(): void {
+  // Use dynamic globals because vitest sets them on globalThis when
+  // `globals: true` is active.
+  const g = globalThis as unknown as {
+    beforeAll: (fn: () => void) => void;
+    afterAll: (fn: () => void) => void;
+  };
+  let originalFlag = false;
+  g.beforeAll(() => {
+    originalFlag = StateManager.forceLegacyFlowForTests;
+    StateManager.forceLegacyFlowForTests = true;
+  });
+  g.afterAll(() => {
+    StateManager.forceLegacyFlowForTests = originalFlag;
+  });
+}
 
 /** Create a temporary directory for test isolation. */
 export function makeTmpDir(prefix = "a2p-test"): string {
@@ -41,22 +69,249 @@ export function addSastEvidence(sm: StateManager, sliceId: string): void {
   sm.markSastRun(sliceId);
 }
 
+function computeAcHashLocal(ac: string[]): string {
+  const normalized = ac.map((s) => s.trim()).filter((s) => s.length > 0);
+  return createHash("sha256").update(JSON.stringify(normalized)).digest("hex");
+}
+
 /**
- * Walk a slice through the full TDD cycle with proper evidence.
- * pending → red → green (with tests) → refactor → sast (with SAST) → done
+ * Directly seed requirements/test/plan hardening artifacts on a slice in state.json.
+ * TEST ONLY — bypasses the tool API for tests that don't want to exercise
+ * the hardening flow in detail.
+ */
+export function seedSliceHardening(sm: StateManager, sliceId: string): void {
+  const statePath = join(sm.projectPath, ".a2p", "state.json");
+  const state = JSON.parse(readFileSync(statePath, "utf-8"));
+  const slice = state.slices.find((s: any) => s.id === sliceId);
+  if (!slice) throw new Error(`Slice ${sliceId} not found in state`);
+
+  const now = new Date().toISOString();
+  const acHash = computeAcHashLocal(slice.acceptanceCriteria);
+
+  slice.requirementsHardening = {
+    goal: "test goal",
+    nonGoals: [],
+    affectedComponents: ["test"],
+    assumptions: [],
+    risks: [],
+    finalAcceptanceCriteria: [...slice.acceptanceCriteria],
+    acHash,
+    hardenedAt: now,
+  };
+  slice.testHardening = {
+    acToTestMap: slice.acceptanceCriteria.map((ac: string) => ({
+      ac,
+      tests: ["t1"],
+      rationale: "test",
+    })),
+    positiveCases: ["p"],
+    negativeCases: ["n"],
+    edgeCases: [],
+    regressions: [],
+    additionalConcerns: [],
+    doneMetric: "tests green",
+    hardenedAt: now,
+    requirementsAcHash: acHash,
+  };
+  slice.planHardening = {
+    rounds: [
+      {
+        round: 1,
+        initialPlan: "initial",
+        critique: "critique",
+        revisedPlan: "revised",
+        improvementsFound: false,
+        createdAt: now,
+      },
+    ],
+    finalPlan: {
+      touchedAreas: ["test"],
+      expectedFiles: ["test.ts"],
+      interfacesToChange: [],
+      invariantsToPreserve: [],
+      risks: [],
+      narrative: "test plan",
+    },
+    finalized: true,
+    finalizedAt: now,
+    requirementsAcHash: acHash,
+    testsHardenedAt: now,
+  };
+
+  writeFileSync(statePath, JSON.stringify(state, null, 2), "utf-8");
+}
+
+/**
+ * Directly seed a baseline + passing test-first guard on a slice. TEST ONLY.
+ * Requires hardening to already be present. Also records a matching
+ * failing-test result in slice.testResults so the state-manager's
+ * cross-check in requireTestFirstGuardPassed is satisfied.
+ */
+export function seedPassingGuard(sm: StateManager, sliceId: string): void {
+  const statePath = join(sm.projectPath, ".a2p", "state.json");
+  const state = JSON.parse(readFileSync(statePath, "utf-8"));
+  const slice = state.slices.find((s: any) => s.id === sliceId);
+  if (!slice) throw new Error(`Slice ${sliceId} not found in state`);
+
+  const baselineAt = new Date().toISOString();
+  // Ensure the test result timestamp is strictly >= baseline.capturedAt.
+  const testAt = new Date(new Date(baselineAt).getTime() + 1).toISOString();
+  slice.baseline = { commit: null, fileHashes: {}, capturedAt: baselineAt };
+  slice.testResults = slice.testResults ?? [];
+  slice.testResults.push({
+    timestamp: testAt,
+    command: "test",
+    exitCode: 1,
+    passed: 0,
+    failed: 1,
+    skipped: 0,
+    output: "seeded failing test",
+  });
+  slice.testFirstGuard = {
+    redTestsDeclaredAt: testAt,
+    redTestsRunAt: testAt,
+    redFailingEvidence: { exitCode: 1, testCommand: "test", failedCount: 1 },
+    testFilesTouched: ["test.ts"],
+    nonTestFilesTouchedBeforeRedEvidence: [],
+    guardVerdict: "pass",
+    baselineCommit: null,
+    baselineCapturedAt: baselineAt,
+    evidenceReason: "seeded by test helper",
+  };
+
+  writeFileSync(statePath, JSON.stringify(state, null, 2), "utf-8");
+}
+
+/**
+ * Directly seed a COMPLETE completion review for a slice (cleared of all
+ * missing/stub signals, deep coverage, ok plan compliance). TEST ONLY.
+ */
+export function seedCompleteReview(sm: StateManager, sliceId: string): void {
+  const statePath = join(sm.projectPath, ".a2p", "state.json");
+  const state = JSON.parse(readFileSync(statePath, "utf-8"));
+  const slice = state.slices.find((s: any) => s.id === sliceId);
+  if (!slice) throw new Error(`Slice ${sliceId} not found in state`);
+
+  const now = new Date().toISOString();
+  slice.completionReviews = slice.completionReviews ?? [];
+  const nextLoop = slice.completionReviews.filter((r: any) => !r.supersededByHardeningAt).length + 1;
+  slice.completionReviews.push({
+    loop: nextLoop,
+    createdAt: now,
+    acCoverage: slice.acceptanceCriteria.map((ac: string) => ({
+      ac,
+      status: "met",
+      evidence: "test",
+    })),
+    testCoverageQuality: "deep",
+    planCompliance: {
+      unplannedFiles: [],
+      unplannedInterfaceChanges: [],
+      touchedAreasCovered: true,
+      verdict: "ok",
+    },
+    missingFunctionality: [],
+    missingTests: [],
+    missingEdgeCases: [],
+    missingIntegrationWork: [],
+    missingCleanupRefactor: [],
+    missingPlanFixes: [],
+    shortcutsOrStubs: [],
+    automatedStubSignals: [],
+    stubJustifications: [],
+    verdict: "COMPLETE",
+    nextActions: [],
+  });
+
+  writeFileSync(statePath, JSON.stringify(state, null, 2), "utf-8");
+}
+
+/**
+ * Walk a slice through the full native hardening + TDD cycle with seeded
+ * evidence so existing tests don't have to replay the hardening flow.
+ * pending → (seed hardening) → ready_for_red → (seed guard) → red → green
+ *         → refactor → (SAST run) → sast → (seed complete review) → done
+ *
+ * Bootstrap slices use the legacy flow automatically.
  */
 export function walkSliceToStatus(
   sm: StateManager,
   sliceId: string,
-  targetStatus: "red" | "green" | "refactor" | "sast" | "done",
+  targetStatus:
+    | "ready_for_red"
+    | "red"
+    | "green"
+    | "refactor"
+    | "sast"
+    | "completion_fix"
+    | "done",
 ): void {
-  const steps: Array<"red" | "green" | "refactor" | "sast" | "done"> =
-    ["red", "green", "refactor", "sast", "done"];
-  const targetIdx = steps.indexOf(targetStatus);
+  const state = sm.read();
+  const slice = state.slices.find((s) => s.id === sliceId);
+  if (!slice) throw new Error(`Slice ${sliceId} not found`);
+
+  // Bootstrap slices AND the test-only legacy-flow flag take the legacy path.
+  // Everything else is native.
+  if (slice.bootstrap === true || StateManager.forceLegacyFlowForTests) {
+    walkBootstrapSlice(sm, sliceId, targetStatus);
+    return;
+  }
+
+  const order: Array<
+    "ready_for_red" | "red" | "green" | "refactor" | "sast" | "done"
+  > = ["ready_for_red", "red", "green", "refactor", "sast", "done"];
+  const normalized = targetStatus === "completion_fix" ? "sast" : targetStatus;
+  const targetIdx = order.indexOf(normalized as typeof order[number]);
 
   for (let i = 0; i <= targetIdx; i++) {
+    const step = order[i];
+    switch (step) {
+      case "ready_for_red":
+        if (!sm.read().slices.find((s) => s.id === sliceId)?.requirementsHardening) {
+          seedSliceHardening(sm, sliceId);
+        }
+        sm.setSliceStatus(sliceId, "ready_for_red");
+        break;
+      case "red":
+        seedPassingGuard(sm, sliceId);
+        sm.setSliceStatus(sliceId, "red");
+        break;
+      case "green":
+        addPassingTests(sm, sliceId);
+        sm.setSliceStatus(sliceId, "green");
+        break;
+      case "refactor":
+        sm.setSliceStatus(sliceId, "refactor");
+        break;
+      case "sast":
+        addSastEvidence(sm, sliceId);
+        sm.setSliceStatus(sliceId, "sast");
+        break;
+      case "done":
+        addPassingTests(sm, sliceId);
+        seedCompleteReview(sm, sliceId);
+        sm.setSliceStatus(sliceId, "done");
+        break;
+    }
+  }
+}
+
+function walkBootstrapSlice(
+  sm: StateManager,
+  sliceId: string,
+  targetStatus: string,
+): void {
+  const steps: Array<"red" | "green" | "refactor" | "sast" | "done"> = [
+    "red",
+    "green",
+    "refactor",
+    "sast",
+    "done",
+  ];
+  const targetIdx = steps.indexOf(targetStatus as typeof steps[number]);
+  if (targetIdx === -1) return;
+  for (let i = 0; i <= targetIdx; i++) {
     const step = steps[i];
-    // Add evidence before transitions that require it
     if (step === "green") addPassingTests(sm, sliceId);
     if (step === "sast") addSastEvidence(sm, sliceId);
     if (step === "done") addPassingTests(sm, sliceId);
@@ -260,3 +515,17 @@ export function initWithStateManager(dir: string, sliceCount = 3): StateManager 
   sm.setSlices(slices);
   return sm;
 }
+
+// ─── Plan-compliant helper aliases ─────────────────────────────────────
+// The plan referred to these helpers by specific names. The existing
+// seed* helpers are the canonical implementation; these aliases give
+// test code written against the plan's vocabulary a direct import path.
+
+/** Alias for {@link seedSliceHardening}. */
+export const hardenSliceFully = seedSliceHardening;
+
+/** Alias for {@link seedPassingGuard}. */
+export const passTestFirstGuard = seedPassingGuard;
+
+/** Alias for {@link seedCompleteReview}. */
+export const recordCompleteReview = seedCompleteReview;

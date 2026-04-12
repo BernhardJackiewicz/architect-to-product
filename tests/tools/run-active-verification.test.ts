@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { makeTmpDir, cleanTmpDir, parse, initWithFindings, initWithStateManager, walkSliceToStatus, addPassingTests, forcePhase, addQualityAudit, addReleaseAudit, addPassingVerification, addPassingWhitebox } from "../helpers/setup.js";
+import { useLegacySliceFlow, makeTmpDir, cleanTmpDir, parse, initWithFindings, initWithStateManager, walkSliceToStatus, addPassingTests, forcePhase, addQualityAudit, addReleaseAudit, addPassingVerification, addPassingWhitebox } from "../helpers/setup.js";
 import { handleRunActiveVerification } from "../../src/tools/run-active-verification.js";
 import { StateManager } from "../../src/state/state-manager.js";
 
@@ -7,6 +7,8 @@ let dir: string;
 
 beforeEach(() => { dir = makeTmpDir(); });
 afterEach(() => { cleanTmpDir(dir); });
+
+useLegacySliceFlow();
 
 describe("run-active-verification", () => {
   it("returns error for non-existent project", () => {

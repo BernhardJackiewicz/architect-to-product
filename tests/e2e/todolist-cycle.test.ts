@@ -29,6 +29,7 @@ import {
   addReleaseAudit,
   addPassingVerification,
   addPassingWhitebox,
+  useLegacySliceFlow,
 } from "../helpers/setup.js";
 
 /**
@@ -42,6 +43,8 @@ import {
  *   - SSL gate with domain: domain-specific instructions in error
  *   - Security overview with all activities: SAST + whitebox + adversarial review coverage
  */
+useLegacySliceFlow();
+
 describe("Full Cycle E2E: TodoList API (Stateful — SQLite)", () => {
   let tmpDir: string;
 

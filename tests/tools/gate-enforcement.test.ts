@@ -6,6 +6,7 @@ import {
   makeTmpDir, cleanTmpDir, initWithStateManager, walkSliceToStatus, addPassingTests,
   forcePhase, forceField, addQualityAudit, addReleaseAudit, addPassingVerification,
   addPassingWhitebox, addWhiteboxOnly, completeAdversarialReview, addSastEvidence,
+  useLegacySliceFlow,
 } from "../helpers/setup.js";
 import { handleInitProject } from "../../src/tools/init-project.js";
 import { handleSetArchitecture } from "../../src/tools/set-architecture.js";
@@ -21,6 +22,8 @@ afterEach(() => { cleanTmpDir(dir); });
 // ============================================================================
 // Quality Gate: building -> security requires quality audit
 // ============================================================================
+
+useLegacySliceFlow();
 
 describe("Quality Gate: building -> security", () => {
   it("BLOCKED: building->security without quality audit -> throw", () => {

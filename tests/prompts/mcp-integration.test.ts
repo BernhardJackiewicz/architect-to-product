@@ -693,22 +693,26 @@ describe("Anthropic engineering patterns in build-slice", () => {
     expect(explorePos).toBeLessThan(tddPos);
   });
 
-  it("has slice spec section between EXPLORE and RED", () => {
-    const specPos = BUILD_SLICE_PROMPT.indexOf("Slice Specification");
-    const redPos = BUILD_SLICE_PROMPT.indexOf("### Phase RED");
-    const exploreEnd = BUILD_SLICE_PROMPT.indexOf("Evidence-Driven Development Cycle");
-    expect(specPos).toBeGreaterThan(-1);
-    expect(specPos).toBeLessThan(redPos);
-    expect(specPos).toBeLessThan(exploreEnd);
+  it("has requirement/test/plan hardening steps before RED in the authoritative native flow", () => {
+    // The old "Slice Specification — MANDATORY before RED" block has been
+    // replaced by the Native Slice Flow at the top of the prompt, which lists
+    // three explicit hardening steps that all run before the RED status.
+    const reqPos = BUILD_SLICE_PROMPT.indexOf("REQUIREMENT HARDENING");
+    const testPos = BUILD_SLICE_PROMPT.indexOf("TEST HARDENING");
+    const planPos = BUILD_SLICE_PROMPT.indexOf("PLAN HARDENING");
+    const redPos = BUILD_SLICE_PROMPT.indexOf("RED");
+    expect(reqPos).toBeGreaterThan(-1);
+    expect(testPos).toBeGreaterThan(reqPos);
+    expect(planPos).toBeGreaterThan(testPos);
+    expect(redPos).toBeGreaterThan(planPos);
   });
 
-  it("slice spec requires spec-test-mapping and initial-rot-hypothese", () => {
-    const specPos = BUILD_SLICE_PROMPT.indexOf("Slice Specification");
-    const redPos = BUILD_SLICE_PROMPT.indexOf("### Phase RED");
-    const section = BUILD_SLICE_PROMPT.slice(specPos, redPos);
-    expect(section).toContain("Spec-Test Mapping");
-    expect(section).toContain("Initial Red Hypothesis");
-    expect(section).toContain("Minimal Green Change");
+  it("hardening steps reference the enforcing a2p tools", () => {
+    expect(BUILD_SLICE_PROMPT).toContain("a2p_harden_requirements");
+    expect(BUILD_SLICE_PROMPT).toContain("a2p_harden_tests");
+    expect(BUILD_SLICE_PROMPT).toContain("a2p_harden_plan");
+    expect(BUILD_SLICE_PROMPT).toContain("a2p_verify_test_first");
+    expect(BUILD_SLICE_PROMPT).toContain("a2p_completion_review");
   });
 
   it("summary template includes TDD-Abweichungen and Spec-Test-Mapping", () => {
