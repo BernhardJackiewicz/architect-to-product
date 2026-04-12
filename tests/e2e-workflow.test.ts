@@ -19,6 +19,7 @@ import { handleRunSast } from "../src/tools/run-sast.js";
 import { handleCompletePhase } from "../src/tools/complete-phase.js";
 import { handleAddSlice } from "../src/tools/add-slice.js";
 import { StateManager } from "../src/state/state-manager.js";
+import { useLegacySliceFlow } from "./helpers/setup.js";
 
 /** Add evidence and walk a slice through TDD cycle via tool handlers */
 function completeSliceViaTool(tmpDir: string, sm: StateManager, sliceId: string) {
@@ -62,6 +63,8 @@ function setDeployReady(dir: string): void {
 function parse(json: string) {
   return JSON.parse(json);
 }
+
+useLegacySliceFlow();
 
 describe("E2E Workflow: Full project lifecycle", () => {
   let tmpDir: string;

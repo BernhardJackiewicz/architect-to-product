@@ -1,9 +1,11 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { StateManager } from "../../src/state/state-manager.js";
 import { handleUpdateSlice } from "../../src/tools/update-slice.js";
-import { makeTmpDir, initWithStateManager, addPassingTests, addSastEvidence, walkSliceToStatus, forcePhase, addQualityAudit } from "../helpers/setup.js";
+import { useLegacySliceFlow, makeTmpDir, initWithStateManager, addPassingTests, addSastEvidence, walkSliceToStatus, forcePhase, addQualityAudit } from "../helpers/setup.js";
 
 // ─── Slice Status Enforcement ────────────────────────────────────────────────
+
+useLegacySliceFlow();
 
 describe("Enforcement: green requires passing tests", () => {
   let dir: string;

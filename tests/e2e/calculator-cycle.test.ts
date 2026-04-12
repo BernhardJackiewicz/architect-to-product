@@ -22,6 +22,7 @@ import {
   addReleaseAudit,
   addPassingVerification,
   addPassingWhitebox,
+  useLegacySliceFlow,
 } from "../helpers/setup.js";
 
 /**
@@ -33,6 +34,8 @@ import {
  *   Bug 2: generateDeployment returns tierComparison when no tier is set
  *   Bug 3: setPhase("complete") enforces MANDATORY HARD STOP without SSL
  */
+useLegacySliceFlow();
+
 describe("Full Cycle E2E: Scientific Calculator", () => {
   let tmpDir: string;
 

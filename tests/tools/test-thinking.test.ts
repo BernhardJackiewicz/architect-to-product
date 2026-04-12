@@ -150,23 +150,32 @@ describe("Planning prompt requires structured test thinking", () => {
   });
 });
 
-// ─── Build-slice prompt: RED review step ─────────────────────────────────────
+// ─── Build-slice prompt: test-hardening + test-first guard ─────────────────
+//
+// The old "RED Refinement" block has been replaced by the Native Slice Flow's
+// TEST HARDENING step + the a2p_verify_test_first guard tool, which together
+// enforce AC-to-test mapping and test-first discipline in code.
 
-describe("Build-slice prompt has RED review step", () => {
-  it("has RED Refinement section before GREEN", () => {
-    const redReviewPos = BUILD_SLICE_PROMPT.indexOf("RED Refinement");
-    const greenPos = BUILD_SLICE_PROMPT.indexOf("### Phase GREEN");
-    expect(redReviewPos).toBeGreaterThan(-1);
-    expect(redReviewPos).toBeLessThan(greenPos);
+describe("Build-slice prompt enforces test hardening + test-first guard", () => {
+  it("has a TEST HARDENING step before RED in the native flow", () => {
+    const testHardeningPos = BUILD_SLICE_PROMPT.indexOf("TEST HARDENING");
+    const redPos = BUILD_SLICE_PROMPT.indexOf("RED");
+    expect(testHardeningPos).toBeGreaterThan(-1);
+    expect(testHardeningPos).toBeLessThan(redPos);
   });
 
-  it("RED review checks AC coverage", () => {
-    const section = BUILD_SLICE_PROMPT.slice(
-      BUILD_SLICE_PROMPT.indexOf("RED Refinement"),
-      BUILD_SLICE_PROMPT.indexOf("### Phase GREEN"),
-    );
-    expect(section).toContain("acceptance criterion");
-    expect(section).toContain("error case");
-    expect(section).toContain("Mock");
+  it("test hardening section references AC mapping and negative/edge/regression cases", () => {
+    const testHardeningPos = BUILD_SLICE_PROMPT.indexOf("TEST HARDENING");
+    const planPos = BUILD_SLICE_PROMPT.indexOf("PLAN HARDENING");
+    const section = BUILD_SLICE_PROMPT.slice(testHardeningPos, planPos);
+    expect(section).toMatch(/AC|acceptance criteri/i);
+    expect(section).toMatch(/negative/i);
+    expect(section).toMatch(/edge/i);
+  });
+
+  it("references a2p_verify_test_first as the enforced test-first guard", () => {
+    expect(BUILD_SLICE_PROMPT).toContain("a2p_verify_test_first");
+    expect(BUILD_SLICE_PROMPT).toMatch(/test file/i);
+    expect(BUILD_SLICE_PROMPT).toMatch(/production file/i);
   });
 });

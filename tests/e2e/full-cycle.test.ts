@@ -28,6 +28,7 @@ import {
   addReleaseAudit,
   addPassingVerification,
   addPassingWhitebox,
+  useLegacySliceFlow,
 } from "../helpers/setup.js";
 
 /**
@@ -39,6 +40,8 @@ import {
  *   Bug 2: generateDeployment returns tier comparison when no tier set
  *   Bug 3: setPhase("complete") fails without SSL verification
  */
+useLegacySliceFlow();
+
 describe("Full Cycle E2E: Counter App", () => {
   let tmpDir: string;
 

@@ -11,6 +11,7 @@ import {
 } from "../../src/tools/complete-adversarial-review.js";
 import { handleRecordFinding } from "../../src/tools/record-finding.js";
 import type { ProjectState, SASTFinding, HardeningAreaId, Architecture, WhiteboxFinding } from "../../src/state/types.js";
+import { useLegacySliceFlow } from "../helpers/setup.js";
 
 function makeWhiteboxFinding(overrides: Partial<WhiteboxFinding> & { id: string; category: WhiteboxFinding["category"]; severity: WhiteboxFinding["severity"] }): WhiteboxFinding {
   return {
@@ -131,6 +132,8 @@ beforeEach(() => { dir = makeDir(); });
 afterEach(() => { rmSync(dir, { recursive: true, force: true }); });
 
 // --- buildRelevanceContext ---
+
+useLegacySliceFlow();
 
 describe("buildRelevanceContext", () => {
   it("detects auth from features", () => {

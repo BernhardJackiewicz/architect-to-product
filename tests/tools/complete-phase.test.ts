@@ -4,7 +4,7 @@ import { handleInitProject } from "../../src/tools/init-project.js";
 import { handleSetArchitecture } from "../../src/tools/set-architecture.js";
 import { handleCreateBuildPlan } from "../../src/tools/create-build-plan.js";
 import { StateManager } from "../../src/state/state-manager.js";
-import { makeTmpDir, cleanTmpDir, parse, addPassingTests, addSastEvidence, addQualityAudit, addReleaseAudit, addPassingVerification, addPassingWhitebox } from "../helpers/setup.js";
+import { useLegacySliceFlow, makeTmpDir, cleanTmpDir, parse, addPassingTests, addSastEvidence, addQualityAudit, addReleaseAudit, addPassingVerification, addPassingWhitebox } from "../helpers/setup.js";
 
 const twoPhases = [
   {
@@ -62,6 +62,8 @@ function completeSlice(sm: StateManager, sliceId: string) {
   addPassingTests(sm, sliceId);
   sm.setSliceStatus(sliceId, "done");
 }
+
+useLegacySliceFlow();
 
 describe("handleCompletePhase", () => {
   let tmpDir: string;

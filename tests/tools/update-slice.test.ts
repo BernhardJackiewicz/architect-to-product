@@ -5,7 +5,7 @@ import { handleSetArchitecture } from "../../src/tools/set-architecture.js";
 import { handleCreateBuildPlan } from "../../src/tools/create-build-plan.js";
 import { StateManager } from "../../src/state/state-manager.js";
 import type { ReviewMode } from "../../src/state/types.js";
-import { makeTmpDir, cleanTmpDir, parse, addPassingTests, addSastEvidence } from "../helpers/setup.js";
+import { useLegacySliceFlow, makeTmpDir, cleanTmpDir, parse, addPassingTests, addSastEvidence } from "../helpers/setup.js";
 
 const baseArchInput = {
   name: "Test App",
@@ -56,6 +56,8 @@ function setupProject(tmpDir: string, reviewMode?: ReviewMode, hasUI = false) {
 
   return sliceId;
 }
+
+useLegacySliceFlow();
 
 describe("handleUpdateSlice checkpoint logic", () => {
   let tmpDir: string;

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { makeTmpDir, cleanTmpDir, parse, initWithFindings, initWithStateManager, forcePhase } from "../helpers/setup.js";
+import { useLegacySliceFlow, makeTmpDir, cleanTmpDir, parse, initWithFindings, initWithStateManager, forcePhase } from "../helpers/setup.js";
 import { handleRunWhiteboxAudit, isBlockingWhiteboxFinding, checkFileForGuards, hasReachabilityEvidence, hasMutationPatterns, runIndependentProbes } from "../../src/tools/run-whitebox-audit.js";
 import { StateManager } from "../../src/state/state-manager.js";
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
@@ -10,6 +10,8 @@ let dir: string;
 
 beforeEach(() => { dir = makeTmpDir(); });
 afterEach(() => { cleanTmpDir(dir); });
+
+useLegacySliceFlow();
 
 describe("run-whitebox-audit", () => {
   it("returns error for non-existent project", () => {

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { makeTmpDir, cleanTmpDir, initWithSlices, initWithStateManager, addPassingTests } from "../helpers/setup.js";
+import { useLegacySliceFlow, makeTmpDir, cleanTmpDir, initWithSlices, initWithStateManager, addPassingTests } from "../helpers/setup.js";
 import { StateManager } from "../../src/state/state-manager.js";
 import {
   sanitizeOutput,
@@ -19,6 +19,8 @@ beforeEach(() => { dir = makeTmpDir(); });
 afterEach(() => { cleanTmpDir(dir); });
 
 // --- BuildEvent Structure ---
+
+useLegacySliceFlow();
 
 describe("BuildEvent structure", () => {
   it("new event has default level 'info' when not set", () => {

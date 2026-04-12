@@ -28,6 +28,7 @@ import {
   addPassingVerification,
   addPassingWhitebox,
   addWhiteboxOnly,
+  useLegacySliceFlow,
 } from "../helpers/setup.js";
 
 /**
@@ -39,6 +40,8 @@ import {
  *   - Complete phase gate: SSL enforcement on multi-slice project via handleCompletePhase
  *   - Security overview: coverage dashboard with non-zero coverage after multiple activities
  */
+useLegacySliceFlow();
+
 describe("Full Cycle E2E: HSL Color Picker", () => {
   let tmpDir: string;
 

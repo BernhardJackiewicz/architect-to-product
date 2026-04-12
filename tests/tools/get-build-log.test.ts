@@ -1,7 +1,9 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { StateManager } from "../../src/state/state-manager.js";
 import { handleGetBuildLog } from "../../src/tools/get-build-log.js";
-import { makeTmpDir, initWithStateManager } from "../helpers/setup.js";
+import { useLegacySliceFlow, makeTmpDir, initWithStateManager } from "../helpers/setup.js";
+
+useLegacySliceFlow();
 
 describe("a2p_get_build_log", () => {
   let dir: string;

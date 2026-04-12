@@ -23,6 +23,7 @@ import {
   addReleaseAudit,
   addPassingVerification,
   addPassingWhitebox,
+  useLegacySliceFlow,
 } from "../helpers/setup.js";
 
 /**
@@ -33,6 +34,8 @@ import {
  *   Bug 2: Secret management tier comparison — both generateDeployment and deployToServer return tierComparison
  *   Bug 3: SSL gate enforcement — setPhase("complete") blocked without SSL, succeeds after
  */
+useLegacySliceFlow();
+
 describe("Full Cycle E2E: TicTacToe Game", () => {
   let tmpDir: string;
 

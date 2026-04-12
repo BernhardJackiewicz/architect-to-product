@@ -5,9 +5,12 @@ import { handleUpdateSlice } from "../../src/tools/update-slice.js";
 import {
   makeTmpDir, cleanTmpDir, initWithStateManager,
   walkSliceToStatus, forcePhase, addQualityAudit, parse,
+  useLegacySliceFlow,
 } from "../helpers/setup.js";
 
 // ─── Pure function tests ─────────────────────────────────────────────────────
+
+useLegacySliceFlow();
 
 describe("qualityAuditCadence (pure function)", () => {
   let dir: string;
