@@ -159,7 +159,12 @@ export const TestFirstGuardArtifactSchema = z.object({
     .nullable(),
   testFilesTouched: z.array(z.string()),
   nonTestFilesTouchedBeforeRedEvidence: z.array(z.string()),
-  guardVerdict: z.enum(["pass", "fail", "stale"]),
+  guardVerdict: z.enum([
+    "pass",
+    "pass_inherited_completion_fix",
+    "fail",
+    "stale",
+  ]),
   baselineCommit: z.string().nullable(),
   baselineCapturedAt: z.string(),
   evidenceReason: z.string(),

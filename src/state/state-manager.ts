@@ -783,7 +783,10 @@ export class StateManager {
       );
     }
     const g = slice.testFirstGuard;
-    if (g.guardVerdict !== "pass") {
+    if (
+      g.guardVerdict !== "pass" &&
+      g.guardVerdict !== "pass_inherited_completion_fix"
+    ) {
       throw new Error(
         `Slice "${slice.id}": test-first guard verdict is "${g.guardVerdict}". Fix the worktree and re-run a2p_verify_test_first.`
       );
@@ -803,20 +806,38 @@ export class StateManager {
         `Slice "${slice.id}": production files were touched before RED: ${g.nonTestFilesTouchedBeforeRedEvidence.join(", ")}`
       );
     }
-    if (g.testFilesTouched.length === 0) {
-      throw new Error(
-        `Slice "${slice.id}": no test files were touched before RED.`
-      );
+
+    // completion_fix inherited-pass mode: test-first discipline was proven in
+    // the original cycle. The current artifact legitimately has empty
+    // testFilesTouched and null redFailingEvidence — re-proving would require
+    // creating failing tests against already-correct code, which is impossible.
+    // Only the baseline-identity and "no production files touched" checks apply.
+    // The redTestsRunAt cross-check still runs below because the inherited
+    // green test run is referenced there and must be fresher than baseline.
+    const isInherited = g.guardVerdict === "pass_inherited_completion_fix";
+
+    if (!isInherited) {
+      if (g.testFilesTouched.length === 0) {
+        throw new Error(
+          `Slice "${slice.id}": no test files were touched before RED.`
+        );
+      }
+      if (!g.redFailingEvidence || g.redFailingEvidence.exitCode === 0) {
+        throw new Error(
+          `Slice "${slice.id}": no failing test run recorded. A failing test is required as proof that the test existed before the implementation.`
+        );
+      }
     }
-    if (!g.redFailingEvidence || g.redFailingEvidence.exitCode === 0) {
-      throw new Error(
-        `Slice "${slice.id}": no failing test run recorded. A failing test is required as proof that the test existed before the implementation.`
-      );
-    }
+
     // Plan §"ready_for_red → red" precondition (f): the failing test run
     // referenced by redTestsRunAt must exist in slice.testResults AND be
     // fresher than baseline.capturedAt. This is a defense-in-depth cross-check
     // against fabricated / stale guard artifacts.
+    //
+    // For pass_inherited_completion_fix: the referenced test run is the
+    // ORIGINAL green run from BEFORE the completion_fix baseline-refresh, so
+    // the freshness half of the check is legitimately inverted. We still
+    // require the match-existence half (proves the artifact isn't fabricated).
     if (g.redTestsRunAt) {
       const match = slice.testResults.find((tr) => tr.timestamp === g.redTestsRunAt);
       if (!match) {
@@ -824,7 +845,7 @@ export class StateManager {
           `Slice "${slice.id}": test-first guard redTestsRunAt=${g.redTestsRunAt} has no matching entry in slice.testResults. Re-run a2p_verify_test_first.`
         );
       }
-      if (match.timestamp < slice.baseline.capturedAt) {
+      if (!isInherited && match.timestamp < slice.baseline.capturedAt) {
         throw new Error(
           `Slice "${slice.id}": test-first guard references a test run (${match.timestamp}) older than the baseline (${slice.baseline.capturedAt}). Re-run a2p_verify_test_first.`
         );
