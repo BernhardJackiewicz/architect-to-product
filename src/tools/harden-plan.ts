@@ -21,9 +21,13 @@ export const hardenPlanSchema = z.object({
     .optional()
     .describe("Required on round 1 only: the first implementation plan you wrote"),
   critique: z
-    .string()
-    .min(1)
-    .describe("What's wrong, risky, or incomplete about the plan you're critiquing"),
+    .union([
+      z.literal("LGTM — no substantive issues on re-review."),
+      z.string().min(20),
+    ])
+    .describe(
+      "Either the LGTM literal (only valid on round 2+ when the plan is unchanged and a prior round had substantive critique) or a substantive critique of at least 20 characters. Filler critique is prohibited.",
+    ),
   revisedPlan: z
     .string()
     .min(1)
