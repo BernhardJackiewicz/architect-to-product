@@ -51,12 +51,18 @@ export function handleVerifyTestFirst(input: VerifyTestFirstInput): string {
     baselineCapturedAt: slice.baseline.capturedAt,
   } as const;
 
-  // completion_fix drift-recovery bypass (Bug #3 dogfood fix):
+  // completion_fix drift-recovery bypass (Bug #3 dogfood fix, refined in v1.2):
   // If the slice is in completion_fix and the last test result is green,
   // test-first discipline was already proven in the original cycle. Re-proving
   // it when the code is already correct is both impossible (no failing tests
   // to produce) and unnecessary (the original red→green cycle already proved
-  // tests were written first). Auto-pass the guard.
+  // tests were written first).
+  //
+  // We use a distinct verdict `pass_inherited_completion_fix` (not plain `pass`)
+  // so the downstream requireTestFirstGuardPassed check can branch on it and
+  // skip the checks that require non-empty testFilesTouched / redFailingEvidence
+  // (which are legitimately absent in this mode). Plain `pass` continues to
+  // require full evidence.
   if (slice.status === "completion_fix") {
     const lastTest = slice.testResults[slice.testResults.length - 1];
     if (lastTest && lastTest.exitCode === 0) {
@@ -66,12 +72,12 @@ export function handleVerifyTestFirst(input: VerifyTestFirstInput): string {
         redFailingEvidence: null,
         testFilesTouched: [],
         nonTestFilesTouchedBeforeRedEvidence: [],
-        guardVerdict: "pass",
+        guardVerdict: "pass_inherited_completion_fix",
         evidenceReason: `completion_fix drift-recovery: test-first inherited from original cycle; last test run green (exit ${lastTest.exitCode}, ${lastTest.passed} passed)`,
       };
       sm.storeTestFirstGuard(input.sliceId, artifact);
       return JSON.stringify({
-        guardVerdict: "pass",
+        guardVerdict: "pass_inherited_completion_fix",
         mode: "completion_fix_inherited",
         evidenceReason: artifact.evidenceReason,
         nextStep: "a2p_update_slice status=red",
