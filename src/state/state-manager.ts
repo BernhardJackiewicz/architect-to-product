@@ -986,6 +986,36 @@ export class StateManager {
       );
     }
 
+    // Anti-gaming guards for the LGTM-literal escape hatch.
+    // LGTM means "no substantive issue found on re-review" — four conditions must hold.
+    const LGTM_LITERAL = "LGTM — no substantive issues on re-review.";
+    if (data.critique === LGTM_LITERAL) {
+      if (round === 1) {
+        throw new Error(
+          `Slice "${sliceId}": LGTM critique is invalid on round 1. First round requires a substantive critique of the initial plan.`
+        );
+      }
+      if (data.improvementsFound !== false) {
+        throw new Error(
+          `Slice "${sliceId}": LGTM critique requires improvementsFound=false. Cannot claim LGTM while flagging improvements.`
+        );
+      }
+      const prevRound = existing[existing.length - 1];
+      if (!prevRound || data.revisedPlan !== prevRound.revisedPlan) {
+        throw new Error(
+          `Slice "${sliceId}": LGTM critique requires revisedPlan to be bit-identical to the previous round. Diff detected.`
+        );
+      }
+      const hasPriorSubstantive = existing.some(
+        (r) => r.critique !== LGTM_LITERAL,
+      );
+      if (!hasPriorSubstantive) {
+        throw new Error(
+          `Slice "${sliceId}": LGTM critique requires at least one prior round with substantive critique.`
+        );
+      }
+    }
+
     if (slice.planHardening?.finalized) {
       throw new Error(
         `Slice "${sliceId}": plan already finalized. Re-run a2p_harden_tests to start a new plan-hardening cycle.`

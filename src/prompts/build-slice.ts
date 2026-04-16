@@ -14,8 +14,8 @@ A2P enforces this flow in code. If you try to skip a step, the state machine rej
 
  3. PLAN HARDENING — call \`a2p_harden_plan\` for rounds 1..3 (strict sequential).
     - Round 1: provide \`initialPlan\` + \`critique\` + \`revisedPlan\`. \`improvementsFound: true\` means "expect another round".
-    - Round 2: critique round 1's revisedPlan. If no real improvement, set \`improvementsFound: false\` and \`finalize: true\`.
-    - Round 3: cap. Always finalize here.
+    - Round 2: critique Round 1's revisedPlan. If you find a substantive issue, set \`improvementsFound: true\` and produce a revised plan that addresses it. If you find no real issue, set \`improvementsFound: false\`, re-emit the previous \`revisedPlan\` verbatim, and write \`critique: 'LGTM — no substantive issues on re-review.'\` Do NOT invent filler critique to satisfy the field.
+    - Round 3: cap. Always finalize here. Same LGTM option applies if nothing substantive was found on re-review.
     - Finalize with a structured \`finalPlan\`: \`touchedAreas\`, \`expectedFiles\`, \`interfacesToChange\`, \`invariantsToPreserve\`, \`risks\`, \`narrative\`.
 
  4. READY_FOR_RED — call \`a2p_update_slice status=ready_for_red\`. A2P captures a baseline commit (or file-hash snapshot for non-git projects). From this point on, any non-test file change is a gate violation that will reject the next transition.
