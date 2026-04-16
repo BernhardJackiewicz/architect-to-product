@@ -53,13 +53,13 @@ A single slice per project may be registered with \`bootstrap: true\` via \`a2p_
 
 ---
 
-## Legacy reference (supersedes by the Native Slice Flow above)
+## Legacy reference (superseded by the Native Slice Flow above)
 
 The sections below describe the older RED → GREEN → REFACTOR → SAST prose. Read them for the details on Explore, UI aesthetics, integration slices, and build signoff — but when the two conflict, the Native Slice Flow above is authoritative.
 
 ${ENGINEERING_LOOP}
 ## Model Preference
-Check \`a2p_get_state\` → \`config.claudeModel\`. If a model is configured there, let the user know if they are using a different model. Default: opus (Claude Opus 4.6 with Maximum Effort).
+Check \`a2p_get_state\` → \`config.claudeModel\`. If a model is configured there, let the user know if they are using a different model. Default: opus (latest Opus model with Maximum Effort).
 
 ## Context
 First read the current state with \`a2p_get_state\`. The current slice and its acceptance criteria are there.
@@ -154,8 +154,8 @@ If the current slice has \`hasUI: true\` AND \`architecture.uiDesign\` exists:
    - If \`type: "description"\` → use the text as design specification
 3. Implement the UI **according to these specifications** — not at your own discretion
 
-### Frontend Aesthetics — MANDATORY for all frontend slices
-**These rules are non-negotiable for every \`hasUI: true\` slice.** They apply regardless of whether a uiDesign exists. The goal: distinctive, production-grade frontends that avoid generic "AI slop" aesthetics.
+### Frontend Aesthetics — MANDATORY implementation rules for all frontend slices
+**These rules are non-negotiable for every \`hasUI: true\` slice during implementation** (screenshot-based review is separately configurable below). They apply regardless of whether a uiDesign exists. The goal: distinctive, production-grade frontends that avoid generic "AI slop" aesthetics.
 
 Before writing any frontend code, commit to a BOLD aesthetic direction:
 - **Purpose**: What problem does this interface solve? Who uses it?
