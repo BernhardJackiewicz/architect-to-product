@@ -111,6 +111,23 @@ If the slice contains domain logic (calculations, tax rates, legal rules, indust
 2. If unclear → ask the human
 3. Document researched facts as comments in the tests
 
+### Security-Surface Checklist — RECOMMENDED for every slice
+Before writing tests, walk through this checklist. Any item that applies becomes an AC in \`a2p_harden_requirements\` AND a test case in \`a2p_harden_tests\`. Missing any of these is a classic production-blocker-after-deploy pattern that every autonomous build has shipped at least once.
+
+(Prompt guidance, not a code gate — but each missed item has caused a real production bug in past runs.)
+
+1. **User-input surface (rate-limiting)**: Does this slice accept input from an unauthenticated or end-user channel (WhatsApp, webhook, public HTTP endpoint, webview)? If yes → rate-limit it per caller-id (see \`apps/api/src/magic-link/magic-link.service.ts\` rateLimitState-Map pattern, or equivalent). Expensive operations (scheduling, DB-queries, external API calls, PDF rendering) are DoS-targets.
+
+2. **File/blob input (magic-byte validation)**: Does this slice accept uploaded files or base64-encoded binaries (images, PDFs, signatures, attachments)? If yes → validate the magic bytes BEFORE processing. A \`.jpg\` renamed to \`.png\` will crash a PDF-embedder. Typical magic bytes: PNG \`89 50 4E 47\`, JPEG \`FF D8 FF\`, PDF \`25 50 44 46\`.
+
+3. **Token-to-identity binding**: Does this slice issue or consume tokens (magic-links, acceptance-tokens, session-tokens)? If yes → the token MUST bind to the identity it authorizes. A random hex string tied only to a row-id lets anyone-with-the-link act as the legitimate user. Use JWT with \`{resourceId, identityId, typ}\` payload. Add a \`typ\` discriminator per token-purpose so tokens from one flow cannot be replayed in another.
+
+4. **Legal/compliance artifacts (integrity)**: Does this slice produce a document used as legal evidence (signed PDFs, audit logs, consent records)? If yes → the artifact MUST carry integrity markers: (a) visible identifier (UUID), (b) hash of the signed payload, (c) timestamp with timezone. Without these, the artifact is non-repudiable: an old file can be shown as "proof" with no way to verify provenance.
+
+5. **DSGVO / consent**: Does this slice collect, transmit, or process personal data? If yes → store the consent-timestamp (not just boolean), surface the consent-prompt to the user before collecting, and implement opt-out that clears or anonymizes. Pattern: \`opt_in_at timestamptz NULL\` instead of \`opted_in boolean\`.
+
+For each applicable item, write at least one negative-path test (e.g., "rate-limit rejects the 4th call within the window", "magic-byte mismatch returns 400", "JWT for wrong identity returns 401") in \`a2p_harden_tests\`. Do not rely on REFACTOR or SAST to catch these — by then the API surface is frozen.
+
 ## Evidence-Driven Development Cycle
 
 The order RED → GREEN → REFACTOR → SAST is secured by evidence gates in code: green requires passing tests, sast requires a SAST scan, done requires passing tests AND a COMPLETE completion review that is fresher than the latest test run and SAST scan. The "write tests first" discipline is also enforceable when you use the Native Slice Flow above: \`a2p_verify_test_first\` diff-classifies your worktree and rejects the red transition unless only test files were touched since baseline and a failing test run exists.

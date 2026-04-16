@@ -192,7 +192,11 @@ export interface SliceHardeningPlan {
   testsHardenedAt: string;
 }
 
-export type TestFirstGuardVerdict = "pass" | "fail" | "stale";
+export type TestFirstGuardVerdict =
+  | "pass"
+  | "pass_inherited_completion_fix"
+  | "fail"
+  | "stale";
 
 export interface TestFirstGuardArtifact {
   redTestsDeclaredAt: string;

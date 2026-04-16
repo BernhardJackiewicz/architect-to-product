@@ -585,12 +585,12 @@ describe("verify_test_first — completion_fix bypass (Bug #3 dogfood fix)", () 
     return sm;
   }
 
-  it("auto-passes when tests are green in completion_fix mode", () => {
+  it("auto-passes with pass_inherited_completion_fix verdict when tests are green in completion_fix mode", () => {
     setupToCompletionFix();
     const res = parse(
       handleVerifyTestFirst({ projectPath: dir, sliceId: "s1", testCommand: "exit 0" }),
     );
-    expect(res.guardVerdict).toBe("pass");
+    expect(res.guardVerdict).toBe("pass_inherited_completion_fix");
     expect(res.mode).toBe("completion_fix_inherited");
     expect(res.evidenceReason).toMatch(/completion_fix drift-recovery/);
   });
@@ -605,5 +605,47 @@ describe("verify_test_first — completion_fix bypass (Bug #3 dogfood fix)", () 
     );
     // Should NOT be completion_fix_inherited — should go through normal flow
     expect(res.mode).toBeUndefined();
+  });
+
+  // Regression: the original Bug #3 dogfood fix set guardVerdict="pass" but left
+  // testFilesTouched empty + redFailingEvidence null. The downstream
+  // requireTestFirstGuardPassed then rejected the completion_fix → red
+  // transition because those fields were expected to be populated. The v1.2
+  // fix introduces pass_inherited_completion_fix as a distinct verdict so the
+  // downstream check can branch on it.
+  it("completion_fix → red transition succeeds after inherited pass (was Handwerkhelfer-blocker)", () => {
+    const sm = setupToCompletionFix();
+    handleVerifyTestFirst({ projectPath: dir, sliceId: "s1", testCommand: "exit 0" });
+    // This was throwing before the fix: "no test files were touched before RED."
+    expect(() => sm.setSliceStatus("s1", "red")).not.toThrow();
+    const state = sm.read();
+    const slice = state.slices.find((s) => s.id === "s1")!;
+    expect(slice.status).toBe("red");
+    expect(slice.testFirstGuard?.guardVerdict).toBe("pass_inherited_completion_fix");
+  });
+
+  // Anti-regression: a hand-crafted artifact with plain "pass" but empty
+  // testFilesTouched must still be rejected. Only the dedicated
+  // "pass_inherited_completion_fix" verdict unlocks the bypass.
+  it("rejects plain pass with empty testFilesTouched (forged artifact)", () => {
+    const sm = setupToCompletionFix();
+    const state = sm.read();
+    const slice = state.slices.find((s) => s.id === "s1")!;
+    const baselineCommit = slice.baseline?.commit ?? null;
+    const baselineCapturedAt = slice.baseline!.capturedAt;
+    sm.storeTestFirstGuard("s1", {
+      redTestsDeclaredAt: new Date().toISOString(),
+      redTestsRunAt: slice.testResults.at(-1)!.timestamp,
+      redFailingEvidence: null,
+      testFilesTouched: [],
+      nonTestFilesTouchedBeforeRedEvidence: [],
+      guardVerdict: "pass",
+      baselineCommit,
+      baselineCapturedAt,
+      evidenceReason: "forged: plain pass with no evidence",
+    });
+    expect(() => sm.setSliceStatus("s1", "red")).toThrow(
+      /no test files were touched before RED/,
+    );
   });
 });
