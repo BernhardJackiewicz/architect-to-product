@@ -161,7 +161,7 @@ oversight: {
 buildSignoff and deployApproval are automatically set to true and cannot be disabled.
 
 ### Set Claude Model
-Do NOT explicitly ask the user — set the default: \`claudeModel: "opus"\` (Claude Opus 4.6 with Maximum Effort).
+Do NOT explicitly ask the user — set the default: \`claudeModel: "opus"\` (latest Opus model with Maximum Effort).
 If the user mentions a different model on their own or if budget is a concern, adjust:
 - **opus** (default): Maximum quality, best architecture decisions, best code
 - **sonnet**: Faster, cheaper, good code but less deep analysis
