@@ -500,4 +500,128 @@ describe("native slice hardening", () => {
     expect(after.previousPlanHardenings!.length).toBe(1);
     expect(after.previousPlanHardenings![0].rounds.length).toBe(originalRoundCount);
   });
+
+  // ─── L2 LGTM-escape-hatch (Phase 3a) ─────────────────────────────────────
+  // User-insight: forcing .min(1) on critique makes LLMs invent filler
+  // critique on Round 2-3 when nothing real is left. The LGTM literal is an
+  // opt-out, guarded against gaming (see state-manager.appendSlicePlanRound).
+
+  const LGTM = "LGTM — no substantive issues on re-review.";
+
+  it("LGTM: accepts on round 2 when plan unchanged and prior round had substantive critique", () => {
+    setupProject();
+    hardenReq("s1");
+    hardenTestsStep("s1");
+    // Round 1: substantive critique
+    const r1 = parse(
+      handleHardenPlan({
+        projectPath: dir,
+        sliceId: "s1",
+        round: 1,
+        initialPlan: "p",
+        critique: "c1 substantive initial critique",
+        revisedPlan: "rp1",
+        improvementsFound: true,
+        finalize: false,
+      }),
+    );
+    expect(r1.success).toBe(true);
+    // Round 2: LGTM — unchanged revisedPlan, improvementsFound=false, finalize=true
+    const r2 = parse(
+      handleHardenPlan({
+        projectPath: dir,
+        sliceId: "s1",
+        round: 2,
+        critique: LGTM,
+        revisedPlan: "rp1",
+        improvementsFound: false,
+        finalize: true,
+        finalPlan: {
+          touchedAreas: ["a"],
+          expectedFiles: ["f.ts"],
+          interfacesToChange: [],
+          invariantsToPreserve: [],
+          risks: [],
+          narrative: "n",
+        },
+      }),
+    );
+    expect(r2.success).toBe(true);
+    expect(r2.finalized).toBe(true);
+  });
+
+  it("LGTM: rejects on round 1 (no prior critique possible)", () => {
+    setupProject();
+    hardenReq("s1");
+    hardenTestsStep("s1");
+    const r = parse(
+      handleHardenPlan({
+        projectPath: dir,
+        sliceId: "s1",
+        round: 1,
+        initialPlan: "p",
+        critique: LGTM,
+        revisedPlan: "rp1",
+        improvementsFound: false,
+        finalize: false,
+      }),
+    );
+    expect(r.error).toMatch(/round 1/i);
+  });
+
+  it("LGTM: rejects when improvementsFound is true", () => {
+    setupProject();
+    hardenReq("s1");
+    hardenTestsStep("s1");
+    handleHardenPlan({
+      projectPath: dir,
+      sliceId: "s1",
+      round: 1,
+      initialPlan: "p",
+      critique: "c1 substantive initial critique",
+      revisedPlan: "rp1",
+      improvementsFound: true,
+      finalize: false,
+    });
+    const r = parse(
+      handleHardenPlan({
+        projectPath: dir,
+        sliceId: "s1",
+        round: 2,
+        critique: LGTM,
+        revisedPlan: "rp1",
+        improvementsFound: true, // contradiction — guard must reject
+        finalize: false,
+      }),
+    );
+    expect(r.error).toMatch(/improvementsFound/i);
+  });
+
+  it("LGTM: rejects when revisedPlan differs from previous round", () => {
+    setupProject();
+    hardenReq("s1");
+    hardenTestsStep("s1");
+    handleHardenPlan({
+      projectPath: dir,
+      sliceId: "s1",
+      round: 1,
+      initialPlan: "p",
+      critique: "c1 substantive initial critique",
+      revisedPlan: "rp1",
+      improvementsFound: true,
+      finalize: false,
+    });
+    const r = parse(
+      handleHardenPlan({
+        projectPath: dir,
+        sliceId: "s1",
+        round: 2,
+        critique: LGTM,
+        revisedPlan: "rp2-different", // guard must reject: revisedPlan changed
+        improvementsFound: false,
+        finalize: false,
+      }),
+    );
+    expect(r.error).toMatch(/bit-identical/i);
+  });
 });
