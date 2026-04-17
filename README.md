@@ -1,11 +1,40 @@
 # A2P — Architect-to-Product
-AI engineering framework delivered as an MCP server. Turns AI-generated code into production-ready software with evidence-gated systems engineering, TDD, security review, backup strategy, and deployment automation.
+AI engineering framework delivered as an MCP server. Turns AI-generated
+code into production-ready software.
 
-**A2P v2: Evidence-gated AI systems engineering.** On top of the existing v1 delivery flow (hardening triad → test-first guard → completion review → security + deployment gates), v2 adds structured per-concern artifacts and code-enforced gates for thirteen systems-engineering concerns (data_model, invariants, state_machine, api_contracts, auth_permissions, failure_modes, observability, performance_under_load, migrations, concurrency_idempotency, distributed_state, cache_invalidation, security). Applicability is deterministic; the state-manager blocks `pending → ready_for_red` and `sast → done` when evidence is missing. No v1 behavior was removed. State version bumped 1 → 2 with backward-compatible migration.
+## A2P v2 — Evidence-gated AI systems engineering
 
-**37 MCP tools · 1448 tests · Dogfood-validated (153/158 rubric, 50/50 adversarial) · Architecture → Plan → Build → Audit → Security → Deploy**
+The v2 layer treats AI-delivered code the way a staff engineer treats a
+system: thirteen **systems-engineering concerns** (data_model, invariants,
+state_machine, api_contracts, auth_permissions, failure_modes,
+observability, performance_under_load, migrations,
+concurrency_idempotency, distributed_state, cache_invalidation, security)
+must carry evidence at every hardening artifact (requirements, tests,
+plan, completion review) before a slice can reach `ready_for_red` or
+`done`. Applicability is deterministic. The state-manager enforces the
+gates in code — no prompt-only checklist.
 
-[![npm version](https://img.shields.io/npm/v/architect-to-product)](https://www.npmjs.com/package/architect-to-product) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) [![Tests: 1448 passing](https://img.shields.io/badge/tests-1448%20passing-brightgreen)](docs/validation/) [![Dogfood: 97%](https://img.shields.io/badge/dogfood-153%2F158%20(97%25)-blue)](#dogfood-validation) [![TypeScript](https://img.shields.io/badge/TypeScript-blue)](tsconfig.json)
+v2.0.2 (current) adds `codebase-memory-mcp` as a **required companion**:
+the `planning → building` transition is blocked without it, so every
+slice exploration runs against the symbol graph instead of bash grep.
+
+### A2P v1 — Evidence-gated AI delivery (the foundation)
+
+Before you can verify systems-engineering concerns, you need to verify
+delivery: that tests exist, that they were written first, that they pass
+against fresh SAST, that acceptance criteria are actually met. v1's
+hardening triad (requirements → tests → plan), test-first guard,
+completion-review loop, security gates, backup policy, and SSL
+verification are all still in place — v2 is strictly additive and the
+state file migrates v1 → v2 transparently on first read.
+
+Use v2 if you want both delivery discipline AND systems rigor. Use the
+v1 flow (the default for slices without v2 triggers) if the slice is
+narrow enough that the 13 concerns don't apply.
+
+**37 MCP tools · 1473 tests · Dogfood-validated (153/158 rubric, 50/50 adversarial) · Architecture → Plan → Build → Audit → Security → Deploy**
+
+[![npm version](https://img.shields.io/npm/v/architect-to-product)](https://www.npmjs.com/package/architect-to-product) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) [![Tests: 1473 passing](https://img.shields.io/badge/tests-1473%20passing-brightgreen)](docs/validation/) [![Dogfood: 97%](https://img.shields.io/badge/dogfood-153%2F158%20(97%25)-blue)](#dogfood-validation) [![TypeScript](https://img.shields.io/badge/TypeScript-blue)](tsconfig.json)
 
 ---
 
@@ -418,7 +447,10 @@ A2P enforces [Anthropic's frontend aesthetics guidelines](https://docs.anthropic
 
 | Version | Highlights |
 |---|---|
-| **1.1.0** | **Native slice hardening.** 6 new MCP tools (`a2p_harden_requirements`, `a2p_harden_tests`, `a2p_harden_plan`, `a2p_verify_test_first`, `a2p_completion_review`, `a2p_get_slice_hardening_status`). New statuses `ready_for_red` and `completion_fix`. Diff-based test-first guard with git + file-hash fallback. Completion review loop with plan-compliance scanner, automated stub scan, and verdict-consistency enforcement. Bootstrap flag for one-per-project legacy-flow exemption. Plan-hardening archive (`previousPlanHardenings`) preserves audit trail across cascade re-hardens. A2P metadata files (`.claude/`, `CLAUDE.md`, `.mcp.json`, `.gitignore`) excluded from test-first production-file classification. `completion_fix` auto-passes `verify_test_first` when tests are already green (prevents infinite loop on external-drift recovery). Prose `interfacesToChange` entries matched via bare-identifier extraction; type-only exports from planned files tolerated. Dogfood-validated: 50/50 adversarial tests, 153/158 rubric (97%), 6/6 Schublade-2 trap classes caught. 1351 tests (up from 1097). |
+| **2.0.2** | **codebase-memory-mcp is now a REQUIRED companion.** New `planning → building` gate (`requireCodebaseMemoryRegistered`) blocks the transition without it. Escape via `architecture.bypassCodebaseMemory: true` + rationale ≥ 20 chars. New tool `a2p_verify_codebase_memory_index`. Soft freshness warning on `ready_for_red`. `CLAUDE.md` template now carries an "Exploration preference" section that reaches Claude Code subagents (including `Explore`), closing the bash-grep-fallback loophole. All A2P prompts switched from conditional to mandatory codebase-memory language. 1473 tests (25 new: enforcement gate, prompt regression, init-project CLAUDE.md assertion). |
+| **2.0.1** | **MCP surface fix for v2 flow.** `src/server.ts` now exposes `systemsConcerns`, `systemsConcernTests`, `systemsConcernReviews`, `systemsClassification`, and `architecture.systems` on the wire. Before v2.0.1, the MCP SDK's default `strip` on `z.object()` silently dropped every v2 field the client sent, making evidence-gated v2 flow unreachable via any MCP client. Shape-parity regression test added to catch this class of drift. 1448 tests. |
+| **2.0.0** | **A2P v2 — Evidence-gated AI systems engineering.** 13 canonical systems-engineering concerns with per-concern evidence at every hardening artifact (requirements, tests, plan, completion review). Deterministic applicability rules. State-manager gates block `pending → ready_for_red` and `sast → done` when evidence is missing. State version bumped 1 → 2 with transparent backward-compatible migration. 1425 tests. |
+| **1.1.0** | **Native slice hardening (v1 flow foundation).** 6 new MCP tools (`a2p_harden_requirements`, `a2p_harden_tests`, `a2p_harden_plan`, `a2p_verify_test_first`, `a2p_completion_review`, `a2p_get_slice_hardening_status`). New statuses `ready_for_red` and `completion_fix`. Diff-based test-first guard with git + file-hash fallback. Completion review loop with plan-compliance scanner, automated stub scan, and verdict-consistency enforcement. Bootstrap flag for one-per-project legacy-flow exemption. Plan-hardening archive (`previousPlanHardenings`) preserves audit trail across cascade re-hardens. A2P metadata files (`.claude/`, `CLAUDE.md`, `.mcp.json`, `.gitignore`) excluded from test-first production-file classification. `completion_fix` auto-passes `verify_test_first` when tests are already green (prevents infinite loop on external-drift recovery). Prose `interfacesToChange` entries matched via bare-identifier extraction; type-only exports from planned files tolerated. Dogfood-validated: 50/50 adversarial tests, 153/158 rubric (97%), 6/6 Schublade-2 trap classes caught. 1351 tests (up from 1097). |
 | **1.0.10** | Companion `config` written as `env` block in `.mcp.json` (fixes Supabase MCP crash). Supabase Cloud vs Local onboarding. Companion health warnings in `a2p_get_state`. |
 | **1.0.5–1.0.9** | Gate hardening: mandatory hard stops for SSL, secret management, and security decisions. Anthropic frontend aesthetics enforcement for UI slices. IP-only SSL path. E2E full-cycle tests. Coverage dashboard at security gate. Docs unified to English. |
 | **1.0.4** | SSL/HTTPS verification gate (`a2p_verify_ssl`). Deployment and phase completion blocked without SSL proof. |
@@ -435,7 +467,7 @@ git clone https://github.com/BernhardJackiewicz/architect-to-product.git
 cd architect-to-product
 npm install
 npm run typecheck   # Type checking
-npm test            # 1351 tests
+npm test            # 1473 tests
 npm run build       # Build
 npm run dev         # Dev mode
 ```

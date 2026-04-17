@@ -1,5 +1,91 @@
 # Changelog
 
+## v2.0.2 — codebase-memory-mcp enforced as required companion
+
+### Fixed
+- **Explore-subagent-bypass (run-2 real-world finding)**: Claude Code's
+  built-in Explore subagent fell back to `bash grep` / `find` for
+  cross-file identifier lookups even when `codebase-memory-mcp` was
+  registered in `.mcp.json`. The Explore subagent does not see A2P's
+  prompts; only the project-level `CLAUDE.md` reaches it. v2.0.2 adds
+  an "Exploration preference" section to the auto-generated `CLAUDE.md`
+  instructing every agent (main + subagents) to use
+  `mcp__codebase-memory__search_graph` / `search_code` /
+  `trace_call_path` before falling back to grep.
+
+### Added
+- **Required-companion gate** (`requireCodebaseMemoryRegistered` in
+  `src/state/state-manager.ts`): `planning → building` is blocked
+  unless codebase-memory is registered as an installed companion, OR
+  the architecture opts out via `bypassCodebaseMemory: true` +
+  `bypassCodebaseMemoryRationale` ≥ 20 chars. Pattern matches the
+  existing v2 `requireSystemsConcernsHardening` gate.
+- **Soft freshness warning** (`codebaseMemoryIndexWarning`): slice
+  transition `pending → ready_for_red` emits a non-blocking warning
+  when the codebase-memory index is missing OR older than 7 days.
+  Deliberately soft — hard-block is deferred to v2.1 after real-world
+  feedback. Indexing a 4 GB repo takes minutes; we warn but don't
+  brick the flow.
+- **New tool** `a2p_verify_codebase_memory_index`: caller self-reports
+  the index readiness (pattern matches `a2p_verify_ssl`). Writes to
+  `state.codebaseMemoryReadiness = { registered, indexed,
+  lastIndexedAt }`.
+- **Setup-companions enforcement**: `a2p_setup_companions` returns an
+  error (not a warning) when a required companion's binary is
+  unavailable. Escape: pass `allowMissingRequired: true` with a
+  non-empty `bypassRationale`; the bypass is logged to
+  `state.config.companionBypasses[]` for audit. Default-required
+  companions: `codebase_memory` only in v2.0.2; `git` / `filesystem`
+  remain optional to avoid breaking existing projects on upgrade.
+- **Prompt rewrites** (planning, build-slice, onboarding, refactor,
+  security-gate): conditional "if codebase-memory available"
+  references replaced with mandatory language. Explicit instruction
+  "Do NOT spawn the Explore subagent for identifier / call-site
+  lookups" added to every prompt that could reach for Explore.
+- **Regression tests (25 new)**:
+  - `tests/integration/codebase-memory-enforcement.test.ts` (10) —
+    gate behavior: blocked without codebase-memory, allowed with
+    it, allowed with explicit bypass, rejected with short bypass
+    rationale, setup-companions error/bypass paths, verify-tool
+    persistence, soft warning on/off.
+  - `tests/prompts/codebase-memory-v2-0-2.test.ts` (14) — every
+    relevant prompt must use the `mcp__codebase-memory__` call
+    convention, must NOT contain the legacy conditional
+    `companionReadiness.codebaseMemory`, must forbid spawning the
+    Explore subagent for code reconnaissance.
+  - `tests/tools/init-project.test.ts` (+1) — generated `CLAUDE.md`
+    contains the "Exploration preference" section with all three
+    anchor tool names.
+
+### Changed
+- `CLAUDE.md` template (`src/tools/init-project.ts`) gains a new top-
+  level "Exploration preference — codebase-memory-mcp first" section.
+- Test helper `initWithArch` / `initWithStateManager` in
+  `tests/helpers/setup.ts` auto-seed codebase-memory registration so
+  existing tests don't trip the new gate. Tests that specifically
+  exercise the enforcement gate build state manually.
+- `.mcp.json` stays pinned to `architect-to-product@2.0.1`;
+  contributors who want Claude Code to load their local `dist/` copy
+  the existing `.mcp.local.json.example` pattern. Re-pin to
+  `architect-to-product@2.0.2` after publishing.
+
+### Migration for existing A2P-initialized projects
+1. Re-run `a2p_setup_companions` with a `codebase_memory` entry.
+2. Run `mcp__codebase-memory__index_repository` once (takes minutes
+   on large repos).
+3. Call `a2p_verify_codebase_memory_index` with
+   `indexed: true, lastIndexedAt: <ISO>`.
+4. Proceed with `a2p_set_phase phase:"building"` as usual. The gate
+   will now pass.
+5. If you genuinely cannot run codebase-memory (e.g. tiny spike
+   project, CI without the binary): set
+   `architecture.bypassCodebaseMemory: true` with a rationale ≥ 20
+   chars — the transition allows through with an audit log entry.
+
+Full suite: 1448 → 1473 tests (+25). All green.
+
+---
+
 ## v2.0.1 — MCP surface fix for v2 evidence-gated flow
 
 ### Fixed
