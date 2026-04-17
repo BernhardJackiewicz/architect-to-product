@@ -2,6 +2,7 @@ import { z } from "zod";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { requireProject } from "../utils/tool-helpers.js";
+import { SystemsConcernIdSchema } from "../state/validators.js";
 import type { Slice } from "../state/types.js";
 
 export const createBuildPlanSchema = z.object({
@@ -19,6 +20,12 @@ export const createBuildPlanSchema = z.object({
         type: z.enum(["feature", "integration", "infrastructure"]).optional().describe("Slice type (default: feature)"),
         hasUI: z.boolean().optional().describe("Whether this slice has frontend/UI changes"),
         bootstrap: z.boolean().optional().describe("Reserved for the A2P self-rebuild: one slice per project may legacy-flow through the build. Rejected if already claimed or locked."),
+        systemsClassification: z
+          .array(SystemsConcernIdSchema)
+          .optional()
+          .describe(
+            "A2P v2: explicit override for which systems-engineering concerns are REQUIRED for this slice. When present and non-empty, it is authoritative for the positive set and suppresses keyword-based inference. `failure_modes` is attached automatically. Values: data_model, invariants, state_machine, api_contracts, auth_permissions, failure_modes, observability, performance_under_load, migrations, concurrency_idempotency, distributed_state, cache_invalidation, security.",
+          ),
       })
     )
     .min(1)
@@ -101,6 +108,9 @@ export function handleCreateBuildPlan(input: CreateBuildPlanInput): string {
     ...(s.type ? { type: s.type } : {}),
     ...(s.hasUI !== undefined ? { hasUI: s.hasUI } : {}),
     ...(s.bootstrap === true ? { bootstrap: true } : {}),
+    ...(s.systemsClassification && s.systemsClassification.length > 0
+      ? { systemsClassification: s.systemsClassification }
+      : {}),
   }));
 
   if (input.append) {

@@ -440,6 +440,16 @@ npm run build       # Build
 npm run dev         # Dev mode
 ```
 
+**Running Claude Code against your local build.** The committed
+`.mcp.json` pins to the published npm version so contributors and
+external users always get a stable server. When you want Claude Code
+to load your in-progress `dist/` instead, copy
+`.mcp.local.json.example` to an out-of-repo override
+(`~/.claude/settings.local.json` or a private `.mcp.local.json` you
+gitignore) and edit the absolute path. The local override takes
+precedence over the committed `.mcp.json`. Restart Claude Code after
+any `npm run build` to pick up a fresh `dist/`.
+
 ---
 
 ## License

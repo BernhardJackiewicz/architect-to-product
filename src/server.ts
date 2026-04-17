@@ -118,6 +118,8 @@ export function createServer(): McpServer {
       oversight: setArchitectureSchema.shape.oversight,
       uiDesign: setArchitectureSchema.shape.uiDesign,
       phases: setArchitectureSchema.shape.phases,
+      platform: setArchitectureSchema.shape.platform,
+      systems: setArchitectureSchema.shape.systems,
     },
     wrapTool(handleSetArchitecture as ToolHandler)
   );
@@ -197,6 +199,7 @@ export function createServer(): McpServer {
       assumptions: hardenRequirementsSchema.shape.assumptions,
       risks: hardenRequirementsSchema.shape.risks,
       finalAcceptanceCriteria: hardenRequirementsSchema.shape.finalAcceptanceCriteria,
+      systemsConcerns: hardenRequirementsSchema.shape.systemsConcerns,
     },
     wrapTool(handleHardenRequirements as ToolHandler)
   );
@@ -214,6 +217,7 @@ export function createServer(): McpServer {
       regressions: hardenTestsSchema.shape.regressions,
       additionalConcerns: hardenTestsSchema.shape.additionalConcerns,
       doneMetric: hardenTestsSchema.shape.doneMetric,
+      systemsConcernTests: hardenTestsSchema.shape.systemsConcernTests,
     },
     wrapTool(handleHardenTests as ToolHandler)
   );
@@ -265,6 +269,7 @@ export function createServer(): McpServer {
       stubJustifications: completionReviewSchema.shape.stubJustifications,
       verdict: completionReviewSchema.shape.verdict,
       nextActions: completionReviewSchema.shape.nextActions,
+      systemsConcernReviews: completionReviewSchema.shape.systemsConcernReviews,
     },
     wrapTool(handleCompletionReview as ToolHandler)
   );

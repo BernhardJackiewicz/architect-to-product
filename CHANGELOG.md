@@ -1,5 +1,66 @@
 # Changelog
 
+## v2.0.1 — MCP surface fix for v2 evidence-gated flow
+
+### Fixed
+- **Ship-blocker**: `src/server.ts` now exposes every v2 field through
+  the `server.tool(...)` shape. In v2.0.0 the v2 fields were defined in
+  the handler Zod schemas but the MCP tool registrations enumerated
+  only v1 fields, so the MCP SDK's default `strip` on `z.object()`
+  silently discarded every `systemsConcerns`, `systemsConcernTests`,
+  `systemsConcernReviews`, `systemsClassification`, and
+  `architecture.systems` the client sent — making evidence-gated v2
+  flow unreachable via any MCP client.
+- `src/server.ts`: `a2p_set_architecture` shape now includes
+  `platform`, `systems`. `a2p_harden_requirements` includes
+  `systemsConcerns`. `a2p_harden_tests` includes `systemsConcernTests`.
+  `a2p_completion_review` includes `systemsConcernReviews`.
+- `src/tools/create-build-plan.ts` + `src/tools/add-slice.ts`: slice
+  sub-schemas gain `systemsClassification:
+  z.array(SystemsConcernIdSchema).optional()`, and the `Slice`
+  conversion now propagates it when non-empty.
+- The committed `.mcp.json` continues to pin
+  `architect-to-product@1.0.9` so contributors and external users get a
+  stable server. Once v2.0.1 is published to npm, re-pin to the new
+  version. In the meantime, developers who want Claude Code to load
+  the local `dist/` can copy the new `.mcp.local.json.example` to an
+  out-of-repo override (see README → Development).
+
+### Added
+- `tests/dogfood/v2-mcp-fullstack-invoice.test.ts` — wire-level
+  regression test that spawns `dist/index.js` as a subprocess and
+  drives the full v2 flow via the real MCP SDK. Asserts (a) each v2
+  field appears on the registered tool's `inputSchema.properties`,
+  (b) **three** slices walk all the way through to `done` with
+  evidence persisted at every artifact level — slices 1 and 2 use
+  explicit `systemsClassification`, slice 3 relies on the keyword-
+  triggered applicability path (`RE_AUTH`, `RE_PERF_LOAD`) and
+  exercises that `auth_permissions` + `performance_under_load` +
+  `failure_modes` are inferred and enforced on the MCP wire, and
+  (c) pre-RED gate rejects `ready_for_red` when `systemsConcerns` is
+  missing for a required concern.
+- `tests/integration/mcp-tool-shape-parity.test.ts` — meta-regression
+  that spawns `dist/index.js`, lists tools, and for every v2 tool
+  asserts every top-level field of the handler's Zod schema appears
+  on the registered `inputSchema.properties`. Empirically proven to
+  catch the original silent-drop failure mode (temporarily remove
+  `systemsConcerns` from the `a2p_harden_requirements` shape in
+  `server.ts` → test fails with precise diff).
+- `.mcp.local.json.example` — template for contributors who want
+  Claude Code to load their local `dist/` instead of the committed
+  npm-pinned server. See README → Development.
+
+### Discovered during run-2 dogfood
+- See `dogfood/REPORT-RUN-2.md` for the full run with quantified
+  signals, recurrence vs. run-1, and ship verdict.
+
+### Preserved
+- All v2.0.0 behavior (state migration, applicability rules,
+  per-concern evidence, gates) is bit-for-bit identical. This is a
+  surface-only fix.
+
+---
+
 ## v2.0.0 — A2P v2: Evidence-gated AI systems engineering
 
 ### Added

@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "architect-to-product": {
+      "command": "node",
+      "args": ["/ABSOLUTE/PATH/TO/architect-to-product/dist/index.js"]
+    }
+  }
+}

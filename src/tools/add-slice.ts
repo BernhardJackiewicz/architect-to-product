@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { requireProject } from "../utils/tool-helpers.js";
+import { SystemsConcernIdSchema } from "../state/validators.js";
 import type { Slice } from "../state/types.js";
 
 export const addSliceSchema = z.object({
@@ -15,6 +16,12 @@ export const addSliceSchema = z.object({
     productPhaseId: z.string().optional().describe("Product phase this slice belongs to"),
     hasUI: z.boolean().optional().describe("Whether this slice has frontend/UI changes"),
     bootstrap: z.boolean().optional().describe("Reserved for the A2P self-rebuild: one slice per project may legacy-flow through the build. Rejected if already claimed or locked."),
+    systemsClassification: z
+      .array(SystemsConcernIdSchema)
+      .optional()
+      .describe(
+        "A2P v2: explicit override for which systems-engineering concerns are REQUIRED for this slice. When present and non-empty, it is authoritative for the positive set and suppresses keyword-based inference. `failure_modes` is attached automatically.",
+      ),
   }),
   insertAfterSliceId: z.string().optional().describe("Insert after this slice ID (appends to end if omitted)"),
 });
@@ -76,6 +83,9 @@ export function handleAddSlice(input: AddSliceInput): string {
     ...(productPhaseId ? { productPhaseId } : {}),
     ...(input.slice.hasUI !== undefined ? { hasUI: input.slice.hasUI } : {}),
     ...(input.slice.bootstrap === true ? { bootstrap: true } : {}),
+    ...(input.slice.systemsClassification && input.slice.systemsClassification.length > 0
+      ? { systemsClassification: input.slice.systemsClassification }
+      : {}),
   };
 
   // Save the current index before mutation
