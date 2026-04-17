@@ -6,6 +6,7 @@ AI engineering framework delivered as an MCP server. Turns AI-generated code int
 **37 MCP tools · 1448 tests · Dogfood-validated (153/158 rubric, 50/50 adversarial) · Architecture → Plan → Build → Audit → Security → Deploy**
 
 [![npm version](https://img.shields.io/npm/v/architect-to-product)](https://www.npmjs.com/package/architect-to-product) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) [![Tests: 1448 passing](https://img.shields.io/badge/tests-1448%20passing-brightgreen)](docs/validation/) [![Dogfood: 97%](https://img.shields.io/badge/dogfood-153%2F158%20(97%25)-blue)](#dogfood-validation) [![TypeScript](https://img.shields.io/badge/TypeScript-blue)](tsconfig.json)
+[![SafeSkill 76/100](https://img.shields.io/badge/SafeSkill-76%2F100_Passes%20with%20Notes-yellow)](https://safeskill.dev/scan/bernhardjackiewicz-architect-to-product)
 
 ---
 
