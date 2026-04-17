@@ -23,7 +23,7 @@ process, which is what the existing
 
 | Signal                                     | Run-2 |
 |--------------------------------------------|-------|
-| MCP tool calls across the full run         | ~60   |
+| MCP tool calls across the full run         | 54    |
 | Gates fired unexpectedly (workflow bugs)   | 0     |
 | Gates fired as designed (pre-RED neg test) | 1     |
 | Re-hardening cycles                        | 0     |
@@ -40,7 +40,28 @@ Required concerns per slice:
 - `s03-customer-scoping` (keyword-inferred): {auth_permissions, performance_under_load, failure_modes}
 - `s03-gate-fail-fixture` (negative test): {security, failure_modes} — gate fires, by design.
 
+## Scope cuts vs. original spec
+
+The run-2 spec called for **5 slices** — totals, state machine,
+customer scoping, CSV injection, audit log — in a dedicated project
+dir at `/Users/bernhard/Desktop/a2p-v2-dogfood-run2/`.
+
+What actually shipped:
+- **3 slices** walked end-to-end (totals, state machine, customer
+  scoping) in the spawn-test fixture (`/tmp/a2p-v2-mcp-fullstack-*`).
+- The originally-specified project dir was abandoned once Finding #0
+  surfaced: the live Claude Code session's MCP server was running
+  pre-v2 `architect-to-product@1.0.9`, so no v2 tool was even on the
+  wire there. Manual walkthrough would have required a Claude Code
+  restart with a patched `.mcp.json`. The spawn-test path proved
+  equivalent on the MCP wire and cheaper to iterate on.
+- Slices **4 (CSV injection)** and **5 (audit log)** were cut for
+  scope. See "Not exercised" below.
+
 ## Findings
+
+For the raw chronological scratchpad (more detail per finding), see
+[`dogfood/run-2-findings.md`](./run-2-findings.md).
 
 ### Finding #0 — `.mcp.json` pinned to pre-v2 `architect-to-product@1.0.9`
 **Ship-blocker.** The repo's own `.mcp.json` told every Claude Code
@@ -128,6 +149,38 @@ the MCP wire with v2 payloads.
 - Pre-RED gate produces an actionable error: on the negative test it
   named "security" as the missing concern and referenced
   `a2p_harden_requirements` as the tool to re-invoke.
+
+## Not exercised in run-2
+
+These paths are covered by unit tests (`tests/tools/
+systems-applicability.test.ts` + `tests/tools/systems-concerns-gate.test.ts`)
+but **did NOT get end-to-end wire validation** in the spawn test.
+They were out of scope for the run-2 surface-fix but are the first
+targets for follow-up runs:
+
+- **`security` via keyword trigger** (`RE_SECURITY`: `upload`, `file`,
+  `password`, `crypto`, `token`, `secret`, `input`, `user-provided`,
+  `public endpoint`, `webhook`, `xss`, `csrf`, `injection`). The
+  cut CSV-injection slice would have exercised this naturally.
+- **`observability` via platform+keyword trigger** (`RE_API_SERVER_LIKE`:
+  `api`, `endpoint`, `route`, `handler`, `controller`, `service`,
+  `worker` on `platform` ∈ {`web`, `backend-only`}). The cut audit-log
+  slice would have exercised this.
+- **`cache_invalidation` via `architecture.systems.cacheStrategy.layer`**
+  — the run-2 fixture uses `layer: "none"`, which short-circuits the
+  rule. A fixture with `layer: "redis"` or `"memory"` would fire.
+- **`distributed_state` via `architecture.systems.distributedStateModel.topology`**
+  — the run-2 fixture uses `"single-process"`, which short-circuits.
+  A fixture with `"multi-node"` would fire.
+- **Full `completion_fix` loop** — `NOT_COMPLETE` verdict forcing a
+  baseline refresh, drift-recovery, and re-harden. The run-2 walk
+  always produced `COMPLETE` on the first review.
+- **`add_slice` mid-project carrying `systemsClassification`** — the
+  gate-fail negative test uses `add_slice` with classification but
+  walks only to the blocked transition, not through to `done`.
+
+Follow-up runs (v2.0.2 / v2.1) should add slices that exercise each
+of these explicitly.
 
 ## TL;DR
 

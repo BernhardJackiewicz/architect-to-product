@@ -3,9 +3,9 @@ AI engineering framework delivered as an MCP server. Turns AI-generated code int
 
 **A2P v2: Evidence-gated AI systems engineering.** On top of the existing v1 delivery flow (hardening triad → test-first guard → completion review → security + deployment gates), v2 adds structured per-concern artifacts and code-enforced gates for thirteen systems-engineering concerns (data_model, invariants, state_machine, api_contracts, auth_permissions, failure_modes, observability, performance_under_load, migrations, concurrency_idempotency, distributed_state, cache_invalidation, security). Applicability is deterministic; the state-manager blocks `pending → ready_for_red` and `sast → done` when evidence is missing. No v1 behavior was removed. State version bumped 1 → 2 with backward-compatible migration.
 
-**37 MCP tools · 1425 tests · Dogfood-validated (153/158 rubric, 50/50 adversarial) · Architecture → Plan → Build → Audit → Security → Deploy**
+**37 MCP tools · 1448 tests · Dogfood-validated (153/158 rubric, 50/50 adversarial) · Architecture → Plan → Build → Audit → Security → Deploy**
 
-[![npm version](https://img.shields.io/npm/v/architect-to-product)](https://www.npmjs.com/package/architect-to-product) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) [![Tests: 1351 passing](https://img.shields.io/badge/tests-1351%20passing-brightgreen)](docs/validation/) [![Dogfood: 97%](https://img.shields.io/badge/dogfood-153%2F158%20(97%25)-blue)](#dogfood-validation) [![TypeScript](https://img.shields.io/badge/TypeScript-blue)](tsconfig.json)
+[![npm version](https://img.shields.io/npm/v/architect-to-product)](https://www.npmjs.com/package/architect-to-product) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) [![Tests: 1448 passing](https://img.shields.io/badge/tests-1448%20passing-brightgreen)](docs/validation/) [![Dogfood: 97%](https://img.shields.io/badge/dogfood-153%2F158%20(97%25)-blue)](#dogfood-validation) [![TypeScript](https://img.shields.io/badge/TypeScript-blue)](tsconfig.json)
 
 ---
 
