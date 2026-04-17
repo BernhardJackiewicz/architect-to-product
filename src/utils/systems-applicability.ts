@@ -39,7 +39,7 @@ const RE_API_SERVER_LIKE =
   /\b(api|endpoint|route|handler|controller|service|worker)\b/i;
 
 const RE_AUTH =
-  /\b(auth|login|session|token|permission|permissions|role|roles|rbac|tenant|tenants|authorization|authenticated)\b/i;
+  /\b(auth|login|session|token|permission|permissions|role|roles|rbac|tenant|tenants|authorization|authenticated|per-user|multi-user|multi-tenant|user-scoped|owner|owned by|userId)\b/i;
 
 const RE_AS_A_ROLE = /\bas (an? )?[a-z-]+\b/i;
 
@@ -75,10 +75,15 @@ function touchesFiles(slice: Slice, regex: RegExp): boolean {
   return expected.some((f) => regex.test(f));
 }
 
-function planTouchesExports(slice: Slice): boolean {
-  const interfaces = slice.planHardening?.finalPlan?.interfacesToChange ?? [];
-  return interfaces.length > 0;
-}
+// NOTE: an earlier design also derived `api_contracts` applicability from
+// `slice.planHardening?.finalPlan?.interfacesToChange`. That introduced a
+// lifecycle hazard: requirements get hardened BEFORE the plan exists, but
+// the pre-RED gate runs AFTER the plan exists — so a feature slice that
+// declared interface changes in its plan would always fail the gate until
+// requirements were re-hardened. We removed that trigger. Feature slices
+// that knowingly change API surface should set `slice.systemsClassification`
+// to include `api_contracts` during planning, or harden requirements after
+// finalizing the plan and be prepared to re-harden on drift.
 
 // ---------------- public API ----------------
 
@@ -143,11 +148,10 @@ export function computeRequiredConcerns(
     required.add("auth_permissions");
   }
 
-  // api_contracts
+  // api_contracts: integration slices always; other slices must opt in via
+  // systemsClassification (layer 1). See note above on why we removed the
+  // plan-derived trigger.
   if (isIntegration) {
-    required.add("api_contracts");
-  }
-  if (planTouchesExports(slice)) {
     required.add("api_contracts");
   }
 

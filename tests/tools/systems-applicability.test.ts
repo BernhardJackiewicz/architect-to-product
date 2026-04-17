@@ -272,9 +272,16 @@ describe("computeRequiredConcerns — api_contracts rule", () => {
     expect(result.has("api_contracts")).toBe(true);
   });
 
-  it("positive: plan declares interface changes", () => {
+  it("plan declaring interface changes DOES NOT auto-trigger api_contracts (lifecycle-stable by design)", () => {
+    // Earlier versions derived api_contracts applicability from
+    // planHardening.finalPlan.interfacesToChange. That created a hazard: the
+    // set of required concerns grew AFTER requirements were hardened, making
+    // the pre-RED gate unsatisfiable without re-hardening. The dogfood run
+    // surfaced this. Now feature slices must opt into api_contracts via
+    // `systemsClassification`.
     const result = computeRequiredConcerns(
       makeSlice({
+        type: "feature",
         planHardening: {
           rounds: [],
           finalPlan: {
@@ -290,6 +297,14 @@ describe("computeRequiredConcerns — api_contracts rule", () => {
           testsHardenedAt: "t",
         },
       }),
+      makeArchitecture(),
+    );
+    expect(result.has("api_contracts")).toBe(false);
+  });
+
+  it("feature slice with explicit systemsClassification opts into api_contracts", () => {
+    const result = computeRequiredConcerns(
+      makeSlice({ type: "feature", systemsClassification: ["api_contracts"] }),
       makeArchitecture(),
     );
     expect(result.has("api_contracts")).toBe(true);

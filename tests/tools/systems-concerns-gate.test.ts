@@ -49,6 +49,9 @@ function setupProjectWithApiSlice(dir: string): StateManager {
       files: [],
       testResults: [],
       sastFindings: [],
+      // Explicit systemsClassification triggers only api_contracts;
+      // failure_modes piggybacks on the non-empty override. Stable 2-concern set.
+      systemsClassification: ["api_contracts"],
     },
   ]);
   return sm;
