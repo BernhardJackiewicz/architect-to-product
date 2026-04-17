@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { requireProject } from "../utils/tool-helpers.js";
+import { ConcernPlanEntrySchema } from "../state/validators.js";
 
 const finalPlanSchema = z.object({
   touchedAreas: z.array(z.string()).min(1),
@@ -8,6 +9,12 @@ const finalPlanSchema = z.object({
   invariantsToPreserve: z.array(z.string()),
   risks: z.array(z.string()),
   narrative: z.string().min(1).max(800),
+  systemsConcernPlans: z
+    .array(ConcernPlanEntrySchema)
+    .optional()
+    .describe(
+      "A2P v2: per-concern plan entries. For every REQUIRED concern, describe the approach, files touched, and rollback strategy.",
+    ),
 });
 
 export const hardenPlanSchema = z.object({

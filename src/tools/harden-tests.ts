@@ -1,5 +1,7 @@
 import { z } from "zod";
 import { requireProject } from "../utils/tool-helpers.js";
+import { ConcernTestEntrySchema } from "../state/validators.js";
+import type { ConcernTestEntry } from "../state/types.js";
 
 const REAL_SERVICE_KEYWORDS = /\b(real|integration|end[- ]to[- ]end|playwright|fixture|contract)\b/i;
 
@@ -24,6 +26,12 @@ export const hardenTestsSchema = z.object({
     .array(z.string())
     .describe("Concurrency / idempotency / permissions / persistence / timeouts / contract / UI-states"),
   doneMetric: z.string().min(1).describe("What must be green for this slice to be truly done"),
+  systemsConcernTests: z
+    .array(ConcernTestEntrySchema)
+    .optional()
+    .describe(
+      "A2P v2: per-concern test obligations. For every REQUIRED concern, provide an entry naming the tests that cover it.",
+    ),
 });
 
 export type HardenTestsInput = z.infer<typeof hardenTestsSchema>;
@@ -59,6 +67,7 @@ export function handleHardenTests(input: HardenTestsInput): string {
       regressions: input.regressions,
       additionalConcerns: input.additionalConcerns,
       doneMetric: input.doneMetric,
+      systemsConcernTests: input.systemsConcernTests as ConcernTestEntry[] | undefined,
     });
     const fresh = updated.slices.find((s) => s.id === input.sliceId)!;
 

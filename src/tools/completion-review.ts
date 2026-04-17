@@ -4,8 +4,10 @@ import { join } from "node:path";
 import { requireProject } from "../utils/tool-helpers.js";
 import { getSliceDiffSinceBaseline } from "../utils/slice-diff.js";
 import { scanForStubSignals } from "../utils/stub-scan.js";
+import { ConcernReviewEntrySchema } from "../state/validators.js";
 import type {
   AutomatedStubSignal,
+  ConcernReviewEntry,
   PlanComplianceReport,
   SliceAcCoverageEntry,
   SliceCompletionReview,
@@ -102,6 +104,12 @@ export const completionReviewSchema = z.object({
     .describe("One entry per automated stub signal that should not block COMPLETE"),
   verdict: z.enum(["NOT_COMPLETE", "COMPLETE"]),
   nextActions: z.array(z.string()),
+  systemsConcernReviews: z
+    .array(ConcernReviewEntrySchema)
+    .optional()
+    .describe(
+      "A2P v2: per-concern verdicts. For every REQUIRED concern, record verdict=satisfied|unsatisfied|not_applicable with evidence (file:line or test name). A concern that is REQUIRED cannot be verdicted not_applicable — if the concern genuinely doesn't apply, add an override via slice.systemsClassification.",
+    ),
 });
 
 export type CompletionReviewInput = z.infer<typeof completionReviewSchema>;
@@ -312,6 +320,9 @@ export function handleCompletionReview(input: CompletionReviewInput): string {
     verdict: input.verdict,
     nextActions: input.nextActions,
     ...(isBootstrap ? { bootstrapExempt: true } : {}),
+    ...(input.systemsConcernReviews
+      ? { systemsConcernReviews: input.systemsConcernReviews as ConcernReviewEntry[] }
+      : {}),
   };
 
   try {

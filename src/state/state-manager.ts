@@ -4,6 +4,7 @@ import { join, dirname } from "node:path";
 import { ProjectStateSchema } from "./validators.js";
 import { WHITEBOX_CATEGORY_TO_DOMAINS } from "../tools/run-whitebox-audit.js";
 import type {
+  Architecture,
   ProjectState,
   Phase,
   SliceStatus,
@@ -44,8 +45,9 @@ import type {
 } from "./types.js";
 import { pruneEvents, sanitizeOutput, truncatePreview } from "../utils/log-sanitizer.js";
 import { captureBaselineSnapshot } from "../utils/slice-diff.js";
+import { computeRequiredConcerns } from "../utils/systems-applicability.js";
 
-const STATE_VERSION = 1;
+const STATE_VERSION = 2;
 const STATE_DIR = ".a2p";
 const STATE_FILE = "state.json";
 
@@ -570,6 +572,7 @@ export class StateManager {
     if (!legacyFlow) {
       if (newStatus === "ready_for_red") {
         this.requireHardeningTriad(slice);
+        this.requireSystemsConcernsHardening(slice, state.architecture);
       }
 
       if (newStatus === "red") {
@@ -669,6 +672,9 @@ export class StateManager {
             `Slice "${sliceId}": latest completion review has planCompliance="${latestComplete.planCompliance.verdict}". Fix drift or re-harden the plan.`
           );
         }
+        // A2P v2: per-concern verdict check. Must fire AFTER planCompliance so
+        // existing v1 errors surface first when both would apply.
+        this.requireSystemsConcernsReviewed(slice, state.architecture, latestComplete);
         const unjustified = latestComplete.automatedStubSignals.filter(
           (_, i) => !latestComplete.stubJustifications.some((j) => j.signalIndex === i),
         );
@@ -772,6 +778,117 @@ export class StateManager {
       throw new Error(
         `Slice "${slice.id}": slice.acceptanceCriteria drifted from hardened AC. Re-run a2p_harden_requirements.`
       );
+    }
+  }
+
+  /**
+   * A2P v2: enforce structured systems-engineering evidence on all three
+   * hardening artifacts for every REQUIRED concern.
+   *
+   * For each concern in `computeRequiredConcerns(slice, architecture)`:
+   *  - requirementsHardening.systemsConcerns must contain an entry with
+   *    applicability = "required".
+   *  - testHardening.systemsConcernTests must contain an entry.
+   *  - planHardening.finalPlan.systemsConcernPlans must contain an entry.
+   *
+   * No-op when the required set is empty (which can happen on v1 states
+   * with no keyword-matching metadata and no architecture.systems block —
+   * but the always-on `failure_modes` rule guarantees the set is non-empty
+   * for any well-formed slice).
+   */
+  private requireSystemsConcernsHardening(
+    slice: Slice,
+    architecture: Architecture | null,
+  ): void {
+    const required = computeRequiredConcerns(slice, architecture);
+    if (required.size === 0) return;
+
+    const req = slice.requirementsHardening!; // requireHardeningTriad ran first
+    const tests = slice.testHardening!;
+    const finalPlan = slice.planHardening!.finalPlan;
+
+    const reqEntries = new Map(
+      (req.systemsConcerns ?? []).map((e) => [e.concern, e]),
+    );
+    const testEntries = new Map(
+      (tests.systemsConcernTests ?? []).map((e) => [e.concern, e]),
+    );
+    const planEntries = new Map(
+      (finalPlan.systemsConcernPlans ?? []).map((e) => [e.concern, e]),
+    );
+
+    for (const concern of required) {
+      const reqEntry = reqEntries.get(concern);
+      if (!reqEntry) {
+        throw new Error(
+          `Slice "${slice.id}": systems concern "${concern}" is REQUIRED (detected by applicability rules) but missing from requirementsHardening.systemsConcerns. Re-run a2p_harden_requirements including this concern.`,
+        );
+      }
+      if (reqEntry.applicability !== "required") {
+        throw new Error(
+          `Slice "${slice.id}": systems concern "${concern}" was declared "${reqEntry.applicability}" but applicability rules mark it REQUIRED. Add a systemsClassification override or re-run a2p_harden_requirements with applicability="required".`,
+        );
+      }
+      if (!reqEntry.requirement || reqEntry.requirement.trim().length === 0) {
+        throw new Error(
+          `Slice "${slice.id}": systems concern "${concern}" is REQUIRED but its requirement prose is empty. Re-run a2p_harden_requirements.`,
+        );
+      }
+      if (reqEntry.linkedAcIds.length === 0) {
+        throw new Error(
+          `Slice "${slice.id}": systems concern "${concern}" is REQUIRED but linkedAcIds is empty. Anchor the concern to at least one acceptance criterion and re-run a2p_harden_requirements.`,
+        );
+      }
+
+      if (!testEntries.has(concern)) {
+        throw new Error(
+          `Slice "${slice.id}": systems concern "${concern}" is REQUIRED but has no entry in testHardening.systemsConcernTests. Re-run a2p_harden_tests with a test obligation for this concern.`,
+        );
+      }
+
+      if (!planEntries.has(concern)) {
+        throw new Error(
+          `Slice "${slice.id}": systems concern "${concern}" is REQUIRED but has no entry in planHardening.finalPlan.systemsConcernPlans. Re-run a2p_harden_plan with the concern addressed in the finalPlan.`,
+        );
+      }
+    }
+  }
+
+  /**
+   * A2P v2: enforce that the latest COMPLETE completion review carries a
+   * per-concern verdict for every REQUIRED concern, with verdict = "satisfied".
+   *
+   * Runs AFTER existing planCompliance check so v1 errors surface first when
+   * both would apply. No-op when required set is empty.
+   */
+  private requireSystemsConcernsReviewed(
+    slice: Slice,
+    architecture: Architecture | null,
+    latestComplete: SliceCompletionReview,
+  ): void {
+    const required = computeRequiredConcerns(slice, architecture);
+    if (required.size === 0) return;
+
+    const reviewMap = new Map(
+      (latestComplete.systemsConcernReviews ?? []).map((e) => [e.concern, e]),
+    );
+    for (const concern of required) {
+      const r = reviewMap.get(concern);
+      if (!r) {
+        throw new Error(
+          `Slice "${slice.id}": completion review is missing systemsConcernReviews entry for REQUIRED concern "${concern}". Re-run a2p_completion_review.`,
+        );
+      }
+      if (r.verdict === "unsatisfied") {
+        throw new Error(
+          `Slice "${slice.id}": systems concern "${concern}" verdicted "unsatisfied"${r.shortfall ? ` (${r.shortfall})` : ""}. Fix the shortfall, then re-run a2p_completion_review.`,
+        );
+      }
+      if (r.verdict === "not_applicable") {
+        throw new Error(
+          `Slice "${slice.id}": systems concern "${concern}" is REQUIRED and cannot be verdicted "not_applicable" at completion time. Either address the concern or override via slice.systemsClassification.`,
+        );
+      }
     }
   }
 

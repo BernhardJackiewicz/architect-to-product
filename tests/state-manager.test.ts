@@ -45,7 +45,7 @@ describe("StateManager", () => {
     it("creates initial state with correct defaults", () => {
       const state = sm.init("test-project", tmpDir);
 
-      expect(state.version).toBe(1);
+      expect(state.version).toBe(2);
       expect(state.projectName).toBe("test-project");
       expect(state.phase).toBe("onboarding");
       expect(state.architecture).toBeNull();

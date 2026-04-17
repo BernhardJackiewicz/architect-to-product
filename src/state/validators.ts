@@ -5,6 +5,217 @@ export const HardeningAreaIdSchema = z.enum([
   "api-surface", "external-integration", "infra-secrets", "vuln-chaining",
 ]);
 
+// === A2P v2: systems-engineering concern schemas ===
+
+export const SystemsConcernIdSchema = z.enum([
+  "data_model",
+  "invariants",
+  "state_machine",
+  "api_contracts",
+  "auth_permissions",
+  "failure_modes",
+  "observability",
+  "performance_under_load",
+  "migrations",
+  "concurrency_idempotency",
+  "distributed_state",
+  "cache_invalidation",
+  "security",
+]);
+
+export const ConcernApplicabilitySchema = z.enum(["required", "not_applicable"]);
+
+/**
+ * Per-concern requirement evidence. Validation rules beyond shape:
+ *  - applicability = "required"       → requirement.length > 0 AND linkedAcIds.length > 0
+ *  - applicability = "not_applicable" → justification.length > 0
+ * These cross-field constraints are enforced via superRefine so
+ * state-manager gate errors can be precise.
+ */
+export const ConcernRequirementEntrySchema = z.object({
+  concern: SystemsConcernIdSchema,
+  applicability: ConcernApplicabilitySchema,
+  justification: z.string(),
+  requirement: z.string(),
+  linkedAcIds: z.array(z.string()),
+}).superRefine((val, ctx) => {
+  if (val.applicability === "required") {
+    if (val.requirement.trim().length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["requirement"],
+        message: `concern "${val.concern}" is required but requirement prose is empty`,
+      });
+    }
+    if (val.linkedAcIds.length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["linkedAcIds"],
+        message: `concern "${val.concern}" is required but linkedAcIds is empty (anti-gaming guard — required concerns must anchor to at least one AC)`,
+      });
+    }
+  } else {
+    if (val.justification.trim().length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["justification"],
+        message: `concern "${val.concern}" is not_applicable but justification is empty`,
+      });
+    }
+  }
+});
+
+export const ConcernTestEntrySchema = z.object({
+  concern: SystemsConcernIdSchema,
+  testNames: z.array(z.string()).min(1),
+  evidenceType: z.enum(["positive", "negative", "edge", "regression", "contract", "integration"]),
+  rationale: z.string().min(1),
+});
+
+export const ConcernPlanEntrySchema = z.object({
+  concern: SystemsConcernIdSchema,
+  approach: z.string().min(1),
+  filesTouched: z.array(z.string()),
+  rollbackStrategy: z.string().nullable(),
+});
+
+export const ConcernReviewEntrySchema = z.object({
+  concern: SystemsConcernIdSchema,
+  verdict: z.enum(["satisfied", "unsatisfied", "not_applicable"]),
+  evidence: z.string(),
+  shortfall: z.string(),
+}).superRefine((val, ctx) => {
+  if (val.verdict === "unsatisfied" && val.shortfall.trim().length === 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["shortfall"],
+      message: `concern "${val.concern}" verdicted unsatisfied but shortfall prose is empty`,
+    });
+  }
+  if (val.verdict === "satisfied" && val.evidence.trim().length === 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["evidence"],
+      message: `concern "${val.concern}" verdicted satisfied but evidence is empty`,
+    });
+  }
+});
+
+// === A2P v2: Architecture.systems schemas ===
+
+export const DomainEntitySchema = z.object({
+  name: z.string().min(1),
+  purpose: z.string(),
+  identity: z.string(),
+  ownership: z.enum(["single-tenant", "multi-tenant", "shared"]),
+  lifecycle: z.string(),
+});
+
+export const SystemInvariantSchema = z.object({
+  id: z.string().min(1),
+  statement: z.string().min(1),
+  scope: z.enum(["global", "per-entity", "per-request"]),
+  enforcedBy: z.string(),
+});
+
+export const StateMachineTransitionSchema = z.object({
+  from: z.string().min(1),
+  to: z.string().min(1),
+  trigger: z.string(),
+  guard: z.string().optional(),
+});
+
+export const StateMachineSpecSchema = z.object({
+  name: z.string().min(1),
+  states: z.array(z.string()).min(1),
+  transitions: z.array(StateMachineTransitionSchema),
+  terminalStates: z.array(z.string()),
+});
+
+export const ApiContractSpecSchema = z.object({
+  id: z.string().min(1),
+  kind: z.enum(["mcp-tool", "http", "rpc", "cli", "event"]),
+  inputShape: z.string(),
+  outputShape: z.string(),
+  errorModes: z.array(z.string()),
+  versioning: z.enum(["breaking-allowed", "additive-only", "frozen"]),
+});
+
+export const PermissionRoleSchema = z.object({
+  name: z.string().min(1),
+  grants: z.array(z.string()),
+  mustNot: z.array(z.string()),
+});
+
+export const PermissionsModelSchema = z.object({
+  tenancy: z.enum(["none", "soft", "hard"]),
+  roles: z.array(PermissionRoleSchema),
+  boundaries: z.array(z.string()),
+});
+
+export const FailureModeSchema = z.object({
+  id: z.string().min(1),
+  trigger: z.string().min(1),
+  blastRadius: z.string(),
+  detection: z.string(),
+  recovery: z.string(),
+});
+
+export const MigrationPolicySchema = z.object({
+  stateVersionCurrent: z.number().int().positive(),
+  forwardStrategy: z.enum(["preprocess-in-zod", "explicit-script", "hybrid"]),
+  backwardCompatPromise: z.string(),
+  migrationTests: z.array(z.string()),
+});
+
+export const ObservabilityModelSchema = z.object({
+  logging: z.enum(["structured-json", "text", "none"]),
+  logCorrelationKey: z.string().nullable(),
+  metricsBackend: z.string().nullable(),
+  tracingBackend: z.string().nullable(),
+  requiredEventsPerSlice: z.array(z.string()),
+});
+
+export const PerformanceBudgetSchema = z.object({
+  surface: z.string().min(1),
+  p50Ms: z.number().nonnegative(),
+  p95Ms: z.number().nonnegative(),
+  maxBytesInMemory: z.number().nonnegative().optional(),
+});
+
+export const CacheStrategySchema = z.object({
+  layer: z.string(),
+  invalidationTriggers: z.array(z.string()),
+  stalenessBoundMs: z.number().nonnegative().nullable(),
+});
+
+export const DistributedStateModelSchema = z.object({
+  topology: z.enum(["single-process", "multi-process", "multi-node"]),
+  consistency: z.enum(["single-writer", "strong", "eventual"]),
+  coordinationMechanism: z.string().nullable(),
+});
+
+export const SecurityAssumptionSchema = z.object({
+  id: z.string().min(1),
+  assumption: z.string().min(1),
+  invalidatedBy: z.string(),
+});
+
+export const ArchitectureSystemsSchema = z.object({
+  domainEntities: z.array(DomainEntitySchema),
+  invariants: z.array(SystemInvariantSchema),
+  stateMachines: z.array(StateMachineSpecSchema),
+  apiContracts: z.array(ApiContractSpecSchema),
+  permissionsModel: PermissionsModelSchema,
+  failureModel: z.array(FailureModeSchema),
+  migrationPolicy: MigrationPolicySchema,
+  observabilityModel: ObservabilityModelSchema,
+  performanceBudgets: z.array(PerformanceBudgetSchema),
+  cacheStrategy: CacheStrategySchema,
+  distributedStateModel: DistributedStateModelSchema,
+  securityAssumptions: z.array(SecurityAssumptionSchema),
+});
+
 export const TechStackSchema = z.object({
   language: z.string().min(1),
   framework: z.string().min(1),
@@ -57,6 +268,8 @@ export const ArchitectureSchema = z.object({
   oversight: OversightConfigSchema.optional(),
   uiDesign: UIDesignSchema.optional(),
   testFilePatterns: z.array(z.string()).optional(),
+  // A2P v2: optional structured systems-engineering block
+  systems: ArchitectureSystemsSchema.optional(),
 });
 
 export const TestResultSchema = z.object({
@@ -100,6 +313,8 @@ export const SliceHardeningRequirementsSchema = z.object({
   finalAcceptanceCriteria: z.array(z.string()).min(1),
   acHash: z.string().min(1),
   hardenedAt: z.string().min(1),
+  // A2P v2: optional per-concern requirement evidence
+  systemsConcerns: z.array(ConcernRequirementEntrySchema).optional(),
 });
 
 export const SliceTestHardeningEntrySchema = z.object({
@@ -118,6 +333,8 @@ export const SliceHardeningTestsSchema = z.object({
   doneMetric: z.string().min(1),
   hardenedAt: z.string().min(1),
   requirementsAcHash: z.string().min(1),
+  // A2P v2: optional per-concern test obligations
+  systemsConcernTests: z.array(ConcernTestEntrySchema).optional(),
 });
 
 export const SlicePlanHardeningRoundSchema = z.object({
@@ -136,6 +353,8 @@ export const SliceFinalPlanSchema = z.object({
   invariantsToPreserve: z.array(z.string()),
   risks: z.array(z.string()),
   narrative: z.string().min(1).max(800),
+  // A2P v2: optional per-concern plan entries
+  systemsConcernPlans: z.array(ConcernPlanEntrySchema).optional(),
 });
 
 export const SliceHardeningPlanSchema = z.object({
@@ -216,6 +435,8 @@ export const SliceCompletionReviewSchema = z.object({
   nextActions: z.array(z.string()),
   supersededByHardeningAt: z.string().optional(),
   bootstrapExempt: z.boolean().optional(),
+  // A2P v2: optional per-concern verdicts for the pre-DONE gate
+  systemsConcernReviews: z.array(ConcernReviewEntrySchema).optional(),
 });
 
 export const SliceStatusSchema = z.enum([
@@ -252,6 +473,8 @@ export const SliceSchema = z.object({
   previousPlanHardenings: z.array(SliceHardeningPlanSchema).optional(),
   testFirstGuard: TestFirstGuardArtifactSchema.optional(),
   completionReviews: z.array(SliceCompletionReviewSchema).optional(),
+  // A2P v2: optional explicit systems-concern override
+  systemsClassification: z.array(SystemsConcernIdSchema).optional(),
 });
 
 export const QualityIssueSchema = z.object({
@@ -549,10 +772,29 @@ function migratePlanHardeningInSlices(data: Record<string, unknown>): Record<str
   return data;
 }
 
+/**
+ * Migrate v1 state → v2 (A2P v2 systems-engineering).
+ * Semantic no-op: every new field is optional and defaults to `undefined`.
+ * We bump the stored version number so downstream code can distinguish.
+ *
+ * A v1 state read by v2 code round-trips with all systems fields unset.
+ * computeRequiredConcerns() returns {"failure_modes"} at minimum (always-on),
+ * so pre-RED gate starts enforcing from the next hardening call. Slices
+ * already past `ready_for_red` at upgrade time retain their existing state
+ * — the gate fires on the *next* transition attempt.
+ */
+function migrateV1ToV2Systems(data: Record<string, unknown>): Record<string, unknown> {
+  if (typeof data.version === "number" && data.version < 2) {
+    data.version = 2;
+  }
+  return data;
+}
+
 export const ProjectStateSchema = z.preprocess(
   (val) => {
     if (val && typeof val === "object" && !Array.isArray(val)) {
       const obj = val as Record<string, unknown>;
+      migrateV1ToV2Systems(obj);
       migrateAdversarialReview(obj);
       migratePlanHardeningInSlices(obj);
       return obj;

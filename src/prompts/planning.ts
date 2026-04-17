@@ -45,6 +45,34 @@ Orientation:
   - Done metric: what must be green for the slice to be truly done?
 - **securityNotes**: Which security aspects are relevant? (Auth, input validation, secrets)
 - **deployImpact**: What changes in deployment? (new env vars, migrations, services)
+- **systemsClassification** (optional): explicit list of systems-engineering concerns that apply — overrides applicability heuristics. Use only when you know more than the heuristics.
+
+### 5. Systems-engineering concerns (A2P v2)
+Every slice is evaluated against thirteen concerns:
+data_model, invariants, state_machine, api_contracts, auth_permissions,
+failure_modes, observability, performance_under_load, migrations,
+concurrency_idempotency, distributed_state, cache_invalidation, security.
+
+A2P applies deterministic applicability rules at the state-manager level.
+A concern is REQUIRED for a slice when its rule fires — rules read
+\`slice.type\`, \`slice.hasUI\`, architecture.techStack, architecture.systems,
+and keyword signals in the slice name/description/AC text. Examples:
+- \`type: "integration"\` + /webhook|callback|retry|queue|stripe/ → concurrency_idempotency
+- /migration|schema|alter table|new table/ → migrations
+- /auth|login|session|token|permission|as a <role>/ → auth_permissions
+- architecture.systems.distributedStateModel.topology ≠ single-process → distributed_state
+
+When planning:
+- Identify which concerns each slice will trigger.
+- Flag slices that will carry many concerns (integration + webhook + auth-sensitive)
+  so the user can decide whether to split them.
+- If a concern heuristic will mis-fire for a specific slice (e.g., the word
+  "webhook" appears in docs but no webhook code is touched), add an explicit
+  \`systemsClassification\` to narrow the set.
+
+Do NOT resolve concerns during planning. Evidence is attached during
+\`a2p_harden_requirements\`, \`a2p_harden_tests\`, \`a2p_harden_plan\`, and
+\`a2p_completion_review\`. Planning only sets scope.
 
 ## Slice Types
 Every slice has a type:

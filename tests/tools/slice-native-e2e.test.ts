@@ -65,6 +65,8 @@ describe("native flow end-to-end (real tools)", () => {
   }
 
   function hardenFully(): void {
+    // plan.interfacesToChange=["x"] → api_contracts concern fires →
+    // failure_modes piggybacks. Supply both so the v2 gate passes.
     handleHardenRequirements({
       projectPath: dir,
       sliceId: "s1",
@@ -74,6 +76,22 @@ describe("native flow end-to-end (real tools)", () => {
       assumptions: [],
       risks: [],
       finalAcceptanceCriteria: ["AC1"],
+      systemsConcerns: [
+        {
+          concern: "api_contracts",
+          applicability: "required",
+          justification: "",
+          requirement: "x() is exported and used by external callers",
+          linkedAcIds: ["AC1"],
+        },
+        {
+          concern: "failure_modes",
+          applicability: "required",
+          justification: "",
+          requirement: "invalid inputs produce a typed error",
+          linkedAcIds: ["AC1"],
+        },
+      ],
     });
     handleHardenTests({
       projectPath: dir,
@@ -85,6 +103,10 @@ describe("native flow end-to-end (real tools)", () => {
       regressions: [],
       additionalConcerns: [],
       doneMetric: "tests green",
+      systemsConcernTests: [
+        { concern: "api_contracts", testNames: ["t1"], evidenceType: "contract", rationale: "covers x() signature" },
+        { concern: "failure_modes", testNames: ["t1"], evidenceType: "negative", rationale: "covers invalid input" },
+      ],
     });
     handleHardenPlan({
       projectPath: dir,
@@ -102,6 +124,10 @@ describe("native flow end-to-end (real tools)", () => {
         invariantsToPreserve: [],
         risks: [],
         narrative: "small narrative",
+        systemsConcernPlans: [
+          { concern: "api_contracts", approach: "export const x = 1", filesTouched: ["src/x.ts"], rollbackStrategy: null },
+          { concern: "failure_modes", approach: "throw TypeError on non-number input", filesTouched: ["src/x.ts"], rollbackStrategy: null },
+        ],
       },
     });
   }
@@ -168,6 +194,10 @@ describe("native flow end-to-end (real tools)", () => {
         stubJustifications: [],
         verdict: "COMPLETE",
         nextActions: [],
+        systemsConcernReviews: [
+          { concern: "api_contracts", verdict: "satisfied", evidence: "src/x.ts exports x", shortfall: "" },
+          { concern: "failure_modes", verdict: "satisfied", evidence: "tests/x.test.ts covers error path", shortfall: "" },
+        ],
       }),
     );
     expect(rev.success).toBe(true);

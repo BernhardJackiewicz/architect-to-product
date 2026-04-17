@@ -128,6 +128,39 @@ Before writing tests, walk through this checklist. Any item that applies becomes
 
 For each applicable item, write at least one negative-path test (e.g., "rate-limit rejects the 4th call within the window", "magic-byte mismatch returns 400", "JWT for wrong identity returns 401") in \`a2p_harden_tests\`. Do not rely on REFACTOR or SAST to catch these — by then the API surface is frozen.
 
+### Systems-Engineering Concerns — CODE-ENFORCED for every non-cosmetic slice (A2P v2)
+Before \`a2p_harden_requirements\`, walk through the thirteen concerns and classify each one:
+
+  data_model, invariants, state_machine, api_contracts, auth_permissions,
+  failure_modes, observability, performance_under_load, migrations,
+  concurrency_idempotency, distributed_state, cache_invalidation, security.
+
+A2P auto-detects REQUIRED concerns from slice metadata + architecture via deterministic applicability rules (see \`src/utils/systems-applicability.ts\`). For every REQUIRED concern you must supply evidence across all three hardening artifacts AND in the completion review. The state-manager rejects the \`pending → ready_for_red\` and \`sast → done\` transitions when any REQUIRED concern is missing evidence.
+
+**Apply the concerns walkthrough before reasoning about implementation.** For each, ask:
+- **data_model**: What entities/records does this slice touch? Identity, ownership, lifecycle?
+- **invariants**: What must remain true after the change? (e.g., "at most one active session per user"). Enforced where?
+- **state_machine**: Does this slice add/change statusful transitions? Which states, which guards?
+- **api_contracts**: What inputs/outputs/error modes cross a boundary? Versioning promise?
+- **auth_permissions**: Who can do this? What's the tenancy boundary? Negative test for unauthorized?
+- **failure_modes**: How can this fail (network, DB, crash mid-write)? Detection + recovery?
+- **observability**: What events must be logged? Correlation key? What question does the log answer?
+- **performance_under_load**: Is this in a hot path / list / batch / fan-out? Budget?
+- **migrations**: Schema/data shape changes? Forward + rollback? Zero-downtime strategy?
+- **concurrency_idempotency**: Retry semantics? Duplicate-proof? Webhook replay? Race conditions?
+- **distributed_state**: Multiple writers? Eventual consistency? Coordination mechanism?
+- **cache_invalidation**: Cached read paths affected? TTL? Invalidation trigger?
+- **security**: Input/upload/token/crypto/public-endpoint surface? Anti-gaming guard?
+
+**Classification rules:**
+- A concern is \`applicability: "required"\` whenever the rule marks it so. Provide non-empty \`requirement\` prose AND at least one \`linkedAcIds\` entry (anti-gaming guard — forces anchoring to a testable AC).
+- A concern is \`applicability: "not_applicable"\` only with a specific \`justification\` and only when applicability rules DO NOT mark it REQUIRED. If rules would mark it REQUIRED but it genuinely doesn't apply, set \`slice.systemsClassification\` to explicitly narrow the set.
+- Every REQUIRED concern needs a matching \`systemsConcernTests\` entry (naming the tests that cover it) AND a \`systemsConcernPlans\` entry (approach + filesTouched + rollback) AND, at completion time, a \`systemsConcernReviews\` entry with verdict=satisfied + evidence.
+
+**Integration with the Security-Surface Checklist above:** the five items (rate limiting, magic bytes, token identity, legal artifact integrity, DSGVO) are subsumed by the \`security\` and \`data_model\` concerns. If you identify a Security-Surface item, record it once as a concern entry — don't duplicate.
+
+**Integration with Structured Logging below:** logging obligations are the \`observability\` concern. If observability is REQUIRED, the structured-logging guidance describes HOW; the concern entry records THAT.
+
 ## Evidence-Driven Development Cycle
 
 The order RED → GREEN → REFACTOR → SAST is secured by evidence gates in code: green requires passing tests, sast requires a SAST scan, done requires passing tests AND a COMPLETE completion review that is fresher than the latest test run and SAST scan. The "write tests first" discipline is also enforceable when you use the Native Slice Flow above: \`a2p_verify_test_first\` diff-classifies your worktree and rejects the red transition unless only test files were touched since baseline and a failing test run exists.

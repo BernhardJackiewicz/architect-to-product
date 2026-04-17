@@ -54,16 +54,39 @@ describe("completion review — plan compliance (Slice 3)", () => {
         sastFindings: [],
       },
     ]);
+    // plan declares interface changes → api_contracts concern fires →
+    // failure_modes piggybacks. Supply entries across all three artifacts.
+    const concernSet = [
+      {
+        concern: "api_contracts" as const,
+        applicability: "required" as const,
+        justification: "",
+        requirement: "exported symbols match plan",
+        linkedAcIds: ["AC1"],
+      },
+      {
+        concern: "failure_modes" as const,
+        applicability: "required" as const,
+        justification: "",
+        requirement: "failure path returns typed error",
+        linkedAcIds: ["AC1"],
+      },
+    ];
     handleHardenRequirements({
       projectPath: dir, sliceId: "s1",
       goal: "g", nonGoals: [], affectedComponents: ["src/x.ts"],
       assumptions: [], risks: [], finalAcceptanceCriteria: ["AC1"],
+      systemsConcerns: concernSet,
     });
     handleHardenTests({
       projectPath: dir, sliceId: "s1",
       acToTestMap: [{ ac: "AC1", tests: ["t1"], rationale: "r" }],
       positiveCases: ["p"], negativeCases: ["n"], edgeCases: [], regressions: [], additionalConcerns: [],
       doneMetric: "dm",
+      systemsConcernTests: [
+        { concern: "api_contracts", testNames: ["t1"], evidenceType: "contract", rationale: "c" },
+        { concern: "failure_modes", testNames: ["t1"], evidenceType: "negative", rationale: "c" },
+      ],
     });
     handleHardenPlan({
       projectPath: dir, sliceId: "s1",
@@ -76,6 +99,10 @@ describe("completion review — plan compliance (Slice 3)", () => {
         invariantsToPreserve: [],
         risks: [],
         narrative: "n",
+        systemsConcernPlans: [
+          { concern: "api_contracts", approach: "export symbols", filesTouched: ["src/x.ts"], rollbackStrategy: null },
+          { concern: "failure_modes", approach: "throw", filesTouched: ["src/x.ts"], rollbackStrategy: null },
+        ],
       },
     });
 

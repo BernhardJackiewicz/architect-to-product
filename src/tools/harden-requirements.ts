@@ -1,5 +1,7 @@
 import { z } from "zod";
 import { requireProject } from "../utils/tool-helpers.js";
+import { ConcernRequirementEntrySchema } from "../state/validators.js";
+import type { ConcernRequirementEntry } from "../state/types.js";
 
 export const hardenRequirementsSchema = z.object({
   projectPath: z.string().describe("Absolute path to the project directory"),
@@ -16,6 +18,12 @@ export const hardenRequirementsSchema = z.object({
     .array(z.string())
     .min(1)
     .describe("Overwrites the slice's acceptanceCriteria with the hardened set"),
+  systemsConcerns: z
+    .array(ConcernRequirementEntrySchema)
+    .optional()
+    .describe(
+      "A2P v2: per-concern requirement evidence. For every REQUIRED concern reported by applicability rules, provide an entry with applicability='required', non-empty requirement prose, and at least one linkedAcIds entry. For concerns you are explicitly marking not_applicable, provide applicability='not_applicable' and a non-empty justification.",
+    ),
 });
 
 export type HardenRequirementsInput = z.infer<typeof hardenRequirementsSchema>;
@@ -32,6 +40,7 @@ export function handleHardenRequirements(input: HardenRequirementsInput): string
       assumptions: input.assumptions,
       risks: input.risks,
       finalAcceptanceCriteria: input.finalAcceptanceCriteria,
+      systemsConcerns: input.systemsConcerns as ConcernRequirementEntry[] | undefined,
     });
     const slice = state.slices.find((s) => s.id === input.sliceId)!;
     return JSON.stringify({

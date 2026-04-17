@@ -1,6 +1,18 @@
 import { z } from "zod";
 import { requireProject } from "../utils/tool-helpers.js";
-import type { Architecture, TechStack, ProductPhase, ReviewMode, UIDesign, OversightConfig, BackupTarget, BackupOffsiteProvider, Platform } from "../state/types.js";
+import { ArchitectureSystemsSchema } from "../state/validators.js";
+import type {
+  Architecture,
+  ArchitectureSystems,
+  TechStack,
+  ProductPhase,
+  ReviewMode,
+  UIDesign,
+  OversightConfig,
+  BackupTarget,
+  BackupOffsiteProvider,
+  Platform,
+} from "../state/types.js";
 
 export const setArchitectureSchema = z.object({
   projectPath: z.string().describe("Absolute path to the project directory"),
@@ -70,6 +82,11 @@ export const setArchitectureSchema = z.object({
     )
     .optional()
     .describe("Product phases if the architecture defines multiple phases/milestones"),
+  systems: ArchitectureSystemsSchema
+    .optional()
+    .describe(
+      "A2P v2: structured systems-engineering architecture (domain entities, invariants, state machines, API contracts, permissions, failure modes, migration policy, observability, performance budgets, cache strategy, distributed-state model, security assumptions). Optional; when present, drives per-slice applicability rules.",
+    ),
 });
 
 export type SetArchitectureInput = z.infer<typeof setArchitectureSchema>;
@@ -136,6 +153,7 @@ export function handleSetArchitecture(input: SetArchitectureInput): string {
       reviewMode: input.oversight.sliceReview ?? input.reviewMode ?? "off", // sync for backward compat
     } : {}),
     ...(input.uiDesign ? { uiDesign: input.uiDesign } : {}),
+    ...(input.systems ? { systems: input.systems as ArchitectureSystems } : {}),
   };
 
   sm.setArchitecture(architecture);

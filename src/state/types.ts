@@ -101,6 +101,212 @@ export interface ProductPhase {
 
 export type SliceType = "feature" | "integration" | "infrastructure";
 
+/**
+ * Canonical systems-engineering concern IDs introduced in A2P v2.
+ * Every slice is evaluated against applicability rules (see
+ * src/utils/systems-applicability.ts) to determine which of these must
+ * carry structured evidence in the hardening triad + completion review.
+ */
+export type SystemsConcernId =
+  | "data_model"
+  | "invariants"
+  | "state_machine"
+  | "api_contracts"
+  | "auth_permissions"
+  | "failure_modes"
+  | "observability"
+  | "performance_under_load"
+  | "migrations"
+  | "concurrency_idempotency"
+  | "distributed_state"
+  | "cache_invalidation"
+  | "security";
+
+/** Ordered list of all systems concerns — stable across versions. */
+export const SYSTEMS_CONCERN_IDS: readonly SystemsConcernId[] = [
+  "data_model",
+  "invariants",
+  "state_machine",
+  "api_contracts",
+  "auth_permissions",
+  "failure_modes",
+  "observability",
+  "performance_under_load",
+  "migrations",
+  "concurrency_idempotency",
+  "distributed_state",
+  "cache_invalidation",
+  "security",
+] as const;
+
+export type ConcernApplicability = "required" | "not_applicable";
+
+/**
+ * Per-concern requirement-level evidence attached to
+ * SliceHardeningRequirements. "required" entries MUST have a non-empty
+ * requirement and non-empty linkedAcIds (anti-gaming guard — forces the
+ * concern to anchor to a testable AC). "not_applicable" entries MUST
+ * have a non-empty justification.
+ */
+export interface ConcernRequirementEntry {
+  concern: SystemsConcernId;
+  applicability: ConcernApplicability;
+  justification: string; // required when applicability = "not_applicable"
+  requirement: string;   // required (non-empty) when applicability = "required"
+  linkedAcIds: string[]; // at least one AC ID when applicability = "required"
+}
+
+export type ConcernEvidenceType =
+  | "positive"
+  | "negative"
+  | "edge"
+  | "regression"
+  | "contract"
+  | "integration";
+
+/** Per-concern test obligation attached to SliceHardeningTests. */
+export interface ConcernTestEntry {
+  concern: SystemsConcernId;
+  testNames: string[]; // test names that cover this concern
+  evidenceType: ConcernEvidenceType;
+  rationale: string;
+}
+
+/** Per-concern plan entry attached to SliceFinalPlan. */
+export interface ConcernPlanEntry {
+  concern: SystemsConcernId;
+  approach: string;                   // how the slice addresses the concern
+  filesTouched: string[];             // should be a subset of finalPlan.expectedFiles
+  rollbackStrategy: string | null;    // required when concern has mutation semantics
+}
+
+export type ConcernVerdict = "satisfied" | "unsatisfied" | "not_applicable";
+
+/** Per-concern verdict attached to SliceCompletionReview. */
+export interface ConcernReviewEntry {
+  concern: SystemsConcernId;
+  verdict: ConcernVerdict;
+  evidence: string;    // file:line reference or test name
+  shortfall: string;   // required when verdict = "unsatisfied"
+}
+
+// === A2P v2 systems-engineering architecture block ===
+
+export interface DomainEntity {
+  name: string;
+  purpose: string;
+  identity: string;
+  ownership: "single-tenant" | "multi-tenant" | "shared";
+  lifecycle: string;
+}
+
+export interface SystemInvariant {
+  id: string;
+  statement: string;
+  scope: "global" | "per-entity" | "per-request";
+  enforcedBy: string;
+}
+
+export interface StateMachineTransition {
+  from: string;
+  to: string;
+  trigger: string;
+  guard?: string;
+}
+
+export interface StateMachineSpec {
+  name: string;
+  states: string[];
+  transitions: StateMachineTransition[];
+  terminalStates: string[];
+}
+
+export type ApiContractKind = "mcp-tool" | "http" | "rpc" | "cli" | "event";
+
+export interface ApiContractSpec {
+  id: string;
+  kind: ApiContractKind;
+  inputShape: string;
+  outputShape: string;
+  errorModes: string[];
+  versioning: "breaking-allowed" | "additive-only" | "frozen";
+}
+
+export interface PermissionRole {
+  name: string;
+  grants: string[];
+  mustNot: string[];
+}
+
+export interface PermissionsModel {
+  tenancy: "none" | "soft" | "hard";
+  roles: PermissionRole[];
+  boundaries: string[];
+}
+
+export interface FailureMode {
+  id: string;
+  trigger: string;
+  blastRadius: string;
+  detection: string;
+  recovery: string;
+}
+
+export interface MigrationPolicy {
+  stateVersionCurrent: number;
+  forwardStrategy: "preprocess-in-zod" | "explicit-script" | "hybrid";
+  backwardCompatPromise: string;
+  migrationTests: string[];
+}
+
+export interface ObservabilityModel {
+  logging: "structured-json" | "text" | "none";
+  logCorrelationKey: string | null;
+  metricsBackend: string | null;
+  tracingBackend: string | null;
+  requiredEventsPerSlice: string[];
+}
+
+export interface PerformanceBudget {
+  surface: string;
+  p50Ms: number;
+  p95Ms: number;
+  maxBytesInMemory?: number;
+}
+
+export interface CacheStrategy {
+  layer: string; // "none", "in-memory", "redis", etc.
+  invalidationTriggers: string[];
+  stalenessBoundMs: number | null;
+}
+
+export interface DistributedStateModel {
+  topology: "single-process" | "multi-process" | "multi-node";
+  consistency: "single-writer" | "strong" | "eventual";
+  coordinationMechanism: string | null;
+}
+
+export interface SecurityAssumption {
+  id: string;
+  assumption: string;
+  invalidatedBy: string;
+}
+
+export interface ArchitectureSystems {
+  domainEntities: DomainEntity[];
+  invariants: SystemInvariant[];
+  stateMachines: StateMachineSpec[];
+  apiContracts: ApiContractSpec[];
+  permissionsModel: PermissionsModel;
+  failureModel: FailureMode[];
+  migrationPolicy: MigrationPolicy;
+  observabilityModel: ObservabilityModel;
+  performanceBudgets: PerformanceBudget[];
+  cacheStrategy: CacheStrategy;
+  distributedStateModel: DistributedStateModel;
+  securityAssumptions: SecurityAssumption[];
+}
+
 export interface Architecture {
   name: string;
   description: string;
@@ -114,6 +320,13 @@ export interface Architecture {
   oversight?: OversightConfig; // Granular human oversight configuration
   uiDesign?: UIDesign; // UI description, wireframes, mockups
   testFilePatterns?: string[]; // project override for test-file glob patterns used by verify-test-first + stub scan
+  /**
+   * A2P v2: structured systems-engineering architecture. Optional; when
+   * present, its fields drive applicability detection for slices (e.g.
+   * cacheStrategy.layer !== "none" makes cache_invalidation REQUIRED for
+   * cache-touching slices).
+   */
+  systems?: ArchitectureSystems;
 }
 
 export type Platform = "web" | "mobile" | "cross-platform" | "backend-only";
@@ -143,6 +356,8 @@ export interface SliceHardeningRequirements {
   finalAcceptanceCriteria: string[];
   acHash: string;
   hardenedAt: string;
+  /** A2P v2: per-concern requirement evidence. Optional for backward compat. */
+  systemsConcerns?: ConcernRequirementEntry[];
 }
 
 export interface SliceTestHardeningEntry {
@@ -161,6 +376,8 @@ export interface SliceHardeningTests {
   doneMetric: string;
   hardenedAt: string;
   requirementsAcHash: string;
+  /** A2P v2: per-concern test obligations. Optional for backward compat. */
+  systemsConcernTests?: ConcernTestEntry[];
 }
 
 export interface SlicePlanHardeningRound {
@@ -179,6 +396,8 @@ export interface SliceFinalPlan {
   invariantsToPreserve: string[];
   risks: string[];
   narrative: string;
+  /** A2P v2: per-concern plan entries. Optional for backward compat. */
+  systemsConcernPlans?: ConcernPlanEntry[];
 }
 
 export interface SliceHardeningPlan {
@@ -262,6 +481,8 @@ export interface SliceCompletionReview {
   nextActions: string[];
   supersededByHardeningAt?: string;
   bootstrapExempt?: boolean;
+  /** A2P v2: per-concern verdicts for the pre-DONE gate. Optional for backward compat. */
+  systemsConcernReviews?: ConcernReviewEntry[];
 }
 
 export interface Slice {
@@ -294,6 +515,12 @@ export interface Slice {
   previousPlanHardenings?: SliceHardeningPlan[];
   testFirstGuard?: TestFirstGuardArtifact;
   completionReviews?: SliceCompletionReview[];
+  /**
+   * A2P v2: explicit user override for systems-concern applicability.
+   * When present, overrides structural and keyword heuristics.
+   * When omitted, computeRequiredConcerns() derives from slice metadata.
+   */
+  systemsClassification?: SystemsConcernId[];
 }
 
 export interface TestResult {

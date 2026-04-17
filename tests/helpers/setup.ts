@@ -6,7 +6,14 @@ import { StateManager } from "../../src/state/state-manager.js";
 import { handleInitProject } from "../../src/tools/init-project.js";
 import { handleSetArchitecture } from "../../src/tools/set-architecture.js";
 import { handleCreateBuildPlan } from "../../src/tools/create-build-plan.js";
-import type { TestResult, Phase, AuditResult, ActiveVerificationResult } from "../../src/state/types.js";
+import type {
+  TestResult,
+  Phase,
+  AuditResult,
+  ActiveVerificationResult,
+  SystemsConcernId,
+} from "../../src/state/types.js";
+import { computeRequiredConcerns } from "../../src/utils/systems-applicability.js";
 import { readFileSync, writeFileSync } from "node:fs";
 
 /**
@@ -88,6 +95,14 @@ export function seedSliceHardening(sm: StateManager, sliceId: string): void {
   const now = new Date().toISOString();
   const acHash = computeAcHashLocal(slice.acceptanceCriteria);
 
+  // A2P v2: compute required concerns and seed minimal valid entries so the
+  // systems-concern gate does not reject seeded slices. Architecture may be
+  // null during early-onboarding tests; computeRequiredConcerns handles that
+  // and returns at least `failure_modes` (always-on).
+  const architecture = state.architecture ?? null;
+  const required = [...computeRequiredConcerns(slice, architecture)] as SystemsConcernId[];
+  const firstAc = slice.acceptanceCriteria[0] ?? "AC1";
+
   slice.requirementsHardening = {
     goal: "test goal",
     nonGoals: [],
@@ -97,6 +112,13 @@ export function seedSliceHardening(sm: StateManager, sliceId: string): void {
     finalAcceptanceCriteria: [...slice.acceptanceCriteria],
     acHash,
     hardenedAt: now,
+    systemsConcerns: required.map((concern) => ({
+      concern,
+      applicability: "required",
+      justification: "",
+      requirement: `seeded requirement for ${concern}`,
+      linkedAcIds: [firstAc],
+    })),
   };
   slice.testHardening = {
     acToTestMap: slice.acceptanceCriteria.map((ac: string) => ({
@@ -112,6 +134,12 @@ export function seedSliceHardening(sm: StateManager, sliceId: string): void {
     doneMetric: "tests green",
     hardenedAt: now,
     requirementsAcHash: acHash,
+    systemsConcernTests: required.map((concern) => ({
+      concern,
+      testNames: ["t1"],
+      evidenceType: "positive" as const,
+      rationale: `seeded test for ${concern}`,
+    })),
   };
   slice.planHardening = {
     rounds: [
@@ -131,6 +159,12 @@ export function seedSliceHardening(sm: StateManager, sliceId: string): void {
       invariantsToPreserve: [],
       risks: [],
       narrative: "test plan",
+      systemsConcernPlans: required.map((concern) => ({
+        concern,
+        approach: `seeded plan for ${concern}`,
+        filesTouched: ["test.ts"],
+        rollbackStrategy: null,
+      })),
     },
     finalized: true,
     finalizedAt: now,
@@ -193,6 +227,9 @@ export function seedCompleteReview(sm: StateManager, sliceId: string): void {
   if (!slice) throw new Error(`Slice ${sliceId} not found in state`);
 
   const now = new Date().toISOString();
+  const architecture = state.architecture ?? null;
+  const required = [...computeRequiredConcerns(slice, architecture)] as SystemsConcernId[];
+
   slice.completionReviews = slice.completionReviews ?? [];
   const nextLoop = slice.completionReviews.filter((r: any) => !r.supersededByHardeningAt).length + 1;
   slice.completionReviews.push({
@@ -221,6 +258,13 @@ export function seedCompleteReview(sm: StateManager, sliceId: string): void {
     stubJustifications: [],
     verdict: "COMPLETE",
     nextActions: [],
+    // A2P v2: per-concern verdicts so pre-DONE gate passes for seeded slices.
+    systemsConcernReviews: required.map((concern) => ({
+      concern,
+      verdict: "satisfied" as const,
+      evidence: "seeded by test helper",
+      shortfall: "",
+    })),
   });
 
   writeFileSync(statePath, JSON.stringify(state, null, 2), "utf-8");
