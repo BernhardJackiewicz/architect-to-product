@@ -63,6 +63,18 @@ describe("handleInitProject", () => {
     expect(content).toMatch(/Do NOT spawn the Explore subagent/);
   });
 
+  it("CLAUDE.md forbids Claude attribution in the repository", () => {
+    handleInitProject({ projectPath: tmpDir, projectName: "test" });
+    const content = readFileSync(join(tmpDir, "CLAUDE.md"), "utf-8");
+    // This is a hard global rule — mirrored into every a2p-initialized
+    // project so it's visible in-repo, not just in the user's
+    // ~/.claude/CLAUDE.md.
+    expect(content).toMatch(/Claude is NEVER visible in this repository/i);
+    expect(content).toMatch(/Co-Authored-By: Claude/);
+    expect(content).toMatch(/No[^\n]*@claude[^\n]*mentions/i);
+    expect(content).toMatch(/"Generated with Claude Code"/);
+  });
+
   it("test-writer agent has correct role keywords", () => {
     handleInitProject({ projectPath: tmpDir, projectName: "test" });
     const content = readFileSync(

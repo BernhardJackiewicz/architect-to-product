@@ -80,6 +80,21 @@ relationship — codebase-memory.
 - Documentation first: NEVER hallucinate API signatures or config options. ALWAYS read official docs via WebSearch + WebFetch when using unfamiliar technologies.
 - Model preference: Check \`.a2p/state.json\` → \`config.claudeModel\` for which Claude model to use (default: opus)
 
+## Attribution: Claude is NEVER visible in this repository
+
+This is a hard rule, not a preference. The work is delivered under the
+human's name.
+
+- **No** \`Co-Authored-By: Claude\` trailer in commit messages.
+- **No** \`claude\` / \`anthropic\`-linked email as git author or committer.
+- **No** \`@claude\` mentions in commits, PRs, issues, discussions, code comments, or release notes.
+- **No** "Generated with Claude Code" / "🤖 Generated" trailers in commits or PR bodies.
+- **No** filenames or README sections that name Claude as the author.
+
+Exception: legitimate product references to the Claude SDK / Claude API /
+Anthropic MCP are fine when the project uses those products — what's
+forbidden is authorship attribution, not product naming.
+
 ## Architecture
 See .a2p/state.json for architecture details and build progress.
 `;
