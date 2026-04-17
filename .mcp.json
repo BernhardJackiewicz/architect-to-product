@@ -9,7 +9,7 @@
       "command": "npx",
       "args": [
         "-y",
-        "architect-to-product@2.0.1"
+        "architect-to-product@2.0.2"
       ]
     }
   }
