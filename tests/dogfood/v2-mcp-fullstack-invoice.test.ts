@@ -532,6 +532,25 @@ describe("v2 MCP surface — full-stack dogfood of a TS invoice library", () => 
       // round-tripped cleanly through the MCP wire.
       expect(s03Plan?.systemsClassification).toBeUndefined();
 
+      // ---------- A2P v2.0.2: register codebase-memory (required companion) ----------
+      // Must happen BEFORE set_phase building — new gate blocks otherwise.
+      await callTool("a2p_setup_companions", {
+        projectPath: dir,
+        companions: [
+          {
+            type: "codebase_memory",
+            name: "codebase-memory",
+            command: "codebase-memory-mcp",
+          },
+        ],
+      });
+      // Self-report the index readiness so the soft-gate on ready_for_red is silent.
+      await callTool("a2p_verify_codebase_memory_index", {
+        projectPath: dir,
+        indexed: true,
+        lastIndexedAt: new Date().toISOString(),
+      });
+
       // ---------- set phase building ----------
       await callTool("a2p_set_phase", { projectPath: dir, phase: "building" });
 

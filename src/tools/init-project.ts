@@ -39,6 +39,40 @@ All tools start with \`a2p_\`. Prompts start with \`/a2p\`.
 - \`a2p_run_tests\` — execute tests and record results
 - \`a2p_run_sast\` — run security scan on changed files
 
+## Exploration preference — codebase-memory-mcp first
+
+This project uses \`codebase-memory-mcp\` as the PRIMARY code-exploration tool.
+The tool surface exposes it as \`mcp__codebase-memory__*\`.
+
+**Before any cross-file lookup — identifier, call site, type relationship,
+dead-code candidate, inheritance chain, import graph:**
+
+1. Check the index exists: \`mcp__codebase-memory__list_projects\`. If the
+   current repo is missing, run \`mcp__codebase-memory__index_repository\` with
+   \`rootDir\` set to the project root. First-time index on a large repo can
+   take several minutes; subsequent queries are sub-second.
+2. Use the right query tool:
+   - \`mcp__codebase-memory__search_graph\` — structured queries over the
+     symbol graph (find definitions, callers, callees, references).
+   - \`mcp__codebase-memory__search_code\` — content search with graph-aware
+     ranking.
+   - \`mcp__codebase-memory__trace_call_path\` — how is function X reachable
+     from entry point Y?
+   - \`mcp__codebase-memory__read_file\` / \`list_directory\` — lightweight
+     alternatives to \`Read\`/\`Glob\` that share the index.
+
+**Do NOT spawn the Explore subagent for identifier or call-site lookups.**
+Explore falls back to \`bash grep\` / \`find\`, which is slower, misses
+type-level and call-graph relationships, and wastes tokens rescanning
+the same files. Use Explore only for natural-language, architecture-level
+questions that codebase-memory cannot answer on its own (for example:
+"which module should this new feature live in?").
+
+**When \`grep\`/\`rg\` is still correct:** exact-needle string searches
+(find literal error message, hunt a log prefix, locate a string
+constant). For anything involving a symbol, a type, or a function call
+relationship — codebase-memory.
+
 ## Key Patterns
 - TDD: Tests first, then implementation
 - Slices: One vertical feature per slice

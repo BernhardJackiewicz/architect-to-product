@@ -28,14 +28,26 @@ Before going through checklists — understand the attack surface:
 
 Prioritize the review by: Attack Surface × Exploitability × Business Impact.
 
-### Use Codebase Index (if codebase-memory-mcp available)
-1. Call \`index_repository\`
-2. Use \`search_code\` to find security-sensitive patterns:
+### Use Codebase Index (MANDATORY — A2P v2.0.2)
+codebase-memory is registered and indexed by the time you reach the
+security phase (enforced by the \`planning → building\` gate +
+\`a2p_verify_codebase_memory_index\`).
+
+1. \`mcp__codebase-memory__index_repository\` to pick up any code added
+   since the last refresh.
+2. \`mcp__codebase-memory__search_code\` to find security-sensitive patterns:
    - Password handling (\`password\`, \`hash\`, \`bcrypt\`)
    - Auth code (\`token\`, \`jwt\`, \`session\`)
    - Input handling (\`request.body\`, \`req.params\`, \`user_input\`)
    - SQL (\`query\`, \`execute\`, \`raw\`)
-3. Focus manual review on these locations
+3. \`mcp__codebase-memory__search_graph label:"Function" max_degree:0 exclude_entry_points:true\`
+   to list unreachable code that might hide abandoned auth paths.
+4. \`mcp__codebase-memory__trace_call_path\` on every entry-point
+   function matching an auth/session/secret pattern to map the full
+   attack surface.
+5. Focus manual review on these locations. **Do NOT spawn the Explore
+   subagent** for security reconnaissance — Explore falls back to
+   bash grep and misses the auth/session call graph.
 
 ### Check Database (if DB-MCP available)
 1. Check if password fields are stored hashed (not plaintext)

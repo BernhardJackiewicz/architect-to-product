@@ -50,6 +50,19 @@ describe("handleInitProject", () => {
     expect(() => JSON.parse(content)).not.toThrow();
   });
 
+  it("CLAUDE.md contains A2P v2.0.2 Exploration preference section referencing codebase-memory", () => {
+    handleInitProject({ projectPath: tmpDir, projectName: "test" });
+    const content = readFileSync(join(tmpDir, "CLAUDE.md"), "utf-8");
+    // The section must exist so that every agent (including built-in
+    // Claude Code subagents like Explore) sees the codebase-memory
+    // preference — regression guard for v2.0.2 Finding/Explore-bypass.
+    expect(content).toContain("Exploration preference");
+    expect(content).toMatch(/mcp__codebase-memory__search_graph/);
+    expect(content).toMatch(/mcp__codebase-memory__search_code/);
+    expect(content).toMatch(/mcp__codebase-memory__index_repository/);
+    expect(content).toMatch(/Do NOT spawn the Explore subagent/);
+  });
+
   it("test-writer agent has correct role keywords", () => {
     handleInitProject({ projectPath: tmpDir, projectName: "test" });
     const content = readFileSync(

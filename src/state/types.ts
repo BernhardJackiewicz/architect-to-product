@@ -327,6 +327,14 @@ export interface Architecture {
    * cache-touching slices).
    */
   systems?: ArchitectureSystems;
+  /**
+   * A2P v2.0.2: explicit opt-out from the codebase-memory enforcement
+   * gate. When true, `planning → building` is allowed even without
+   * codebase-memory registered. Requires `bypassCodebaseMemoryRationale`
+   * to be non-empty.
+   */
+  bypassCodebaseMemory?: boolean;
+  bypassCodebaseMemoryRationale?: string;
 }
 
 export type Platform = "web" | "mobile" | "cross-platform" | "backend-only";
@@ -580,6 +588,30 @@ export interface CompanionServer {
   config: Record<string, string>;
 }
 
+/**
+ * A2P v2.0.2: audit record of a bypass of a required companion's install
+ * gate. Persisted to state.config.companionBypasses so future audits can
+ * see that a project opted out of e.g. codebase-memory enforcement, with
+ * the human rationale intact.
+ */
+export interface CompanionBypass {
+  missing: Array<{ name: string; type: string }>;
+  rationale: string;
+  timestamp: string;
+}
+
+/**
+ * A2P v2.0.2: tracks whether codebase-memory-mcp is registered as a
+ * companion AND whether an index currently exists for the project. Both
+ * flags gate phase/slice transitions; `lastIndexedAt` drives the soft
+ * freshness warning on slice `ready_for_red`.
+ */
+export interface CodebaseMemoryReadiness {
+  registered: boolean;
+  indexed: boolean;
+  lastIndexedAt: string | null;
+}
+
 export type LogLevel = "debug" | "info" | "warn" | "error";
 
 export type BuildAction =
@@ -645,6 +677,7 @@ export interface ProjectConfig {
   formatCommand: string;
   claudeModel: ClaudeModel; // default: "opus" — which Claude model does the programming
   allowTestCommandOverride: boolean; // default: false — allow overriding testCommand via parameter
+  companionBypasses?: CompanionBypass[]; // v2.0.2: audit trail of required-companion bypasses
 }
 
 export type WhiteboxCategory =
@@ -867,6 +900,7 @@ export interface ProjectState {
   sslVerification: SslVerification | null;
   bootstrapSliceId: string | null;
   bootstrapLockedAt: string | null;
+  codebaseMemoryReadiness?: CodebaseMemoryReadiness; // v2.0.2: gate state
   createdAt: string;
   updatedAt: string;
 }

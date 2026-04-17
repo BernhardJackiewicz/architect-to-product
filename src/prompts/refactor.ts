@@ -12,11 +12,20 @@ Do NOT start with a global scan. Focus first on:
 2. Hotspots from git history (frequently changed files)
 3. Only then broader analysis
 
-## Analysis with codebase-memory-mcp
+## Analysis with codebase-memory-mcp (MANDATORY — A2P v2.0.2)
+
+codebase-memory is the primary analysis tool for refactoring.
+
+**Do NOT spawn the Explore subagent** for dead-code, coupling, or
+fan-out analysis — Explore falls back to bash grep which cannot see
+the symbol graph. Use \`mcp__codebase-memory__*\` tools directly.
 
 ### 0. Update index
-First call \`index_repository\` to ensure the code graph is up to date.
-Without a current index the following steps are unreliable.
+First call \`mcp__codebase-memory__index_repository\` to ensure the
+code graph is up to date. Without a current index the following
+steps are unreliable. After indexing, record readiness with
+\`a2p_verify_codebase_memory_index indexed:true lastIndexedAt:<ISO>\`
+to suppress the soft warning on future slice transitions.
 
 ### 1. Dead Code Detection
 Use codebase-memory-mcp tools:

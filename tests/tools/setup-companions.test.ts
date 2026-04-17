@@ -22,7 +22,7 @@ describe("handleSetupCompanions", () => {
       handleSetupCompanions({
         projectPath: tmpDir,
         companions: [
-          { type: "codebase_memory", name: "codebase-memory", command: "codebase-memory-mcp" },
+          { type: "codebase_memory", name: "codebase-memory", command: "codebase-memory-mcp", required: false },
         ],
       })
     );
@@ -90,7 +90,7 @@ describe("handleSetupCompanions", () => {
     handleSetupCompanions({
       projectPath: tmpDir,
       companions: [
-        { type: "codebase_memory", name: "codebase-memory", command: "codebase-memory-mcp" },
+        { type: "codebase_memory", name: "codebase-memory", command: "codebase-memory-mcp", required: false },
       ],
     });
 
@@ -111,7 +111,7 @@ describe("handleSetupCompanions", () => {
     handleSetupCompanions({
       projectPath: tmpDir,
       companions: [
-        { type: "codebase_memory", name: "codebase-memory", command: "codebase-memory-mcp" },
+        { type: "codebase_memory", name: "codebase-memory", command: "codebase-memory-mcp", required: false },
         { type: "database", name: "supabase", command: "https://mcp.supabase.com/mcp" },
         { type: "playwright", name: "playwright", command: "npx @playwright/mcp" },
       ],
@@ -129,7 +129,7 @@ describe("handleSetupCompanions", () => {
       handleSetupCompanions({
         projectPath: tmpDir,
         companions: [
-          { type: "codebase_memory", name: "codebase-memory", command: "codebase-memory-mcp" },
+          { type: "codebase_memory", name: "codebase-memory", command: "codebase-memory-mcp", required: false },
         ],
       })
     );
@@ -145,7 +145,7 @@ describe("handleSetupCompanions", () => {
       handleSetupCompanions({
         projectPath: tmpDir,
         companions: [
-          { type: "codebase_memory", name: "codebase-memory", command: "codebase-memory-mcp" },
+          { type: "codebase_memory", name: "codebase-memory", command: "codebase-memory-mcp", required: false },
         ],
       })
     );
@@ -175,7 +175,7 @@ describe("handleSetupCompanions", () => {
       handleSetupCompanions({
         projectPath: otherDir,
         companions: [
-          { type: "codebase_memory", name: "codebase-memory", command: "codebase-memory-mcp" },
+          { type: "codebase_memory", name: "codebase-memory", command: "codebase-memory-mcp", required: false },
         ],
       })
     );
@@ -405,7 +405,7 @@ describe("handleSetupCompanions", () => {
     handleSetupCompanions({
       projectPath: tmpDir,
       companions: [
-        { type: "codebase_memory", name: "codebase-memory", command: "codebase-memory-mcp" },
+        { type: "codebase_memory", name: "codebase-memory", command: "codebase-memory-mcp", required: false },
       ],
     });
 
@@ -437,7 +437,9 @@ describe("handleSetupCompanions", () => {
       handleSetupCompanions({
         projectPath: tmpDir,
         companions: [
-          { type: "codebase_memory", name: "nonexistent-binary-xyz", command: "nonexistent-binary-xyz" },
+          // v2.0.2: explicitly required:false so this test exercises the warning path
+          // (unavailable optional companion) rather than the new required-companion error path.
+          { type: "codebase_memory", name: "nonexistent-binary-xyz", command: "nonexistent-binary-xyz", required: false },
         ],
       })
     );
@@ -470,7 +472,7 @@ describe("handleSetupCompanions", () => {
       handleSetupCompanions({
         projectPath: tmpDir,
         companions: [
-          { type: "codebase_memory", name: "codebase-memory", command: "codebase-memory-mcp" },
+          { type: "codebase_memory", name: "codebase-memory", command: "codebase-memory-mcp", required: false },
         ],
       })
     );

@@ -157,6 +157,17 @@ beforeAll(() => {
     "handleCreateBuildPlan",
   );
 
+  // A2P v2.0.2: seed codebase-memory so planning→building gate passes.
+  // This dogfood test pre-dates the gate; explicit seed keeps the fixture
+  // realistic without overhauling the walk.
+  sm.addCompanion({
+    name: "codebase-memory",
+    type: "codebase_memory",
+    command: "codebase-memory-mcp",
+    installed: true,
+    config: {},
+  });
+
   expectOk(handleSetPhase({ projectPath: dir, phase: "building" }), "setPhase building");
 });
 

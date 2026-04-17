@@ -385,6 +385,23 @@ export function forceField(dir: string, field: string, value: unknown): void {
   writeFileSync(statePath, JSON.stringify(state, null, 2), "utf-8");
 }
 
+/**
+ * A2P v2.0.2: pre-seed the codebase-memory registration so the
+ * `planning → building` gate passes. Use this in tests that exercise
+ * phases downstream of building but don't care about the companion
+ * enforcement itself. Equivalent to calling `a2p_setup_companions`
+ * with a codebase_memory entry whose binary is available.
+ */
+export function seedCodebaseMemoryRegistered(sm: StateManager): void {
+  sm.addCompanion({
+    name: "codebase-memory",
+    type: "codebase_memory",
+    command: "codebase-memory-mcp",
+    installed: true,
+    config: {},
+  });
+}
+
 /** Add a quality audit result (evidence for building->security gate). */
 export function addQualityAudit(sm: StateManager): void {
   sm.addAuditResult({
@@ -476,6 +493,11 @@ export function initWithArch(dir: string, opts?: { language?: string; framework?
     dataModel: "items",
     apiDesign: "REST",
   });
+  // A2P v2.0.2: auto-seed codebase-memory companion so the
+  // planning→building gate passes for every test using this helper.
+  // Tests that specifically exercise the enforcement gate build state
+  // manually and can skip or override this.
+  seedCodebaseMemoryRegistered(new StateManager(dir));
 }
 
 /** Initialize a project with architecture + slices. */
@@ -557,6 +579,10 @@ export function initWithStateManager(dir: string, sliceCount = 3): StateManager 
   }));
 
   sm.setSlices(slices);
+
+  // A2P v2.0.2: auto-seed codebase-memory so planning→building gate passes.
+  // Tests that exercise the enforcement gate should NOT use this helper.
+  seedCodebaseMemoryRegistered(sm);
   return sm;
 }
 

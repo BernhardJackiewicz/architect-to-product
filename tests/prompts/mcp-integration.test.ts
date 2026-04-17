@@ -48,11 +48,14 @@ describe("codebase-memory-mcp integration", () => {
 
     it("uses search_graph to find existing functions", () => {
       expect(PLANNING_PROMPT).toContain("search_graph");
-      expect(PLANNING_PROMPT).toContain('type="function"');
+      // v2.0.2: planning prompt switched from type="function" to
+      // mcp__codebase-memory__search_graph with `label:"Function"`.
+      expect(PLANNING_PROMPT).toMatch(/label:\s*"?Function"?/);
     });
 
     it("warns against creating slices for already-built functionality", () => {
-      expect(PLANNING_PROMPT).toMatch(/already built/i);
+      // v2.0.2 wording: "Do NOT plan slices that would re-implement something already present."
+      expect(PLANNING_PROMPT).toMatch(/already (built|present)/i);
     });
   });
 
@@ -841,13 +844,16 @@ describe("Enforcement rules in onboarding", () => {
     expect(section).toContain("not a code gate");
   });
 
-  it("companions setup is recommended — honest about enforcement", () => {
+  it("companions setup is mandatory for codebase-memory (A2P v2.0.2)", () => {
     const companionSection = ONBOARDING_PROMPT.indexOf("Set Up Companions");
     expect(companionSection).toBeGreaterThan(-1);
     const nextSection = ONBOARDING_PROMPT.indexOf("**ALWAYS install", companionSection);
     const section = ONBOARDING_PROMPT.slice(companionSection, nextSection);
-    expect(section).toContain("RECOMMENDED");
-    expect(section).toContain("not a code gate");
+    expect(section).toContain("MANDATORY");
+    expect(section).toMatch(/REQUIRED|requireCodebaseMemoryRegistered/);
+    // Other companions stay "recommended" via the suggestedCompanions pathway —
+    // mandated text explicitly says so.
+    expect(section).toMatch(/recommended|suggestedCompanions/i);
   });
 
   it("prerequisites check analyzes architecture for required local services", () => {
@@ -879,16 +885,21 @@ describe("Enforcement rules in onboarding", () => {
 // ─── MCP operationalization in prompts ───────────────────────────────────────
 
 describe("MCP operationalization in prompts", () => {
-  it("planning prompt references companionReadiness for codebase-memory", () => {
-    expect(PLANNING_PROMPT).toContain("companionReadiness.codebaseMemory");
+  it("planning prompt references codebase-memory as mandatory (A2P v2.0.2)", () => {
+    // v2.0.2: dropped the conditional `companionReadiness.codebaseMemory`
+    // branch. The gate guarantees codebase-memory is registered, so the
+    // prompt simply prescribes the tool calls.
+    expect(PLANNING_PROMPT).toMatch(/mcp__codebase-memory__/);
+    expect(PLANNING_PROMPT).toMatch(/MANDATORY|v2\.0\.2/);
   });
 
   it("planning prompt references companionReadiness for database", () => {
     expect(PLANNING_PROMPT).toContain("companionReadiness.database");
   });
 
-  it("build-slice prompt references companionReadiness for codebase-memory", () => {
-    expect(BUILD_SLICE_PROMPT).toContain("companionReadiness.codebaseMemory");
+  it("build-slice prompt references codebase-memory as mandatory (A2P v2.0.2)", () => {
+    expect(BUILD_SLICE_PROMPT).toMatch(/mcp__codebase-memory__/);
+    expect(BUILD_SLICE_PROMPT).toMatch(/MANDATORY|v2\.0\.2/);
   });
 
   it("build-slice prompt references companionReadiness for database", () => {

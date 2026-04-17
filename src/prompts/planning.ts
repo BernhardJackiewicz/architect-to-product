@@ -92,14 +92,33 @@ When \`a2p_get_state\` shows phases:
 - Use \`append: true\` with create_build_plan from phase 1 onwards
 - After phase completion: \`a2p_complete_phase\` → plan next phase
 
-## Before planning slices: Analyze existing code
-Check \`a2p_get_state\` → \`companionReadiness\`.
+## Before planning slices: Analyze existing code (MANDATORY — A2P v2.0.2)
 
-If \`companionReadiness.codebaseMemory: true\` AND there is already code in the project:
-1. Call \`index_repository\`
-2. Use \`search_graph\` with type="function" to find existing functions
-3. Consider what already exists when planning slices
-   — No slices for functionality that is already built
+codebase-memory is the PRIMARY source of truth about what the project
+already contains. The \`planning → building\` gate blocks the next step
+if codebase-memory isn't registered, so by the time you plan slices
+the index is either present or must be brought up.
+
+For every non-greenfield project:
+
+1. \`mcp__codebase-memory__list_projects\` — confirm this repo is
+   indexed. If missing or stale, run
+   \`mcp__codebase-memory__index_repository\` once, then record the
+   new \`indexed_at\` via
+   \`a2p_verify_codebase_memory_index indexed:true lastIndexedAt:<ISO>\`.
+2. \`mcp__codebase-memory__search_graph\` with \`label:"Function"\` or
+   \`label:"Class"\` — list existing entities. Do NOT plan slices
+   that would re-implement something already present.
+3. \`mcp__codebase-memory__trace_call_path\` — understand the call
+   graph around any area a slice would touch. Use this to size
+   \`dependencies[]\` and \`affectedComponents\` honestly.
+
+**Do NOT spawn the Explore subagent for code reconnaissance.** Explore
+defaults to bash grep and cannot see the symbol graph. Use
+codebase-memory directly.
+
+For pure-text searches (comment conventions, error messages, literal
+constants) bash grep / \`Grep\` tool remains correct.
 
 If \`companionReadiness.database: true\`:
 1. Check the current DB schema via the DB MCP

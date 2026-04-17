@@ -5,6 +5,18 @@ import { join } from "node:path";
 import { requireProject } from "../utils/tool-helpers.js";
 import type { CompanionServer } from "../state/types.js";
 
+/**
+ * Companion types whose absence silently degrades A2P workflows. These are
+ * REQUIRED by default in v2.0.2 — a caller must either install them or pass
+ * `allowMissingRequired: true` with a rationale logged to the audit trail.
+ *
+ * Only `codebase_memory` is required in v2.0.2. `git` and `filesystem` are
+ * effectively mandatory too but have broader fallbacks (Bash + Read) in
+ * Claude Code, so leaving them as non-gated avoids breaking existing
+ * projects on upgrade.
+ */
+const REQUIRED_BY_DEFAULT = new Set(["codebase_memory"]);
+
 export const setupCompanionsSchema = z.object({
   projectPath: z.string().describe("Absolute path to the project directory"),
   companions: z
@@ -36,10 +48,29 @@ export const setupCompanionsSchema = z.object({
           .record(z.string(), z.string())
           .optional()
           .describe("Additional config (e.g. database URL, project ref)"),
+        required: z
+          .boolean()
+          .optional()
+          .describe(
+            "Mark this companion as required. Defaults to true for codebase_memory (v2.0.2) and false for everything else. Required companions must be installed or the call fails — unless allowMissingRequired:true is passed with a rationale.",
+          ),
       })
     )
     .min(1)
     .describe("Companion MCP servers to set up"),
+  allowMissingRequired: z
+    .boolean()
+    .optional()
+    .describe(
+      "Explicit escape from the required-companion gate. When true, the call succeeds even if a required companion's binary is unavailable, and the bypass is logged to state.config.companionBypasses[] for audit. Pair with a non-empty bypassRationale.",
+    ),
+  bypassRationale: z
+    .string()
+    .min(1)
+    .optional()
+    .describe(
+      "Human-readable reason for allowMissingRequired. Required when allowMissingRequired=true; stored with the bypass record.",
+    ),
 });
 
 export type SetupCompanionsInput = z.infer<typeof setupCompanionsSchema>;
@@ -51,6 +82,7 @@ export function handleSetupCompanions(input: SetupCompanionsInput): string {
   const results: Array<{
     name: string;
     type: string;
+    required: boolean;
     installed: boolean;
     notes: string;
   }> = [];
@@ -68,9 +100,12 @@ export function handleSetupCompanions(input: SetupCompanionsInput): string {
     const isAvailable = checkCommandAvailable(comp.command);
     companion.installed = isAvailable;
 
+    const required = comp.required ?? REQUIRED_BY_DEFAULT.has(comp.type);
+
     results.push({
       name: comp.name,
       type: comp.type,
+      required,
       installed: isAvailable,
       notes: isAvailable
         ? "Available and configured in .mcp.json."
@@ -80,13 +115,49 @@ export function handleSetupCompanions(input: SetupCompanionsInput): string {
     sm.addCompanion(companion);
   }
 
+  // Required-companion gate (v2.0.2): any required companion that failed to
+  // install blocks the call unless the caller explicitly opted out.
+  const missingRequired = results.filter((r) => r.required && !r.installed);
+  if (missingRequired.length > 0 && input.allowMissingRequired !== true) {
+    return JSON.stringify({
+      error:
+        `${missingRequired.length} required companion(s) unavailable: ${missingRequired
+          .map((c) => `${c.name} (${c.type})`)
+          .join("; ")}. ` +
+        `Install each one, or re-run with allowMissingRequired:true and a bypassRationale explaining why this project does not need codebase-memory.`,
+      missingRequired,
+      installHints: missingRequired.map((c) => ({
+        name: c.name,
+        type: c.type,
+        hint: c.notes,
+      })),
+    });
+  }
+
+  if (input.allowMissingRequired === true) {
+    if (!input.bypassRationale || input.bypassRationale.trim().length === 0) {
+      return JSON.stringify({
+        error:
+          "allowMissingRequired=true requires a non-empty bypassRationale explaining why the project can proceed without the required companion(s). This rationale is persisted to state.config.companionBypasses[] for audit.",
+      });
+    }
+    if (missingRequired.length > 0) {
+      sm.recordCompanionBypass({
+        missing: missingRequired.map((c) => ({ name: c.name, type: c.type })),
+        rationale: input.bypassRationale,
+        timestamp: new Date().toISOString(),
+      });
+    }
+  }
+
   // Auto-generate .mcp.json
   const mcpJsonPath = writeMcpJson(input.projectPath, input.companions);
 
-  const failedCompanions = results.filter(r => !r.installed);
-  const warning = failedCompanions.length > 0
-    ? `\n⚠️  WARNING: ${failedCompanions.length} companion(s) not available: ${failedCompanions.map(c => c.name).join(", ")}. After restarting, check /mcp to verify all servers are connected. If a server keeps failing, check its configuration in .mcp.json.`
-    : "";
+  const optionalMissing = results.filter((r) => !r.required && !r.installed);
+  const warning =
+    optionalMissing.length > 0
+      ? `\n⚠️  WARNING: ${optionalMissing.length} optional companion(s) not available: ${optionalMissing.map((c) => c.name).join(", ")}. After restarting, check /mcp to verify which servers are connected. If a server keeps failing, check its configuration in .mcp.json.`
+      : "";
 
   return JSON.stringify({
     success: true,
@@ -95,6 +166,9 @@ export function handleSetupCompanions(input: SetupCompanionsInput): string {
     mcpJsonPath,
     restartRequired: true,
     warning: warning || undefined,
+    bypassedRequired: input.allowMissingRequired === true && missingRequired.length > 0
+      ? missingRequired.map((c) => ({ name: c.name, type: c.type }))
+      : undefined,
     nextStep:
       ".mcp.json wurde geschrieben. Starte Claude Code neu — danach sind alle Companion-MCPs automatisch verfügbar. Dann weiter mit a2p_create_build_plan." + warning,
   });

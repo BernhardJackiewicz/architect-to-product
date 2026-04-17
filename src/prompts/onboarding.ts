@@ -173,14 +173,25 @@ Pass the value as \`claudeModel\` to \`a2p_set_architecture\`.
 Call \`a2p_init_project\` to initialize the project.
 Then call \`a2p_set_architecture\` with all details (including \`oversight\` and \`claudeModel\`).
 
-### Set Up Companions — RECOMMENDED right after Architecture
+### Set Up Companions — MANDATORY right after Architecture
 Right after \`a2p_set_architecture\`, call \`a2p_setup_companions\`.
 Do NOT ask the user if they want companions. Just set them up.
-(Prompt guidance, not a code gate — the build works without companions too, but codebase-memory-mcp and DB-MCP significantly improve quality.)
-Choose companions automatically based on the tech stack from the \`a2p_set_architecture\` response (\`suggestedCompanions\`).
+
+**codebase-memory-mcp is REQUIRED (A2P v2.0.2 gate).** The
+\`planning → building\` transition is blocked by
+\`requireCodebaseMemoryRegistered\` in the state-manager unless
+codebase-memory is registered AND installed, OR the architecture
+explicitly opts out with
+\`bypassCodebaseMemory: true\` + a rationale ≥ 20 chars.
+If you skip codebase-memory here, the user will hit the gate a few
+steps later with no easy path forward. Install it now.
+
+Other companions are recommended based on stack signals
+(\`suggestedCompanions\`) but not code-gated.
 
 **ALWAYS install (Core):**
-- **codebase-memory-mcp**: ALWAYS (for code quality and token efficiency)
+- **codebase-memory-mcp**: REQUIRED — v2.0.2 gate blocks entry to
+  building without it. Also what prevents Explore/grep fallback.
 - **Git MCP**: ALWAYS → command: \`uvx mcp-server-git\` (Git history, commits, diffs)
 - **Filesystem MCP**: ALWAYS → command: \`npx @modelcontextprotocol/server-filesystem\` (file operations)
 - **Sequential Thinking**: ALWAYS → command: \`npx @modelcontextprotocol/server-sequential-thinking\` (complex analysis)

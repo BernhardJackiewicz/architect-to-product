@@ -77,11 +77,33 @@ Keep the scope strictly limited to the acceptance criteria of the current slice.
 Before writing code — understand the situation:
 
 1. Read state and acceptance criteria of the current slice
-2. Check \`a2p_get_state\` → \`companionReadiness.codebaseMemory\`. If true:
-   - \`index_repository\` — update index
-   - \`search_code\` — find existing code that matches the slice (prevents duplicate implementations)
-   - \`trace_call_path\` — understand how existing code is connected
-3. Read affected files and adjacent code
+2. **MANDATORY — codebase-memory FIRST (A2P v2.0.2)**. The
+   \`planning → building\` gate has already ensured codebase-memory
+   is registered. Start every slice exploration with:
+   - \`mcp__codebase-memory__list_projects\` — confirm this project is
+     indexed. If missing, run
+     \`mcp__codebase-memory__index_repository\` once, then
+     \`a2p_verify_codebase_memory_index indexed:true lastIndexedAt:<ISO>\`
+     to record readiness.
+   - \`mcp__codebase-memory__search_code\` — find existing code matching
+     the slice (prevents duplicate implementations).
+   - \`mcp__codebase-memory__search_graph\` — locate definition /
+     callers / callees of any function the slice will touch.
+   - \`mcp__codebase-memory__trace_call_path\` — understand how
+     existing code is connected to the slice boundary.
+
+   **Do NOT spawn the Explore subagent for identifier, call-site,
+   or type-relationship lookups.** Explore falls back to bash grep,
+   which is slower and misses the symbol graph. Use Explore only for
+   natural-language, architecture-level questions
+   (e.g. "which module should this new feature live in?") that
+   codebase-memory cannot answer on its own.
+
+   \`grep\` / \`rg\` remains valid for exact-needle string searches
+   (error messages, log prefixes, literal constants).
+3. Read affected files and adjacent code (via codebase-memory's
+   \`read_file\` and \`list_directory\` when possible — they share
+   the index and are cheaper than re-scanning).
 4. Formulate a mini-plan: goal, affected files, risks
 
 ### READ Documentation, do not guess — RECOMMENDED
@@ -307,7 +329,9 @@ Do NOT mark the slice as "sast" without running \`a2p_run_sast\` first.**
 
 1. Call \`a2p_run_sast\` with mode="slice" — MANDATORY, not optional
 2. Run \`a2p_run_tests\` — final confirmation
-3. If codebase-memory-mcp available: \`index_repository\` — update graph
+3. Refresh codebase-memory so later slices + refactor see this slice's new code:
+   \`mcp__codebase-memory__index_repository\`, then
+   \`a2p_verify_codebase_memory_index indexed:true lastIndexedAt:<ISO>\`
 4. Triage findings:
    - CRITICAL/HIGH → fix immediately, repeat tests + SAST
    - MEDIUM → fix if easy, otherwise document
@@ -380,10 +404,17 @@ If Sentry MCP is configured and the slice introduces a new service/endpoint:
 - Check if source maps are correctly uploaded
 
 ## After Every Slice: Update Codebase Index
-If \`companionReadiness.codebaseMemory: true\`:
-- Call \`index_repository\` — this keeps the code graph current for:
+codebase-memory is the primary exploration tool for A2P v2.0.2+. Keep
+the index fresh so later slices and the refactor phase see the code
+added by this slice.
+
+- Call \`mcp__codebase-memory__index_repository\` — this keeps the
+  code graph current for:
   - Later slices (find existing code instead of rewriting it)
   - The refactor phase (dead code detection needs current index)
+- Optionally call \`a2p_verify_codebase_memory_index\` with the new
+  \`lastIndexedAt\` to suppress the freshness warning on the next
+  \`ready_for_red\` transition.
 
 Then:
 1. Check: Is there a next slice? → Continue with the next one
@@ -400,7 +431,7 @@ Before showing the signoff summary, perform a compact code review across all bui
 2. **Loose Ends**: Are there TODOs, commented-out code blocks, placeholder values that were forgotten?
 3. **Import/Export Hygiene**: Are there unused imports, dead exports, circular dependencies?
 4. **Error Handling**: Are there silent failures (empty catch blocks, swallowed errors)?
-5. **If \`companionReadiness.codebaseMemory: true\`**: Use \`search_graph\` for dead code detection and \`trace_call_path\` for dependency analysis.
+5. Use \`mcp__codebase-memory__search_graph\` for dead-code detection (e.g. \`max_degree:0 exclude_entry_points:true\`) and \`trace_call_path\` for dependency analysis.
 
 Output the review result as a short block in the signoff summary. Format:
 - **Review Result**: [No issues found / N issues found]

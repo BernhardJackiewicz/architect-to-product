@@ -51,6 +51,14 @@ export function handleUpdateSlice(input: UpdateSliceInput): string {
       ? qualityAuditCadence(state)
       : undefined;
 
+    // A2P v2.0.2 — soft warning on `ready_for_red` if codebase-memory index
+    // is missing or stale. Does NOT block the transition; the user is
+    // expected to decide whether to re-index or proceed.
+    const codebaseMemoryWarning =
+      input.status === "ready_for_red"
+        ? sm.codebaseMemoryIndexWarning(slice, state)
+        : null;
+
     return JSON.stringify({
       success: true,
       sliceId: input.sliceId,
@@ -58,6 +66,7 @@ export function handleUpdateSlice(input: UpdateSliceInput): string {
       files: slice.files,
       nextStep,
       awaitingHumanReview,
+      ...(codebaseMemoryWarning ? { codebaseMemoryWarning } : {}),
       ...(input.status === "done"
         ? {
             sliceSummary: {

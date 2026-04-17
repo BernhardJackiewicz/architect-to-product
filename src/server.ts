@@ -39,6 +39,7 @@ import { hardenPlanSchema, handleHardenPlan } from "./tools/harden-plan.js";
 import { verifyTestFirstSchema, handleVerifyTestFirst } from "./tools/verify-test-first.js";
 import { completionReviewSchema, handleCompletionReview } from "./tools/completion-review.js";
 import { getSliceHardeningStatusSchema, handleGetSliceHardeningStatus } from "./tools/get-slice-hardening-status.js";
+import { verifyCodebaseMemoryIndexSchema, handleVerifyCodebaseMemoryIndex } from "./tools/verify-codebase-memory-index.js";
 
 // Prompts
 import { ONBOARDING_PROMPT } from "./prompts/onboarding.js";
@@ -282,6 +283,19 @@ export function createServer(): McpServer {
       sliceId: getSliceHardeningStatusSchema.shape.sliceId,
     },
     wrapTool(handleGetSliceHardeningStatus as ToolHandler)
+  );
+
+  server.tool(
+    "a2p_verify_codebase_memory_index",
+    "A2P v2.0.2 — record the codebase-memory-mcp index readiness for this project. Pattern matches a2p_verify_ssl: caller self-reports after running mcp__codebase-memory__list_projects (+ index_repository if missing). Persists to state.codebaseMemoryReadiness and gates the soft warning on slice ready_for_red.",
+    {
+      projectPath: verifyCodebaseMemoryIndexSchema.shape.projectPath,
+      indexed: verifyCodebaseMemoryIndexSchema.shape.indexed,
+      lastIndexedAt: verifyCodebaseMemoryIndexSchema.shape.lastIndexedAt,
+      nodeCount: verifyCodebaseMemoryIndexSchema.shape.nodeCount,
+      edgeCount: verifyCodebaseMemoryIndexSchema.shape.edgeCount,
+    },
+    wrapTool(handleVerifyCodebaseMemoryIndex as ToolHandler)
   );
 
   server.tool(

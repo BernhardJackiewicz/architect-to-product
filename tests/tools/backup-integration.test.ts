@@ -5,7 +5,7 @@ import { handleInitProject } from "../../src/tools/init-project.js";
 import { handleSetArchitecture } from "../../src/tools/set-architecture.js";
 import { StateManager } from "../../src/state/state-manager.js";
 import { ProjectStateSchema } from "../../src/state/validators.js";
-import { makeTmpDir, cleanTmpDir, parse, walkSliceToStatus, addPassingTests, addSastEvidence, forcePhase, addQualityAudit, addReleaseAudit, addPassingVerification, addPassingWhitebox } from "../helpers/setup.js";
+import { makeTmpDir, cleanTmpDir, parse, walkSliceToStatus, addPassingTests, addSastEvidence, forcePhase, addQualityAudit, addReleaseAudit, addPassingVerification, addPassingWhitebox, seedCodebaseMemoryRegistered } from "../helpers/setup.js";
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -33,6 +33,8 @@ function initWithArch(dir: string, overrides: Record<string, unknown> = {}) {
     apiDesign: "REST",
     ...overrides,
   });
+  // A2P v2.0.2: seed codebase-memory so planning→building gate passes.
+  seedCodebaseMemoryRegistered(new StateManager(dir));
 }
 
 describe("Backup Integration", () => {
@@ -419,6 +421,8 @@ describe("Backup Integration", () => {
         dataModel: "items", apiDesign: "REST",
       });
       const sm = new StateManager(tmpDir);
+      // A2P v2.0.2: seed codebase-memory so planning→building gate passes.
+      seedCodebaseMemoryRegistered(sm);
 
       // Walk through all phases to deployment
       sm.setPhase("planning");

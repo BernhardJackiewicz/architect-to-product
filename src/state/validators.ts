@@ -270,6 +270,9 @@ export const ArchitectureSchema = z.object({
   testFilePatterns: z.array(z.string()).optional(),
   // A2P v2: optional structured systems-engineering block
   systems: ArchitectureSystemsSchema.optional(),
+  // A2P v2.0.2: opt-out from codebase-memory enforcement gate
+  bypassCodebaseMemory: z.boolean().optional(),
+  bypassCodebaseMemoryRationale: z.string().optional(),
 });
 
 export const TestResultSchema = z.object({
@@ -564,6 +567,13 @@ export const BuildEventSchema = z.object({
   outputTruncated: z.boolean().optional(),
 });
 
+/** A2P v2.0.2: audit record for required-companion bypasses. */
+export const CompanionBypassSchema = z.object({
+  missing: z.array(z.object({ name: z.string(), type: z.string() })),
+  rationale: z.string().min(1),
+  timestamp: z.string().min(1),
+});
+
 export const ProjectConfigSchema = z.object({
   projectPath: z.string().min(1),
   testCommand: z.string(),
@@ -572,6 +582,14 @@ export const ProjectConfigSchema = z.object({
   formatCommand: z.string(),
   claudeModel: z.enum(["opus", "sonnet", "haiku"]).default("opus"),
   allowTestCommandOverride: z.boolean().default(false),
+  companionBypasses: z.array(CompanionBypassSchema).optional(),
+});
+
+/** A2P v2.0.2: codebase-memory gate readiness. */
+export const CodebaseMemoryReadinessSchema = z.object({
+  registered: z.boolean(),
+  indexed: z.boolean(),
+  lastIndexedAt: z.string().nullable(),
 });
 
 export const WhiteboxFindingSchema = z.object({
@@ -875,6 +893,8 @@ export const ProjectStateSchema = z.preprocess(
   }).nullable().default(null),
   bootstrapSliceId: z.string().nullable().default(null),
   bootstrapLockedAt: z.string().nullable().default(null),
+  // A2P v2.0.2: codebase-memory gate readiness (optional for backward compat)
+  codebaseMemoryReadiness: CodebaseMemoryReadinessSchema.optional(),
   createdAt: z.string(),
   updatedAt: z.string(),
 }));

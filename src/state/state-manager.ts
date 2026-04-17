@@ -317,6 +317,14 @@ export class StateManager {
       );
     }
 
+    // A2P v2.0.2 — codebase-memory required-companion gate.
+    // Block `planning → building` unless codebase-memory is registered
+    // as an installed companion, or the architecture opts out with a
+    // non-empty rationale. See docs/WORKFLOW.md and CHANGELOG v2.0.2.
+    if (state.phase === "planning" && newPhase === "building") {
+      this.requireCodebaseMemoryRegistered(state);
+    }
+
     // Building gate: block leaving building unless all slices are done
     if (state.phase === "building" && (newPhase === "refactoring" || newPhase === "security")) {
       const notDone = state.slices.filter((s) => s.status !== "done");
@@ -1599,6 +1607,20 @@ export class StateManager {
       state.companions.push(companion);
     }
     state.companionsConfiguredAt = new Date().toISOString();
+    // A2P v2.0.2: codebase-memory registration is a gate input. Mirror the
+    // installed flag into codebaseMemoryReadiness.registered so future
+    // setPhase checks can read a single source of truth.
+    if (companion.type === "codebase_memory") {
+      const current = state.codebaseMemoryReadiness ?? {
+        registered: false,
+        indexed: false,
+        lastIndexedAt: null,
+      };
+      state.codebaseMemoryReadiness = {
+        ...current,
+        registered: companion.installed,
+      };
+    }
     this.addEvent(
       state,
       state.phase,
@@ -1609,6 +1631,141 @@ export class StateManager {
     );
     this.write(state);
     return state;
+  }
+
+  /**
+   * A2P v2.0.2: record a bypass of a required companion's install gate.
+   * Persists to state.config.companionBypasses[] for audit. The gate in
+   * `handleSetupCompanions` enforces that rationale is non-empty.
+   */
+  recordCompanionBypass(bypass: {
+    missing: Array<{ name: string; type: string }>;
+    rationale: string;
+    timestamp: string;
+  }): ProjectState {
+    const state = this.read();
+    const list = state.config.companionBypasses ?? [];
+    list.push(bypass);
+    state.config.companionBypasses = list;
+    this.addEvent(
+      state,
+      state.phase,
+      null,
+      "config_update",
+      `Companion bypass recorded: ${bypass.missing.map((m) => m.type).join(", ")} — ${bypass.rationale.slice(0, 80)}`,
+      { status: "warning", level: "warn" },
+    );
+    this.write(state);
+    return state;
+  }
+
+  /**
+   * A2P v2.0.2: update codebase-memory index readiness from the
+   * `a2p_verify_codebase_memory_index` tool.
+   */
+  setCodebaseMemoryIndexStatus(
+    indexed: boolean,
+    lastIndexedAt: string | null,
+  ): ProjectState {
+    const state = this.read();
+    const current = state.codebaseMemoryReadiness ?? {
+      registered: state.companions.some(
+        (c) => c.type === "codebase_memory" && c.installed,
+      ),
+      indexed: false,
+      lastIndexedAt: null,
+    };
+    state.codebaseMemoryReadiness = {
+      ...current,
+      indexed,
+      lastIndexedAt,
+    };
+    this.addEvent(
+      state,
+      state.phase,
+      null,
+      "config_update",
+      `codebase-memory index readiness: indexed=${indexed}, lastIndexedAt=${lastIndexedAt ?? "null"}`,
+      { status: "info" },
+    );
+    this.write(state);
+    return state;
+  }
+
+  /**
+   * A2P v2.0.2 GATE — block `planning → building` when no codebase-memory
+   * companion is registered+installed AND the architecture has not opted
+   * out with a non-empty rationale.
+   *
+   * The gate reads `state.codebaseMemoryReadiness.registered` as the
+   * authoritative source (mirrored from `companions[]` on each install).
+   *
+   * Escape:
+   *   `architecture.bypassCodebaseMemory === true`
+   *   AND `architecture.bypassCodebaseMemoryRationale.length >= 20`
+   * This is the SAME pattern as the existing `systemsClassification`
+   * override — opt-out must be explicit AND documented.
+   */
+  private requireCodebaseMemoryRegistered(state: ProjectState): void {
+    // Legacy-flow tests bypass the gate — consistent with how
+    // forceLegacyFlowForTests already suppresses the hardening triad and
+    // test-first guard. Production callers never flip this flag.
+    if (StateManager.forceLegacyFlowForTests) {
+      return;
+    }
+    const arch = state.architecture;
+    if (
+      arch?.bypassCodebaseMemory === true &&
+      typeof arch?.bypassCodebaseMemoryRationale === "string" &&
+      arch.bypassCodebaseMemoryRationale.trim().length >= 20
+    ) {
+      return; // legit opt-out
+    }
+    const readiness = state.codebaseMemoryReadiness;
+    const cmInstalled = state.companions.some(
+      (c) => c.type === "codebase_memory" && c.installed,
+    );
+    if (readiness?.registered === true || cmInstalled) {
+      return;
+    }
+    throw new Error(
+      `Cannot transition from "planning" to "building" without codebase-memory-mcp. ` +
+        `A2P v2.0.2 enforces codebase-memory as a required companion — every slice exploration benefits from graph-aware search. ` +
+        `Fix: call a2p_setup_companions with a codebase-memory entry, or set architecture.bypassCodebaseMemory=true with a rationale of at least 20 characters explaining why this project does not need it.`,
+    );
+  }
+
+  /**
+   * A2P v2.0.2 SOFT GATE — warn (don't block) when a slice reaches
+   * `ready_for_red` while the codebase-memory index is missing or stale.
+   * Returns a warning message if the soft gate tripped, or null otherwise.
+   * Callers attach the warning to the tool response so the user can
+   * decide whether to re-index or proceed.
+   *
+   * v2.1 may promote this to a hard gate after real-world feedback.
+   */
+  codebaseMemoryIndexWarning(slice: Slice, state: ProjectState): string | null {
+    if (slice.bootstrap === true) return null;
+    const arch = state.architecture;
+    if (
+      arch?.bypassCodebaseMemory === true &&
+      typeof arch?.bypassCodebaseMemoryRationale === "string" &&
+      arch.bypassCodebaseMemoryRationale.trim().length >= 20
+    ) {
+      return null;
+    }
+    const readiness = state.codebaseMemoryReadiness;
+    if (!readiness || readiness.indexed !== true) {
+      return `SOFT WARNING: codebase-memory index is missing for this project. Run mcp__codebase-memory__index_repository and then a2p_verify_codebase_memory_index before writing failing tests — otherwise cross-file lookups fall back to bash grep. To disable this warning, call a2p_verify_codebase_memory_index with indexed:true.`;
+    }
+    if (readiness.lastIndexedAt) {
+      const last = new Date(readiness.lastIndexedAt).getTime();
+      const ageDays = (Date.now() - last) / (1000 * 60 * 60 * 24);
+      if (ageDays > 7) {
+        return `SOFT WARNING: codebase-memory index is ${ageDays.toFixed(1)} days old (last indexed ${readiness.lastIndexedAt}). Re-index with mcp__codebase-memory__index_repository to keep call-graph queries accurate.`;
+      }
+    }
+    return null;
   }
 
   /** Set the architecture */
