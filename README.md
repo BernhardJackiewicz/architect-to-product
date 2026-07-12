@@ -2,6 +2,18 @@
 AI engineering framework delivered as an MCP server. Turns AI-generated
 code into production-ready software.
 
+> **Positioning note (2026).** A2P was built in the Claude 4.5/4.6 era,
+> when even frontier models routinely wrote code before tests, declared
+> work "done" without evidence, and shipped stubs. Today's top frontier
+> models have internalized much of that steering themselves. The value
+> of this repo has shifted accordingly. Its primary audience is now
+> **strong open-weight coding models (GLM, Qwen3-Coder, Kimi, DeepSeek
+> class)**, which still carry the discipline gap A2P was built to close.
+> And for every model class, including the frontier, A2P remains a
+> **verification layer**: gates and receipts enforced in code that turn
+> an agent's self-reports into machine-checkable evidence. Details in
+> [Who A2P is for](#who-a2p-is-for).
+
 ## A2P v2 — Evidence-gated AI systems engineering
 
 The v2 layer treats AI-delivered code the way a staff engineer treats a
@@ -38,7 +50,7 @@ narrow enough that the 13 concerns don't apply.
 
 ---
 
-**Best for:** developers using Claude Code, Cursor, or other MCP clients who want AI speed with test, security, and deployment discipline — whether building from scratch or hardening a vibe-coded MVP.
+**Best for:** developers running strong open-weight coding models (GLM, Qwen3-Coder, Kimi, DeepSeek class) in Claude Code (via router), Cline, Roo Code, opencode, or any MCP client — and anyone, on any model, who wants machine-checkable evidence instead of self-reports from long autonomous runs. Works from scratch or for hardening a vibe-coded MVP. See [Who A2P is for](#who-a2p-is-for).
 
 📖 [Getting Started](#quickstart) · [Workflow](docs/WORKFLOW.md) · [Security](docs/SECURITY.md) · [Reference](docs/REFERENCE.md) · [Deployment (Hetzner / VPS)](docs/HETZNER-DEPLOYMENT.md)
 
@@ -107,7 +119,7 @@ onboarding → planning → building → security → deployment → complete
 
 ---
 
-## Why A2P exists
+## Who A2P is for
 
 AI coding agents are fast, but they tend to skip discipline:
 - they write code before tests
@@ -115,7 +127,47 @@ AI coding agents are fast, but they tend to skip discipline:
 - they suppress errors instead of fixing root causes
 - they underinvest in security, backup, and deployment hardening
 
-A2P adds the missing engineering system around the agent.
+How often that happens depends on the model class — which is why A2P
+today has two distinct value propositions.
+
+### 1. Open-weight models: closing the discipline gap (primary)
+
+Strong open-weight coding models write good code but typically run one
+to two generations behind the frontier on *long-horizon delivery
+discipline*: staying test-first over hours, not shortcutting, not
+declaring "done" early, not suppressing errors. That is exactly the gap
+A2P was built to close — with gates enforced in code, not prompts. And
+at open-weight token prices, the hardening overhead (requirements →
+tests → plan → reviews) is nearly free relative to what it buys.
+
+The pitch in one line: **open-weight speed and pricing, frontier-grade
+delivery discipline.**
+
+Two honest constraints:
+
+- **Capability floor.** The model must be strong enough to *operate*
+  A2P: long structured tool chains, reading a gate error and supplying
+  the missing artifact instead of looping on it. GLM-4.6-class and
+  newer, Qwen3-Coder, Kimi K2, DeepSeek V3-class — yes. Small local
+  models — probably not.
+- **Discipline gap, not intelligence gap.** A2P makes a sloppy model
+  auditable; it does not make it smarter. Semantically wrong logic
+  behind green, shallow tests remains a model-quality problem
+  ([docs/QUALITY-IMPACT.md](docs/QUALITY-IMPACT.md), bucket 3).
+
+### 2. Frontier models: verification instead of self-report
+
+Current frontier models rarely need A2P's steering — they plan
+adversarially and write boundary tests unprompted. What no model can do,
+structurally, is verify its own claims: "I wrote the tests first" and
+"all acceptance criteria are met" are self-reports. A2P's diff-based
+test-first guard, stub scan, plan-compliance check, and timestamped
+audit trail turn those self-reports into machine-checkable receipts.
+The more autonomously agents run — background agents, scheduled runs,
+multi-hour sessions nobody watches — the more those receipts are worth.
+
+A2P adds the missing engineering system around the agent: enforcement
+where the model is weak, evidence where trust is expensive.
 
 ---
 
@@ -207,6 +259,21 @@ A2P's native flow has been validated end-to-end by running A2P against itself in
 **Real-world trial**: One slice (German phone number normalizer) built through the full native flow on the Handwerk CRM codebase (121 existing slices). Plan-hardening rounds 1–2 found two real algorithm bugs before any code was written: a plus-sign stripping order-of-operations error and an Austrian 0043-prefix misclassification.
 
 → Full dogfood artifacts: `a2p-dogfood/OBSERVATIONS-SUMMARY.md`, per-scenario scorecards in `a2p-dogfood/observations/`
+
+### Model-class note on the numbers above
+
+All dogfood and benchmark numbers were produced with 2025-era Claude
+frontier models as the operating agent. Read them accordingly:
+
+- On current frontier models, the marginal gain from A2P's *steering*
+  (the hardening prompts) is smaller than these numbers suggest — those
+  models bring much of the discipline themselves. The *verification*
+  layer (test-first guard, stub scan, plan compliance, audit trail)
+  retains full value regardless of model.
+- On open-weight models the differential is expected to be larger, not
+  smaller — but that has **not been measured yet**. An open-weight
+  baseline run (same battery, model bare vs. model + A2P) is the next
+  validation milestone.
 
 ---
 
