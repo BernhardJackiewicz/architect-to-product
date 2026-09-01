@@ -1,4 +1,7 @@
 # A2P — Architect-to-Product
+
+[![npm version](https://img.shields.io/npm/v/architect-to-product)](https://www.npmjs.com/package/architect-to-product) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) [![Tests: 1473 passing](https://img.shields.io/badge/tests-1473%20passing-brightgreen)](docs/validation/) [![Dogfood: 97%](https://img.shields.io/badge/dogfood-153%2F158%20(97%25)-blue)](#dogfood-validation) [![TypeScript](https://img.shields.io/badge/TypeScript-blue)](tsconfig.json)
+
 AI engineering framework delivered as an MCP server. Turns AI-generated
 code into production-ready software.
 
@@ -45,8 +48,6 @@ v1 flow (the default for slices without v2 triggers) if the slice is
 narrow enough that the 13 concerns don't apply.
 
 **37 MCP tools · 1473 tests · Dogfood-validated (153/158 rubric, 50/50 adversarial) · Architecture → Plan → Build → Audit → Security → Deploy**
-
-[![npm version](https://img.shields.io/npm/v/architect-to-product)](https://www.npmjs.com/package/architect-to-product) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) [![Tests: 1473 passing](https://img.shields.io/badge/tests-1473%20passing-brightgreen)](docs/validation/) [![Dogfood: 97%](https://img.shields.io/badge/dogfood-153%2F158%20(97%25)-blue)](#dogfood-validation) [![TypeScript](https://img.shields.io/badge/TypeScript-blue)](tsconfig.json)
 
 ---
 
